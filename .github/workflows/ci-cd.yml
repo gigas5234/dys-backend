@@ -13,18 +13,6 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v3
 
-    - name: GCP SA KEY 시크릿 구조 디버깅
-      run: |
-          echo "GCP_SA_KEY 시크릿 내용 확인 중..."
-          echo "앞 20글자: $(echo '${{ secrets.GCP_SA_KEY }}' | cut -c 1-20)"
-          echo "뒤 20글자: $(echo '${{ secrets.GCP_SA_KEY }}' | tail -c 20)"
-
-    # 오류가 발생했던 단계
-    - name: Google Cloud Auth
-      uses: 'google-github-actions/auth@v1'
-      with:
-        credentials_json: '${{ secrets.GCP_SA_KEY }}'
-
     # 2. GitHub Secrets에 저장된 키를 이용해 Google Cloud에 로그인
     - name: Google Cloud Auth
       uses: 'google-github-actions/auth@v1'
