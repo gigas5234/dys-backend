@@ -1,0 +1,38 @@
+name: Backend CI/CD
+
+# main 브랜치에 push될 때마다 실행
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build-and-push-to-gcr:
+    runs-on: ubuntu-latest
+    steps:
+    # 1. GitHub에 올라간 코드를 작업 공간으로 가져오기
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    # 2. GitHub Secrets에 저장된 키를 이용해 Google Cloud에 로그인
+    - name: Google Cloud Auth
+      uses: 'google-github-actions/auth@v1'
+      with:
+        credentials_json: '${{ secrets.GCP_SA_KEY }}'
+
+    # 3. Docker가 Artifact Registry에 접속할 수 있도록 인증 설정
+    - name: Set up Cloud SDK and Docker
+      uses: 'google-github-actions/setup-gcloud@v1'
+    - name: Configure Docker
+      run: gcloud auth configure-docker asia-northeast3-docker.pkg.dev
+
+    # 4. Dockerfile을 이용해 이미지 빌드
+    # 저장소 이름과 이미지 이름을 'dys-backend'로 통일했습니다.
+    - name: Build Docker Image
+      run: |
+        docker build -t asia-northeast3-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/dys-backend/dys-backend:${{ github.sha }} .
+
+    # 5. 빌드된 이미지를 Artifact Registry로 Push
+    # 위와 동일하게 이미지 이름을 맞춰줍니다.
+    - name: Push Docker Image to Artifact Registry
+      run: |
+        docker push asia-northeast3-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/dys-backend/dys-backend:${{ github.sha }}
