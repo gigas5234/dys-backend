@@ -17,7 +17,7 @@ spec:
       containers:
       - name: dys-backend-container
         # 💡 중요: CI/CD 파이프라인에서 빌드한 본인의 이미지 주소를 넣어야 합니다.
-        image: asia-northeast3-docker.pkg.dev/deyeonso10/dys-backend/dys-backend:f57e2bd25e78c17bcea1d6aa7c2b98a9bc595195
+        image: asia-northeast3-docker.pkg.dev/deyeonso10/dys-backend/dys-backend:c0da143845a6bd2724ebcc49a20b1d2b93fba4d7
         ports:
         - containerPort: 8000 # 메인 서버 포트
         - containerPort: 8001 # WebSocket 서버 포트

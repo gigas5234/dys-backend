@@ -4,8 +4,14 @@ FROM python:3.10-slim
 # 작업 디렉토리 설정
 WORKDIR /usr/src/app
 
-# CTranslate2 실행에 필요한 시스템 라이브러리 설치
+# CTranslate2 및 OpenCV 실행에 필요한 시스템 라이브러리 설치
 RUN apt-get update && apt-get install -y \
+    libgomp1 \
+    libgl1-mesa-glx \
+    libglib2.0-0 \
+    libsm6 \
+    libxext6 \
+    libxrender-dev \
     libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
