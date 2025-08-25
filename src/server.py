@@ -1273,7 +1273,7 @@ async def analyze_feedback(request: Request):
 # ====== 페르소나 정보 로드 함수 ======
 
 async def load_persona_context(session_id: str) -> str:
-    """세션 정보 또는 JSON 파일에서 페르소나 정보를 로드하여 컨텍스트 생성"""
+    "세션 정보 또는 JSON 파일에서 페르소나 정보를 로드하여 컨텍스트 생성"
     try:
         # 기본 페르소나 이름 (세션에서 가져오거나 기본값)
         persona_name = ""
@@ -1285,15 +1285,15 @@ async def load_persona_context(session_id: str) -> str:
                 session_info = await get_session_info(session_id)
                 if session_info and session_info.get('persona_name'):
                     persona_name = session_info.get('persona_name')
-                    print(f"📋 [PERSONA] 세션에서 페르소나 정보 가져옴: {persona_name}")
+                    print(f" [PERSONA] 세션에서 페르소나 정보 가져옴: {persona_name}")
             except Exception as e:
-                print(f"⚠️ [PERSONA] 세션 정보 가져오기 실패: {e}")
+                print(f" [PERSONA] 세션 정보 가져오기 실패: {e}")
         
         # JSON 파일에서 상세 페르소나 정보 로드
         persona_file = f"personas/{persona_name}.json"
         
         if os.path.exists(persona_file):
-            print(f"📄 [PERSONA] JSON 파일에서 페르소나 로드: {persona_file}")
+            print(f" [PERSONA] JSON 파일에서 페르소나 로드: {persona_file}")
             
             with open(persona_file, 'r', encoding='utf-8') as f:
                 persona_data = json.load(f)
@@ -1332,11 +1332,11 @@ async def load_persona_context(session_id: str) -> str:
 - 관심 없는 분야: {", ".join(persona_data.get('low_interest_domains', [])[:3])} 등
 """
             
-            print(f"✅ [PERSONA] 상세 페르소나 컨텍스트 생성 완료: {len(persona_context)}자")
+            print(f" [PERSONA] 상세 페르소나 컨텍스트 생성 완료: {len(persona_context)}자")
             return persona_context
             
         else:
-            print(f"⚠️ [PERSONA] JSON 파일 없음: {persona_file}")
+            print(f"[PERSONA] JSON 파일 없음: {persona_file}")
             # 기본 설정
             return """
 당신은 AI 파트너입니다.
@@ -1358,16 +1358,16 @@ async def load_persona_context(session_id: str) -> str:
 """
             
     except Exception as e:
-        print(f"❌ [PERSONA] 페르소나 정보 로드 실패: {e}")
+        print(f" [PERSONA] 페르소나 정보 로드 실패: {e}")
         return "당신은 친근하고 따뜻한 AI 파트너입니다."
 
 # ====== AI 응답 생성 함수 ======
 
 async def generate_ai_response(user_message: str, session_id: str) -> str:
-    """OpenAI GPT-4o-mini를 사용하여 AI 응답 생성"""
+    "OpenAI GPT-4o-mini를 사용하여 AI 응답 생성"
     try:
         if not OPENAI_API_KEY:
-            print("⚠️ [AI_RESPONSE] OpenAI API 키가 없음 - 더미 응답 사용")
+            print(" [AI_RESPONSE] OpenAI API 키가 없음 - 더미 응답 사용")
             return f"안녕하세요! '{user_message}'에 대해 답변드리겠습니다. (OpenAI API 키 필요)"
         
         # 페르소나 정보 로드 (JSON 파일에서)
@@ -1384,7 +1384,7 @@ async def generate_ai_response(user_message: str, session_id: str) -> str:
 
 상황: 지금은 카페에서의 첫 데이트 중이며, 상대방을 편안하게 만들고 즐거운 대화를 나누는 것이 목표입니다."""
 
-        print(f"🔄 [AI_RESPONSE] OpenAI API 호출 시작...")
+        print(f" [AI_RESPONSE] OpenAI API 호출 시작...")
         
         # OpenAI API 호출
         from openai import OpenAI
@@ -1404,12 +1404,12 @@ async def generate_ai_response(user_message: str, session_id: str) -> str:
         )
         
         ai_response = response.choices[0].message.content.strip()
-        print(f"✅ [AI_RESPONSE] OpenAI 응답 생성 완료: {len(ai_response)}자")
+        print(f" [AI_RESPONSE] OpenAI 응답 생성 완료: {len(ai_response)}자")
         
         return ai_response
         
     except Exception as e:
-        print(f"❌ [AI_RESPONSE] OpenAI API 호출 실패: {e}")
+        print(f" [AI_RESPONSE] OpenAI API 호출 실패: {e}")
         # 폴백 응답
         fallback_responses = [
             "흥미로운 이야기네요! 더 자세히 들려주세요 ",
