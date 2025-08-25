@@ -2310,7 +2310,7 @@ function removeTypingIndicator() {
         showTypingIndicator();
       
         // 서버 API로 메시지 전송 (MongoDB 저장 + AI 응답 생성)
-        const response = await fetch(`/api/chat/sessions/${currentSessionId}/messages`, {
+        const response = await fetch(`${window.serverUrl || 'http://34.64.136.237'}/api/chat/sessions/${currentSessionId}/messages`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -2562,7 +2562,7 @@ async function runAiAnalysis() {
     
     try {
         // 서버의 피드백 분석 API 호출
-        const response = await fetch('/api/feedback', {
+        const response = await fetch(`${window.serverUrl || 'http://34.64.136.237'}/api/feedback`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -2744,7 +2744,7 @@ document.querySelectorAll('.suggestion-tags .tag').forEach(tag => {
 async function createSession() {
     try {
         const sessionName = personaName ? `${personaName}와의 데이트` : '새로운 데이트';
-        const response = await fetch('/api/chat/sessions', {
+        const response = await fetch(`${window.serverUrl || 'http://34.64.136.237'}/api/chat/sessions`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'

@@ -70,7 +70,7 @@ async function initializeExpressionAnalyzer() {
     
     try {
         // 서버에 표정 분석기 초기화 요청
-        const response = await fetch('/api/expression/initialize', {
+        const response = await fetch(`${window.serverUrl || 'http://34.64.136.237'}/api/expression/initialize`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -294,7 +294,7 @@ async function analyzeExpressionFromVideo(videoEl) {
         const imageData = canvas.toDataURL('image/jpeg', 0.9);
         
         // 서버에 표정 분석 요청
-        const response = await fetch('/api/expression/analyze', {
+        const response = await fetch(`${window.serverUrl || 'http://34.64.136.237'}/api/expression/analyze`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
