@@ -327,7 +327,7 @@ class TTSManager {
             this.isPlaying = true;
             
             // 서버에 TTS 요청 (SSML 비활성화)
-            const response = await fetch(`${window.serverUrl || 'https://34.64.136.237'}/api/tts/speak`, {
+            const response = await fetch(`${window.serverUrl || 'http://34.64.136.237'}/api/tts/speak`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
