@@ -20,8 +20,8 @@ COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 # start.sh 파일에 실행 권한 부여
 RUN chmod +x ./start.sh
 
-# 컨테이너가 8000번 포트와 7860번 포트를 외부에 노출
-EXPOSE 8000 7860
+# 컨테이너가 8000번 포트와 8001번 포트를 외부에 노출
+EXPOSE 8000 8001
 
 # 컨테이너가 시작될 때 main.py로 모델 다운로드 후 start.sh 스크립트 실행
 CMD ["sh", "-c", "python main.py && ./start.sh"]

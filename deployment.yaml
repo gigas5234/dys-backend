@@ -17,6 +17,6 @@ spec:
       containers:
       - name: dys-backend-container
         # 💡 중요: CI/CD 파이프라인에서 빌드한 본인의 이미지 주소를 넣어야 합니다.
-        image: asia-northeast3-docker.pkg.dev/deyeonso10/dys-backend/dys-backend:25dfb9216f4a3f706fa8afe77eb82413ced201b7
+        image: asia-northeast3-docker.pkg.dev/deyeonso10/dys-backend/dys-backend:3f40bf84289bbb8015362cda341073c3cf0c5c70
         ports:
         - containerPort: 8080 # Dockerfile에 EXPOSE한 포트와 일치
