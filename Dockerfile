@@ -9,8 +9,8 @@ RUN apt-get update && apt-get install -y \
     libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
-# Supervisor 설치
-RUN apt-get update && apt-get install -y supervisor
+# Supervisor 및 OpenSSL 설치
+RUN apt-get update && apt-get install -y supervisor openssl
 
 # requirements.txt 파일을 먼저 복사하여 의존성 설치
 COPY requirements.txt ./
@@ -21,6 +21,10 @@ COPY . .
 
 # Supervisor 설정 파일을 컨테이너의 설정 경로로 복사
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+
+# SSL 인증서 생성 (자체 서명)
+RUN mkdir -p /usr/src/app/ssl && \
+    openssl req -x509 -newkey rsa:4096 -keyout /usr/src/app/ssl/key.pem -out /usr/src/app/ssl/cert.pem -days 365 -nodes -subj "/C=KR/ST=Seoul/L=Seoul/O=DYS/CN=localhost"
 
 # start.sh 파일에 실행 권한 부여
 RUN chmod +x ./start.sh

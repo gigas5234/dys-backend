@@ -104,7 +104,7 @@ app.mount("/dys_studio", StaticFiles(directory=str(BASE_DIR / "dys_studio")), na
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # 모든 도메인 허용 (개발 중)
+    allow_origins=["*", "https://dys-phi.vercel.app"],  # Vercel 프론트엔드 허용
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
