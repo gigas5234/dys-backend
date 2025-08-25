@@ -32,13 +32,19 @@ except ImportError as e:
 
 # analyzers 모듈 제거됨 - 클라이언트 측에서 처리
 
-# 음성 분석 모듈 import
+# 음성 분석 모듈 import (선택적)
+VOICE_ANALYSIS_AVAILABLE = False
 try:
+    # ctranslate2 호환성 문제로 인해 선택적 로드
+    import ctranslate2
     from dys_studio.voice_input import preload_models, process_audio_simple
     VOICE_ANALYSIS_AVAILABLE = True
     print("✅ 음성 분석 모듈 로드 성공")
 except ImportError as e:
     print(f"⚠️ 음성 분석 모듈 로드 실패: {e}")
+    VOICE_ANALYSIS_AVAILABLE = False
+except Exception as e:
+    print(f"⚠️ 음성 분석 모듈 초기화 실패: {e}")
     VOICE_ANALYSIS_AVAILABLE = False
 
 # TTS 모듈 import
