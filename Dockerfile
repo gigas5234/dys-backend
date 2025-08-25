@@ -11,9 +11,6 @@ RUN apt-get update && apt-get install -y supervisor
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
-# .env 파일을 먼저 복사
-COPY .env ./
-
 # 나머지 프로젝트 파일들을 복사
 COPY . .
 
