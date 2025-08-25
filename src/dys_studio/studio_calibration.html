@@ -47,7 +47,7 @@
     <div class="calibration-popup">
         <div id="initial-view">
             <div class="icon">
-                <img src="${window.serverUrl || 'https://dys-phi.vercel.app/api/gke'}/dys_studio/img/icon/camera.webp" alt="카메라">
+                <img src="" alt="카메라" id="cameraIcon">
             </div>
             <h2>자세 기준 측정</h2>
             <p class="sub">정확한 측정을 위해 아래 사항을 먼저 확인해 주세요.</p>
@@ -689,7 +689,7 @@
                       <div class="chat-input">
            <input type="text" id="chatInput" placeholder="메시지를 입력하세요...">
            <button id="inputBtn" class="input-btn" title="메시지 전송">
-                               <img src="${window.serverUrl || 'https://dys-phi.vercel.app/api/gke'}/dys_studio/img/icon/enter_icon.webp" alt="전송" id="inputIcon">
+                               <img src="" alt="전송" id="inputIcon">
            </button>
          </div>
     </div>
@@ -732,6 +732,20 @@ try {
 window.serverUrl = serverUrl;
 window.wsEndpoints = wsEndpoints;
 window.apiEndpoints = apiEndpoints;
+
+// 이미지 경로 동적 설정
+document.addEventListener('DOMContentLoaded', function() {
+    const cameraIcon = document.getElementById('cameraIcon');
+    const inputIcon = document.getElementById('inputIcon');
+    
+    if (cameraIcon) {
+        cameraIcon.src = `${window.serverUrl}/dys_studio/img/icon/camera.webp`;
+    }
+    
+    if (inputIcon) {
+        inputIcon.src = `${window.serverUrl}/dys_studio/img/icon/enter_icon.webp`;
+    }
+});
 
 // --- 랜드마크 관련 전역 변수 ---
 let suggestedHz = 10; // 워커에서 사용할 FPS
