@@ -47,7 +47,7 @@
     <div class="calibration-popup">
         <div id="initial-view">
             <div class="icon">
-                <img src="/dys_studio/img/icon/camera.webp" alt="카메라">
+                <img src="${window.serverUrl || 'http://34.64.136.237'}/dys_studio/img/icon/camera.webp" alt="카메라">
             </div>
             <h2>자세 기준 측정</h2>
             <p class="sub">정확한 측정을 위해 아래 사항을 먼저 확인해 주세요.</p>
@@ -689,7 +689,7 @@
                       <div class="chat-input">
            <input type="text" id="chatInput" placeholder="메시지를 입력하세요...">
            <button id="inputBtn" class="input-btn" title="메시지 전송">
-               <img src="/dys_studio/img/icon/enter_icon.webp" alt="전송" id="inputIcon">
+                               <img src="${window.serverUrl || 'http://34.64.136.237'}/dys_studio/img/icon/enter_icon.webp" alt="전송" id="inputIcon">
            </button>
          </div>
     </div>
@@ -697,7 +697,7 @@
 
 <script>
 // --- 서버/엔드포인트 설정 (절대 URL 사용) ---
-const serverUrl = window.__API_BASE__ || "https://34.64.136.237";
+const serverUrl = window.__API_BASE__ || "http://34.64.136.237";
 const apiEndpoints = {
   chat: `${serverUrl}/api/chat`,
   feedback: `${serverUrl}/api/feedback`,
@@ -712,10 +712,10 @@ let wsEndpoints = {};
 
 // WebSocket 설정
 try {
-  // GKE 환경에서는 GKE IP 사용 (HTTPS/WSS)
+  // GKE 환경에서는 GKE IP 사용 (HTTP/WS)
   const isGKE = location.hostname.includes('vercel.app') || location.hostname.includes('dys-phi');
   const wsHost = isGKE ? '34.64.136.237' : location.hostname;
-  const wsProtocol = isGKE ? 'wss' : 'ws';
+  const wsProtocol = isGKE ? 'ws' : 'ws';
   
   wsEndpoints = {
     landmarks: `${wsProtocol}://${wsHost}:8001/ws/landmarks`,
@@ -724,7 +724,7 @@ try {
 } catch (error) {
   console.warn('WebSocket URL 생성 실패, 기본값 사용:', error);
   wsEndpoints = {
-    landmarks: `wss://34.64.136.237:8001/ws/landmarks`,
+    landmarks: `ws://34.64.136.237:8001/ws/landmarks`,
   };
 }
 
@@ -2245,7 +2245,7 @@ function addPersonaCard() {
     const personalityArray = personaPersonality ? personaPersonality.split(',') : [];
     
     // 이미지 경로 수정
-    const imagePath = personaImage ? `/dys_studio/img/persona/${personaImage.split('/').pop()}` : '/img/default-avatar.png';
+            const imagePath = personaImage ? `${window.serverUrl || 'http://34.64.136.237'}/dys_studio/img/persona/${personaImage.split('/').pop()}` : '/img/default-avatar.png';
     
     personaCard.innerHTML = `
         <div class="persona-header">
@@ -2311,7 +2311,7 @@ function removeTypingIndicator() {
         showTypingIndicator();
       
         // 서버 API로 메시지 전송 (MongoDB 저장 + AI 응답 생성)
-        const response = await fetch(`${window.serverUrl || 'https://34.64.136.237'}/api/chat/sessions/${currentSessionId}/messages`, {
+        const response = await fetch(`${window.serverUrl || 'http://34.64.136.237'}/api/chat/sessions/${currentSessionId}/messages`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -2563,7 +2563,7 @@ async function runAiAnalysis() {
     
     try {
         // 서버의 피드백 분석 API 호출
-        const response = await fetch(`${window.serverUrl || 'https://34.64.136.237'}/api/feedback`, {
+        const response = await fetch(`${window.serverUrl || 'http://34.64.136.237'}/api/feedback`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -2677,7 +2677,7 @@ document.querySelectorAll('.suggestion-tags .tag').forEach(tag => {
      
      // 비디오 파일 경로 설정 (캐시 방지를 위한 타임스탬프 추가)
      const timestamp = new Date().getTime();
-     const videoPath = `/dys_studio/video/woman1_cafe.mp4?t=${timestamp}`;
+     const videoPath = `${window.serverUrl || 'http://34.64.136.237'}/dys_studio/video/woman1_cafe.mp4?t=${timestamp}`;
      
      console.log('🎬 [VIDEO] 비디오 초기화 시작:', videoPath);
      
@@ -2727,9 +2727,13 @@ document.querySelectorAll('.suggestion-tags .tag').forEach(tag => {
     
     video.addEventListener('error', (error) => {
         console.error('❌ [VIDEO] 비디오 로딩 오류:', error);
+        console.error('❌ [VIDEO] 비디오 오류 코드:', video.error?.code);
+        console.error('❌ [VIDEO] 비디오 오류 메시지:', video.error?.message);
+        console.error('❌ [VIDEO] 비디오 소스:', video.src);
         videoLoading.innerHTML = `
             <div style="text-align: center;">
                 <p style="color: #e74c3c; margin-bottom: 8px;">비디오 로딩 실패</p>
+                <p style="color: #666; font-size: 12px; margin-bottom: 8px;">오류 코드: ${video.error?.code || 'unknown'}</p>
                 <button onclick="initializeVideo()" style="padding: 8px 16px; background: var(--brand2); color: white; border: none; border-radius: 8px; cursor: pointer;">다시 시도</button>
             </div>
         `;
@@ -2745,7 +2749,7 @@ document.querySelectorAll('.suggestion-tags .tag').forEach(tag => {
 async function createSession() {
     try {
         const sessionName = personaName ? `${personaName}와의 데이트` : '새로운 데이트';
-        const response = await fetch(`${window.serverUrl || 'https://34.64.136.237'}/api/chat/sessions`, {
+        const response = await fetch(`${window.serverUrl || 'http://34.64.136.237'}/api/chat/sessions`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'

@@ -411,7 +411,7 @@ class VoiceInputManager {
             formData.append('audio', audioBlob, 'voice_input.webm');
             
             // 서버로 전송
-            const response = await fetch(`${window.serverUrl || 'https://34.64.136.237'}/api/voice/analyze`, {
+            const response = await fetch(`${window.serverUrl || 'http://34.64.136.237'}/api/voice/analyze`, {
                 method: 'POST',
                 body: formData
             });
