@@ -104,7 +104,14 @@ app.mount("/dys_studio", StaticFiles(directory=str(BASE_DIR / "dys_studio")), na
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*", "https://dys-phi.vercel.app"],  # Vercel 프론트엔드 허용
+    allow_origins=[
+        "*", 
+        "https://dys-phi.vercel.app",
+        "http://localhost:3000",
+        "http://localhost:8000",
+        "https://localhost:3000",
+        "https://localhost:8000"
+    ],  # 모든 환경 허용
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -115,6 +122,9 @@ app.add_middleware(
 async def startup_event():
     """서버 시작 시 실행"""
     print(f"🚀 {APP_NAME} 서버 시작됨 (포트: {PORT})")
+    print(f"📋 [STARTUP] MongoDB 연결 상태: {MONGODB_AVAILABLE}")
+    print(f"📋 [STARTUP] CORS 허용 도메인: {app.user_middleware_stack[0].options.allow_origins}")
+    print(f"📋 [STARTUP] 서버 URL: http://0.0.0.0:{PORT}")
 
 @app.on_event("shutdown")
 async def shutdown_event():
@@ -135,7 +145,13 @@ def root():
 
 @app.get("/health")
 def health():
-    return {"ok": True}
+    """헬스체크 엔드포인트"""
+    return {
+        "ok": True, 
+        "service": APP_NAME,
+        "mongodb_available": MONGODB_AVAILABLE,
+        "timestamp": time.time()
+    }
 
 # /webcam 엔드포인트 제거됨 - 사용하지 않음
 
@@ -188,30 +204,29 @@ def serve_studio_image(filename: str):
 def serve_dys_studio_image(filename: str):
     """dys_studio 이미지 파일 제공"""
     import os
-    print(f"🔍 이미지 요청: {filename}")
+    print(f"🔍 [IMAGE] 요청: {filename}")
     
-    # 첫 번째 시도: dys_studio/img/{filename}
-    file_path = f"dys_studio/img/{filename}"
-    print(f"📁 시도 1: {file_path}")
-    if os.path.exists(file_path):
-        print(f"✅ 파일 발견: {file_path}")
-        return FileResponse(file_path, media_type="image/svg+xml" if filename.endswith('.svg') else "image/*")
+    # 가능한 경로들
+    possible_paths = [
+        f"dys_studio/img/{filename}",
+        f"img/{filename}",
+        f"studio/img/{filename}",
+        f"src/dys_studio/img/{filename}",
+        f"src/img/{filename}",
+        f"src/studio/img/{filename}"
+    ]
     
-    # 두 번째 시도: img/{filename}
-    file_path = f"img/{filename}"
-    print(f"📁 시도 2: {file_path}")
-    if os.path.exists(file_path):
-        print(f"✅ 파일 발견: {file_path}")
-        return FileResponse(file_path, media_type="image/svg+xml" if filename.endswith('.svg') else "image/*")
+    for i, file_path in enumerate(possible_paths, 1):
+        print(f"📁 [IMAGE] 시도 {i}: {file_path}")
+        if os.path.exists(file_path):
+            print(f"✅ [IMAGE] 파일 발견: {file_path}")
+            # 파일 크기 확인
+            file_size = os.path.getsize(file_path)
+            print(f"📊 [IMAGE] 파일 크기: {file_size} bytes")
+            return FileResponse(file_path, media_type="image/svg+xml" if filename.endswith('.svg') else "image/*")
     
-    # 세 번째 시도: studio/img/{filename}
-    file_path = f"studio/img/{filename}"
-    print(f"📁 시도 3: {file_path}")
-    if os.path.exists(file_path):
-        print(f"✅ 파일 발견: {file_path}")
-        return FileResponse(file_path, media_type="image/svg+xml" if filename.endswith('.svg') else "image/*")
-    
-    print(f"❌ 파일을 찾을 수 없음: {filename}")
+    print(f"❌ [IMAGE] 파일을 찾을 수 없음: {filename}")
+    print(f"📋 [IMAGE] 시도한 경로들: {possible_paths}")
     return Response(status_code=404, content=f"Image {filename} not found")
 
 @app.get("/dys_logo.png")
@@ -377,6 +392,9 @@ async def create_session(
 ):
     """새 채팅 세션 생성"""
     print(f"🔍 [CREATE_SESSION] 요청 받음 - session_name: {session.session_name}")
+    print(f"📋 [CREATE_SESSION] 요청 헤더: {dict(request.headers)}")
+    print(f"📋 [CREATE_SESSION] 요청 메서드: {request.method}")
+    print(f"📋 [CREATE_SESSION] 요청 URL: {request.url}")
     
     # 인증 토큰 확인 (선택적)
     current_user_id = None
@@ -1034,11 +1052,14 @@ class UserCalibrationUpdateRequest(BaseModel):
 async def check_user_calibration(request: UserCheckRequest):
     """사용자 캘리브레이션 상태 확인 (Supabase users 테이블의 cam_calibration 필드 확인)"""
     try:
+        print(f"🔍 [USER_CHECK] 요청 받음 - email: {request.email}")
+        
         if MONGODB_AVAILABLE:
             # MongoDB에서 사용자 정보 확인
             user = await get_user_by_email(request.email)
             if user:
                 cam_calibration = user.get('cam_calibration', False)
+                print(f"✅ [USER_CHECK] 사용자 발견 - cam_calibration: {cam_calibration}")
                 return {
                     "has_calibration": cam_calibration,
                     "cam_calibration": cam_calibration,
@@ -1047,13 +1068,14 @@ async def check_user_calibration(request: UserCheckRequest):
                 }
         
         # MongoDB가 없거나 사용자를 찾을 수 없는 경우
+        print(f"⚠️ [USER_CHECK] 사용자 정보 없음 - MongoDB: {MONGODB_AVAILABLE}")
         return {
             "has_calibration": False,
             "cam_calibration": False,
             "message": "사용자 정보를 찾을 수 없습니다"
         }
     except Exception as e:
-        print(f"사용자 상태 확인 오류: {e}")
+        print(f"❌ [USER_CHECK] 오류 발생: {e}")
         return {
             "has_calibration": False,
             "cam_calibration": False,
