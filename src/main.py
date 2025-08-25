@@ -36,4 +36,22 @@ from server import app  # server.py 안의 app 객체 가져오기
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("server:app", host="0.0.0.0", port=8000, reload=False)
+    import ssl
+    
+    # SSL 인증서 경로 (선택적)
+    ssl_keyfile = os.getenv("SSL_KEYFILE", None)
+    ssl_certfile = os.getenv("SSL_CERTFILE", None)
+    
+    if ssl_keyfile and ssl_certfile and os.path.exists(ssl_keyfile) and os.path.exists(ssl_certfile):
+        # HTTPS로 실행
+        uvicorn.run(
+            "server:app", 
+            host="0.0.0.0", 
+            port=8000, 
+            reload=False,
+            ssl_keyfile=ssl_keyfile,
+            ssl_certfile=ssl_certfile
+        )
+    else:
+        # HTTP로 실행
+        uvicorn.run("server:app", host="0.0.0.0", port=8000, reload=False)
