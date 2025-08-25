@@ -199,34 +199,7 @@ def serve_studio_image(filename: str):
     except FileNotFoundError:
         return Response(status_code=404, content=f"Image {filename} not found")
 
-@app.get("/dys_studio/img/{filename:path}")
-def serve_dys_studio_image(filename: str):
-    """dys_studio 이미지 파일 제공"""
-    import os
-    print(f"🔍 [IMAGE] 요청: {filename}")
-    
-    # 가능한 경로들
-    possible_paths = [
-        f"dys_studio/img/{filename}",
-        f"img/{filename}",
-        f"studio/img/{filename}",
-        f"src/dys_studio/img/{filename}",
-        f"src/img/{filename}",
-        f"src/studio/img/{filename}"
-    ]
-    
-    for i, file_path in enumerate(possible_paths, 1):
-        print(f"📁 [IMAGE] 시도 {i}: {file_path}")
-        if os.path.exists(file_path):
-            print(f"✅ [IMAGE] 파일 발견: {file_path}")
-            # 파일 크기 확인
-            file_size = os.path.getsize(file_path)
-            print(f"📊 [IMAGE] 파일 크기: {file_size} bytes")
-            return FileResponse(file_path, media_type="image/svg+xml" if filename.endswith('.svg') else "image/*")
-    
-    print(f"❌ [IMAGE] 파일을 찾을 수 없음: {filename}")
-    print(f"📋 [IMAGE] 시도한 경로들: {possible_paths}")
-    return Response(status_code=404, content=f"Image {filename} not found")
+
 
 @app.get("/dys_logo.png")
 def serve_dys_logo():
@@ -1731,17 +1704,22 @@ except ImportError as e:
     EXPRESSION_ANALYZER_AVAILABLE = False
     print(f"⚠️ 표정 분석기 모듈 로드 실패: {e}")
 
+@app.get("/api/expression/initialize")
 @app.post("/api/expression/initialize")
 async def initialize_expression_analyzer_api():
     """표정 분석기를 초기화합니다."""
     try:
+        print("🔍 [EXPRESSION] 표정 분석기 초기화 요청 받음")
+        
         if not EXPRESSION_ANALYZER_AVAILABLE:
+            print("❌ [EXPRESSION] 표정 분석기 모듈이 사용 불가능")
             return {"success": False, "error": "Expression analyzer not available"}
         
         success = initialize_expression_analyzer()
+        print(f"✅ [EXPRESSION] 표정 분석기 초기화 결과: {success}")
         return {"success": success}
     except Exception as e:
-        print(f"❌ 표정 분석기 초기화 실패: {e}")
+        print(f"❌ [EXPRESSION] 표정 분석기 초기화 실패: {e}")
         return {"success": False, "error": str(e)}
 
 @app.post("/api/expression/analyze")
@@ -1769,4 +1747,94 @@ async def analyze_expression_api(request: Request):
     except Exception as e:
         print(f"❌ 표정 분석 실패: {e}")
         return {"success": False, "error": str(e)}
+
+# 이미지 파일 서빙 개선
+@app.get("/dys_studio/img/{filename:path}")
+def serve_dys_studio_image(filename: str):
+    """dys_studio 이미지 파일 제공"""
+    import os
+    print(f"🔍 [IMAGE] 요청: {filename}")
+    
+    # 가능한 경로들 (더 많은 경로 추가)
+    possible_paths = [
+        f"dys_studio/img/{filename}",
+        f"img/{filename}",
+        f"studio/img/{filename}",
+        f"src/dys_studio/img/{filename}",
+        f"src/img/{filename}",
+        f"src/studio/img/{filename}",
+        f"/usr/src/app/dys_studio/img/{filename}",
+        f"/usr/src/app/src/dys_studio/img/{filename}",
+        f"/workspace/app/dys_studio/img/{filename}",
+        f"/workspace/app/src/dys_studio/img/{filename}"
+    ]
+    
+    for i, file_path in enumerate(possible_paths, 1):
+        print(f"📁 [IMAGE] 시도 {i}: {file_path}")
+        if os.path.exists(file_path):
+            print(f"✅ [IMAGE] 파일 발견: {file_path}")
+            # 파일 크기 확인
+            file_size = os.path.getsize(file_path)
+            print(f"📊 [IMAGE] 파일 크기: {file_size} bytes")
+            
+            # 파일 확장자에 따른 MIME 타입 설정
+            if filename.endswith('.webp'):
+                media_type = "image/webp"
+            elif filename.endswith('.png'):
+                media_type = "image/png"
+            elif filename.endswith('.jpg') or filename.endswith('.jpeg'):
+                media_type = "image/jpeg"
+            elif filename.endswith('.svg'):
+                media_type = "image/svg+xml"
+            else:
+                media_type = "image/*"
+            
+            return FileResponse(file_path, media_type=media_type)
+    
+    print(f"❌ [IMAGE] 파일을 찾을 수 없음: {filename}")
+    print(f"📋 [IMAGE] 시도한 경로들: {possible_paths}")
+    return Response(status_code=404, content=f"Image {filename} not found")
+
+# 비디오 파일 서빙 추가
+@app.get("/dys_studio/video/{filename:path}")
+def serve_dys_studio_video(filename: str):
+    """dys_studio 비디오 파일 제공"""
+    import os
+    print(f"🔍 [VIDEO] 요청: {filename}")
+    
+    # 가능한 경로들
+    possible_paths = [
+        f"dys_studio/video/{filename}",
+        f"video/{filename}",
+        f"src/dys_studio/video/{filename}",
+        f"src/video/{filename}",
+        f"/usr/src/app/dys_studio/video/{filename}",
+        f"/usr/src/app/src/dys_studio/video/{filename}",
+        f"/workspace/app/dys_studio/video/{filename}",
+        f"/workspace/app/src/dys_studio/video/{filename}"
+    ]
+    
+    for i, file_path in enumerate(possible_paths, 1):
+        print(f"📁 [VIDEO] 시도 {i}: {file_path}")
+        if os.path.exists(file_path):
+            print(f"✅ [VIDEO] 파일 발견: {file_path}")
+            # 파일 크기 확인
+            file_size = os.path.getsize(file_path)
+            print(f"📊 [VIDEO] 파일 크기: {file_size} bytes")
+            
+            # 파일 확장자에 따른 MIME 타입 설정
+            if filename.endswith('.mp4'):
+                media_type = "video/mp4"
+            elif filename.endswith('.webm'):
+                media_type = "video/webm"
+            elif filename.endswith('.avi'):
+                media_type = "video/x-msvideo"
+            else:
+                media_type = "video/*"
+            
+            return FileResponse(file_path, media_type=media_type)
+    
+    print(f"❌ [VIDEO] 파일을 찾을 수 없음: {filename}")
+    print(f"📋 [VIDEO] 시도한 경로들: {possible_paths}")
+    return Response(status_code=404, content=f"Video {filename} not found")
 
