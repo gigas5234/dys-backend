@@ -38,7 +38,7 @@ jobs:
       run: |
         docker push asia-northeast3-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/dys-backend/dys-backend:${{ github.sha }}
 
-  # 2. GKE에 배포하는 작업 (새로 추가됨)
+  # 6. GKE에 배포하는 작업 
   deploy-to-gke:
     # 'build-and-push-to-gcr' 작업이 성공해야만 실행됩니다.
     needs: build-and-push-to-gcr
@@ -52,17 +52,17 @@ jobs:
       with:
         credentials_json: '${{ secrets.GCP_SA_KEY }}'
 
-    # kubectl이 GKE 클러스터에 접속하도록 인증 정보를 가져옵니다.
+    # 7. kubectl이 GKE 클러스터에 접속하도록 인증 정보를 가져옵니다.
     - name: Get GKE Credentials
       run: |
         gcloud container clusters get-credentials dys-cluster --region asia-northeast3
 
-    # 💡 핵심: deployment.yaml 파일의 이미지 태그를 방금 빌드한 태그로 자동 교체합니다.
+    # 8. deployment.yaml 파일의 이미지 태그를 방금 빌드한 태그로 자동 교체합니다.
     - name: Update Image Tag in Deployment
       run: |
         sed -i "s|image:.*|image: asia-northeast3-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/dys-backend/dys-backend:${{ github.sha }}|g" deployment.yaml
 
-    # 수정된 deployment.yaml 파일로 GKE에 배포합니다.
+    # 9. 수정된 deployment.yaml 파일로 GKE에 배포합니다.
     - name: Deploy to GKE
       run: |
         kubectl apply -f deployment.yaml
