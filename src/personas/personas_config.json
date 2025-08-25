@@ -1,0 +1,14 @@
+{
+  "active_persona": "이서아",
+  "available_personas": [
+    "이서아",
+    "박민수"
+  ],
+  "personas": {
+    "박민수": {
+      "file": "박민수.json",
+      "active": true,
+      "created_at": "2025-08-24T18:34:47.127775"
+    }
+  }
+}

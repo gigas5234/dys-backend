@@ -1,0 +1,7 @@
+# .gitignore
+
+# ML 모델 파일 무시
+src/dys_studio/models/data/model.pth
+
+# 환경 변수 파일 무시
+.env
