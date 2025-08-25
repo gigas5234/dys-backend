@@ -1,33 +1,27 @@
-# =================================================================
-# STAGE 1: 빌드(Build) 단계 - 의존성 설치를 위한 스테이지
-# =================================================================
-FROM node:20-slim AS builder
+# 파이썬 3.10 버전을 기반으로 하는 slim 이미지를 사용
+FROM python:3.10-slim
 
 # 작업 디렉토리 설정
 WORKDIR /usr/src/app
 
-# package.json과 package-lock.json을 먼저 복사
-COPY package*.json ./
+# Supervisor 설치
+RUN apt-get update && apt-get install -y supervisor
 
-# 프로덕션 환경에 필요한 모든 의존성 설치
-RUN npm install --omit=dev
+# requirements.txt 파일을 먼저 복사하여 의존성 설치
+COPY requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
 
-# =================================================================
-# STAGE 2: 프로덕션(Production) 단계 - 실제 실행을 위한 스테이지
-# =================================================================
-FROM node:20-slim
-
-# 작업 디렉토리 설정
-WORKDIR /usr/src/app
-
-# 빌드 스테이지에서 설치했던 node_modules를 복사
-COPY --from=builder /usr/src/app/node_modules ./node_modules
-
-# 나머지 소스 코드를 복사
+# 나머지 프로젝트 파일들을 복사
 COPY . .
 
-# 애플리케이션이 실행될 포트 번호 설정
-EXPOSE 8080
+# Supervisor 설정 파일을 컨테이너의 설정 경로로 복사
+COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
-# 컨테이너가 시작될 때 실행할 명령어 (package.json의 main과 일치)
-CMD [ "node", "src/index.js" ]
+# start.sh 파일에 실행 권한 부여
+RUN chmod +x ./start.sh
+
+# 컨테이너가 8000번 포트와 7860번 포트를 외부에 노출
+EXPOSE 8000 7860
+
+# 컨테이너가 시작될 때 main.py로 모델 다운로드 후 start.sh 스크립트 실행
+CMD ["sh", "-c", "python main.py && ./start.sh"]
