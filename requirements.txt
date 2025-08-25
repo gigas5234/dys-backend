@@ -25,7 +25,7 @@ faster-whisper==0.9.0
 edge-tts==6.1.9
 mlflow  # 표정 분석기 모듈 추가
 ctranslate2==3.24.0  # 음성 분석 모듈 추가 (버전 고정)
-opencv-python  # OpenCV 추가
+opencv-python-headless  # OpenCV headless 버전 (GUI 없음)
 
 # Audio Processing
 numpy==1.24.3
