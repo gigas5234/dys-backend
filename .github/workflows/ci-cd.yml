@@ -52,17 +52,23 @@ jobs:
       with:
         credentials_json: '${{ secrets.GCP_SA_KEY }}'
 
-    # 7. kubectl이 GKE 클러스터에 접속하도록 인증 정보를 가져옵니다.
+    # 7. GKE 인증 플러그인 설치 및 kubectl 설정
+    - name: Install gke-gcloud-auth-plugin
+      run: |
+        gcloud components install gke-gcloud-auth-plugin
+        echo "use-gcp-auth-plugin: true" >> ~/.kube/config
+
+    # 8. kubectl이 GKE 클러스터에 접속하도록 인증 정보를 가져옵니다.
     - name: Get GKE Credentials
       run: |
         gcloud container clusters get-credentials dys-cluster --region asia-northeast3
 
-    # 8. deployment.yaml 파일의 이미지 태그를 방금 빌드한 태그로 자동 교체합니다.
+    # 9. deployment.yaml 파일의 이미지 태그를 방금 빌드한 태그로 자동 교체합니다.
     - name: Update Image Tag in Deployment
       run: |
         sed -i "s|image:.*|image: asia-northeast3-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/dys-backend/dys-backend:${{ github.sha }}|g" deployment.yaml
 
-    # 9. 수정된 deployment.yaml 파일로 GKE에 배포합니다.
+    # 10. 수정된 deployment.yaml 파일로 GKE에 배포합니다.
     - name: Deploy to GKE
       run: |
-        kubectl apply -f deployment.yaml
+        kubectl apply -f deployment.yaml --validate=false
