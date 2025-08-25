@@ -697,7 +697,7 @@
 
 <script>
 // --- 서버/엔드포인트 설정 (절대 URL 사용) ---
-const serverUrl = window.__API_BASE__ || "http://localhost:8000";
+const serverUrl = window.__API_BASE__ || "http://34.64.136.237";
 const apiEndpoints = {
   chat: `${serverUrl}/api/chat`,
   feedback: `${serverUrl}/api/feedback`,
@@ -710,24 +710,25 @@ const apiEndpoints = {
 const wsProto = "ws";
 let wsEndpoints = {};
 
-// WebSocket 전용 서버 포트 사용 (7860)
+// WebSocket 설정
 try {
-  // RunPod 환경에서는 localhost 사용, 그 외에는 현재 호스트명 사용
-  const isRunPod = location.hostname.includes('runpod.io') || location.hostname.includes('proxy.runpod.net');
-  const wsHost = isRunPod ? 'localhost' : location.hostname;
+  // GKE 환경에서는 GKE IP 사용
+  const isGKE = location.hostname.includes('vercel.app') || location.hostname.includes('dys-phi');
+  const wsHost = isGKE ? '34.64.136.237' : location.hostname;
   
   wsEndpoints = {
-    landmarks: `${wsProto}://${wsHost}:8000/ws/landmarks`,
+    landmarks: `${wsProto}://${wsHost}:8001/ws/landmarks`,
   };
-  console.log('[WEBSOCKET] WebSocket 전용 서버 사용:', `${wsHost}:8000`);
+  console.log('[WEBSOCKET] WebSocket 서버 사용:', `${wsHost}:8001`);
 } catch (error) {
   console.warn('WebSocket URL 생성 실패, 기본값 사용:', error);
   wsEndpoints = {
-    landmarks: `${wsProto}://localhost:8000/ws/landmarks`,
+    landmarks: `${wsProto}://34.64.136.237:8001/ws/landmarks`,
   };
 }
 
 // 전역 스코프에 노출하여 모듈에서 접근 가능하도록 설정
+window.serverUrl = serverUrl;
 window.wsEndpoints = wsEndpoints;
 window.apiEndpoints = apiEndpoints;
 
