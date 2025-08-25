@@ -13,5 +13,10 @@ spec:
   - protocol: TCP
     # 외부에서는 80 포트로 접속하면,
     port: 80
-    # 컨테이너의 8080 포트로 연결해줍니다.
-    targetPort: 8080
+    # 컨테이너의 8000 포트(메인 서버)로 연결해줍니다.
+    targetPort: 8000
+  - protocol: TCP
+    # 외부에서는 8001 포트로 접속하면,
+    port: 8001
+    # 컨테이너의 8001 포트(WebSocket 서버)로 연결해줍니다.
+    targetPort: 8001

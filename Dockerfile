@@ -24,4 +24,4 @@ RUN chmod +x ./start.sh
 EXPOSE 8000 8001
 
 # 컨테이너가 시작될 때 main.py로 모델 다운로드 후 start.sh 스크립트 실행
-CMD ["sh", "-c", "python main.py && ./start.sh"]
+CMD ["sh", "-c", "python src/main.py && ./start.sh"]
