@@ -1,80 +1,85 @@
 name: Backend CI/CD
 
-# main 브랜치에 push될 때마다 실행
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
 
 jobs:
-  # 1. 빌드 및 이미지 푸시 작업 (기존과 동일)
   build-and-push-to-gcr:
     runs-on: ubuntu-latest
     steps:
-    # 1. GitHub에 올라간 코드를 작업 공간으로 가져오기
-    - name: Checkout
-      uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v4
 
-    # 2. GitHub Secrets에 저장된 키를 이용해 Google Cloud에 로그인
-    - name: Google Cloud Auth
-      uses: 'google-github-actions/auth@v1'
-      with:
-        credentials_json: '${{ secrets.GCP_SA_KEY }}'
+      # gcloud 인증 (SA 키 사용)
+      - name: Google Cloud Auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
 
-    # 3. Docker가 Artifact Registry에 접속할 수 있도록 인증 설정
-    - name: Set up Cloud SDK and Docker
-      uses: 'google-github-actions/setup-gcloud@v1'
-    - name: Configure Docker
-      run: gcloud auth configure-docker asia-northeast3-docker.pkg.dev
+      # gcloud 설치/세팅
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
 
-    # 4. Dockerfile을 이용해 이미지 빌드
-    # 저장소 이름과 이미지 이름을 'dys-backend'로 통일했습니다.
-    - name: Build Docker Image
-      run: |
-        docker build -t asia-northeast3-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/dys-backend/dys-backend:${{ github.sha }} .
+      # Artifact Registry 로그인
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker asia-northeast3-docker.pkg.dev --quiet
 
-    # 5. 빌드된 이미지를 Artifact Registry로 Push
-    # 위와 동일하게 이미지 이름을 맞춰줍니다.
-    - name: Push Docker Image to Artifact Registry
-      run: |
-        docker push asia-northeast3-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/dys-backend/dys-backend:${{ github.sha }}
+      # Docker 빌드 & 푸시
+      - name: Build Docker Image
+        run: |
+          docker build \
+            -t asia-northeast3-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/dys-backend/dys-backend:${{ github.sha }} \
+            .
+      - name: Push Docker Image
+        run: |
+          docker push asia-northeast3-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/dys-backend/dys-backend:${{ github.sha }}
 
-  # 6. GKE에 배포하는 작업 
   deploy-to-gke:
-    # 'build-and-push-to-gcr' 작업이 성공해야만 실행됩니다.
     needs: build-and-push-to-gcr
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout
-      uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v4
 
-    - name: Google Cloud Auth
-      uses: 'google-github-actions/auth@v1'
-      with:
-        credentials_json: '${{ secrets.GCP_SA_KEY }}'
+      - name: Google Cloud Auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
 
-    # 7. GKE 인증 플러그인 설치 및 kubectl 설정
-    - name: Install gke-gcloud-auth-plugin
-      run: |
-        # GKE 인증 플러그인을 직접 다운로드하여 설치
-        curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-        chmod +x kubectl
-        sudo mv kubectl /usr/local/bin/
-        
-        # gke-gcloud-auth-plugin 설치
-        gcloud components install gke-gcloud-auth-plugin --quiet
-        echo "use-gcp-auth-plugin: true" >> ~/.kube/config
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
 
-    # 8. kubectl이 GKE 클러스터에 접속하도록 인증 정보를 가져옵니다.
-    - name: Get GKE Credentials
-      run: |
-        gcloud container clusters get-credentials dys-cluster --region asia-northeast3
+      # ★ GKE 인증 플러그인 설치 (APT 방식)
+      - name: Install GKE auth plugin (apt)
+        run: |
+          echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] http://packages.cloud.google.com/apt cloud-sdk main" | sudo tee /etc/apt/sources.list.d/google-cloud-sdk.list
+          curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo gpg --dearmor -o /usr/share/keyrings/cloud.google.gpg
+          sudo apt-get update
+          sudo apt-get install -y google-cloud-cli-gke-gcloud-auth-plugin
 
-    # 9. deployment.yaml 파일의 이미지 태그를 방금 빌드한 태그로 자동 교체합니다.
-    - name: Update Image Tag in Deployment
-      run: |
-        sed -i "s|image:.*|image: asia-northeast3-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/dys-backend/dys-backend:${{ github.sha }}|g" deployment.yaml
+      # ★ kubectl 설치 (공식 바이너리)
+      - name: Install kubectl
+        run: |
+          KUBECTL_VERSION=$(curl -L -s https://dl.k8s.io/release/stable.txt)
+          curl -LO "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl"
+          chmod +x kubectl
+          sudo mv kubectl /usr/local/bin/kubectl
+          kubectl version --client
 
-    # 10. 수정된 deployment.yaml 파일로 GKE에 배포합니다.
-    - name: Deploy to GKE
-      run: |
-        kubectl apply -f deployment.yaml --validate=false
+      # ★ kubectl이 gcloud 플러그인을 쓰도록 지정
+      - name: Enable GKE auth plugin
+        run: echo "USE_GKE_GCLOUD_AUTH_PLUGIN=True" >> $GITHUB_ENV
+
+      # GKE 인증 컨텍스트 가져오기
+      - name: Get GKE credentials
+        run: |
+          gcloud config set project ${{ secrets.GCP_PROJECT_ID }}
+          gcloud container clusters get-credentials dys-cluster --region asia-northeast3
+
+      # 배포 이미지 교체 (sed 대신 kubectl set image 권장)
+      - name: Deploy (set image)
+        run: |
+          # 예: 디플로이먼트 이름이 'dys-backend'이고 컨테이너 이름도 'dys-backend'라고 가정
+          kubectl set image deployment/dys-deployment dys-backend-container=asia-northeast3-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/dys-backend/dys-backend:${{ github.sha }} --record
+          kubectl rollout status deployment/dys-deployment --timeout=120s
