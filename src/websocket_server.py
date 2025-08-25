@@ -161,7 +161,7 @@ if __name__ == "__main__":
     logger.info(f"🚀 WebSocket 서버 시작 중... (포트: {args.port})")
     
     uvicorn.run(
-        "src.websocket_server:app",
+        "websocket_server:app",
         host=args.host,
         port=args.port,
         reload=args.reload,
