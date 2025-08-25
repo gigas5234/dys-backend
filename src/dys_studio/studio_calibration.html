@@ -697,7 +697,7 @@
 
 <script>
 // --- 서버/엔드포인트 설정 (절대 URL 사용) ---
-const serverUrl = window.__API_BASE__ || "http://34.64.136.237";
+const serverUrl = window.__API_BASE__ || "https://34.64.136.237";
 const apiEndpoints = {
   chat: `${serverUrl}/api/chat`,
   feedback: `${serverUrl}/api/feedback`,
@@ -712,18 +712,19 @@ let wsEndpoints = {};
 
 // WebSocket 설정
 try {
-  // GKE 환경에서는 GKE IP 사용
+  // GKE 환경에서는 GKE IP 사용 (HTTPS/WSS)
   const isGKE = location.hostname.includes('vercel.app') || location.hostname.includes('dys-phi');
   const wsHost = isGKE ? '34.64.136.237' : location.hostname;
+  const wsProtocol = isGKE ? 'wss' : 'ws';
   
   wsEndpoints = {
-    landmarks: `${wsProto}://${wsHost}:8001/ws/landmarks`,
+    landmarks: `${wsProtocol}://${wsHost}:8001/ws/landmarks`,
   };
-  console.log('[WEBSOCKET] WebSocket 서버 사용:', `${wsHost}:8001`);
+  console.log('[WEBSOCKET] WebSocket 서버 사용:', `${wsProtocol}://${wsHost}:8001`);
 } catch (error) {
   console.warn('WebSocket URL 생성 실패, 기본값 사용:', error);
   wsEndpoints = {
-    landmarks: `${wsProto}://34.64.136.237:8001/ws/landmarks`,
+    landmarks: `wss://34.64.136.237:8001/ws/landmarks`,
   };
 }
 
@@ -2310,7 +2311,7 @@ function removeTypingIndicator() {
         showTypingIndicator();
       
         // 서버 API로 메시지 전송 (MongoDB 저장 + AI 응답 생성)
-        const response = await fetch(`${window.serverUrl || 'http://34.64.136.237'}/api/chat/sessions/${currentSessionId}/messages`, {
+        const response = await fetch(`${window.serverUrl || 'https://34.64.136.237'}/api/chat/sessions/${currentSessionId}/messages`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -2562,7 +2563,7 @@ async function runAiAnalysis() {
     
     try {
         // 서버의 피드백 분석 API 호출
-        const response = await fetch(`${window.serverUrl || 'http://34.64.136.237'}/api/feedback`, {
+        const response = await fetch(`${window.serverUrl || 'https://34.64.136.237'}/api/feedback`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -2744,7 +2745,7 @@ document.querySelectorAll('.suggestion-tags .tag').forEach(tag => {
 async function createSession() {
     try {
         const sessionName = personaName ? `${personaName}와의 데이트` : '새로운 데이트';
-        const response = await fetch(`${window.serverUrl || 'http://34.64.136.237'}/api/chat/sessions`, {
+        const response = await fetch(`${window.serverUrl || 'https://34.64.136.237'}/api/chat/sessions`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'

@@ -35,7 +35,7 @@ function initializeCalibrationElements() {
  */
 async function checkUserCalibration() {
     try {
-        const response = await fetch(window.apiEndpoints?.user_check || `${window.serverUrl || 'http://34.64.136.237'}/api/user/check`, {
+        const response = await fetch(window.apiEndpoints?.user_check || `${window.serverUrl || 'https://34.64.136.237'}/api/user/check`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
@@ -74,7 +74,7 @@ async function checkUserCalibration() {
  */
 async function loadPersonalCalibration() {
     try {
-        const response = await fetch(`${window.serverUrl || 'http://34.64.136.237'}/api/calibration/user/${window.userId}`);
+        const response = await fetch(`${window.serverUrl || 'https://34.64.136.237'}/api/calibration/user/${window.userId}`);
         if (!response.ok) {
             throw new Error(`개인 캘리브레이션 로드 실패: ${response.status}`);
         }
@@ -249,7 +249,7 @@ function logCalibrationStatus() {
  */
 async function updateUserCalibrationStatus(hasCalibration = true) {
     try {
-        const response = await fetch(window.apiEndpoints?.user_update || `${window.serverUrl || 'http://34.64.136.237'}/api/user/update-calibration`, {
+        const response = await fetch(window.apiEndpoints?.user_update || `${window.serverUrl || 'https://34.64.136.237'}/api/user/update-calibration`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -281,7 +281,7 @@ async function updateUserCalibrationStatus(hasCalibration = true) {
 async function sendCalibrationData(calibrationData) {
     try {
         // 1. 캘리브레이션 데이터 저장
-        const response = await fetch(window.apiEndpoints?.calibration || `${window.serverUrl || 'http://34.64.136.237'}/api/calibration`, {
+        const response = await fetch(window.apiEndpoints?.calibration || `${window.serverUrl || 'https://34.64.136.237'}/api/calibration`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
