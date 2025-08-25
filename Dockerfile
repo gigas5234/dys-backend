@@ -1,5 +1,5 @@
-# 파이썬 3.10 버전을 기반으로 하는 slim 이미지를 사용
-FROM python:3.10-slim
+# 파이썬 3.10 버전을 기반
+FROM python:3.10
 
 # 작업 디렉토리 설정
 WORKDIR /usr/src/app
