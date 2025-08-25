@@ -32,8 +32,8 @@ import os
 # .env 파일 로드
 load_dotenv()
 
-from server import app  # server.py 안의 app 객체 가져오기
+from src.server import app  # server.py 안의 app 객체 가져오기
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=False)
+    uvicorn.run("src.server:app", host="0.0.0.0", port=8000, reload=False)
