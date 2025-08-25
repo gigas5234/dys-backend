@@ -77,34 +77,34 @@ jobs:
           gcloud config set project ${{ secrets.GCP_PROJECT_ID }}
           gcloud container clusters get-credentials dys-cluster --region asia-northeast3
 
-             # 배포 이미지 교체 (sed 대신 kubectl set image 권장)
-       - name: Deploy (set image)
-         run: |
-           kubectl set image deployment/dys-deployment dys-backend-container=asia-northeast3-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/dys-backend/dys-backend:${{ github.sha }}
+      # 배포 이미지 교체 (sed 대신 kubectl set image 권장)
+      - name: Deploy (set image)
+        run: |
+          kubectl set image deployment/dys-deployment dys-backend-container=asia-northeast3-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/dys-backend/dys-backend:${{ github.sha }}
 
-       - name: Wait for rollout
-         run: |
-           kubectl rollout status deployment/dys-deployment --timeout=300s
+      - name: Wait for rollout
+        run: |
+          kubectl rollout status deployment/dys-deployment --timeout=300s
 
-       # 실패해도 항상 디버그 정보 뿌기
-       - name: Debug on failure
-         if: ${{ always() }}
-         run: |
-           echo "=== Deploy ==="
-           kubectl get deploy dys-deployment -o wide
-           echo "=== ReplicaSets ==="
-           kubectl get rs -l app=dys-backend -o wide || true
-           echo "=== Pods ==="
-           kubectl get pods -l app=dys-backend -o wide || true
-           echo "=== Events ==="
-           kubectl get events --sort-by=.lastTimestamp | tail -n 100 || true
+      # 실패해도 항상 디버그 정보 뿌기
+      - name: Debug on failure
+        if: ${{ always() }}
+        run: |
+          echo "=== Deploy ==="
+          kubectl get deploy dys-deployment -o wide
+          echo "=== ReplicaSets ==="
+          kubectl get rs -l app=dys-backend -o wide || true
+          echo "=== Pods ==="
+          kubectl get pods -l app=dys-backend -o wide || true
+          echo "=== Events ==="
+          kubectl get events --sort-by=.lastTimestamp | tail -n 100 || true
 
-           # 첫 번째 비정상 파드 로그 확인
-           POD=$(kubectl get pods -l app=dys-backend --no-headers | awk '$3!="Running"{print $1; exit}')
-           if [ -n "$POD" ]; then
-             echo "=== Describe $POD ==="
-             kubectl describe pod "$POD" || true
-             echo "=== Logs $POD ==="
-             kubectl logs "$POD" -c dys-backend-container --tail=200 || true
-             kubectl logs "$POD" -c dys-backend-container --previous --tail=200 || true
-           fi
+          # 첫 번째 비정상 파드 로그 확인
+          POD=$(kubectl get pods -l app=dys-backend --no-headers | awk '$3!="Running"{print $1; exit}')
+          if [ -n "$POD" ]; then
+            echo "=== Describe $POD ==="
+            kubectl describe pod "$POD" || true
+            echo "=== Logs $POD ==="
+            kubectl logs "$POD" -c dys-backend-container --tail=200 || true
+            kubectl logs "$POD" -c dys-backend-container --previous --tail=200 || true
+          fi
