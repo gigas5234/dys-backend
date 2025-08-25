@@ -21,3 +21,27 @@ spec:
         ports:
         - containerPort: 8000 # 메인 서버 포트
         - containerPort: 8001 # WebSocket 서버 포트
+        env:
+        - name: MONGODB_URI
+          value: "mongodb+srv://dys-chatbot:epdusth@cluster0.drwwbhn.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+        - name: DATABASE_NAME
+          value: "dys-chatbot"
+        - name: ALLOWED_ORIGINS
+          value: "*"
+        - name: PORT
+          value: "8000"
+        - name: OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: dys-secrets
+              key: openai-api-key
+        - name: SUPABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: dys-secrets
+              key: supabase-url
+        - name: SUPABASE_ANON_KEY
+          valueFrom:
+            secretKeyRef:
+              name: dys-secrets
+              key: supabase-anon-key
