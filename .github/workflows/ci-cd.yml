@@ -55,7 +55,8 @@ jobs:
     # 7. GKE 인증 플러그인 설치 및 kubectl 설정
     - name: Install gke-gcloud-auth-plugin
       run: |
-        gcloud components install gke-gcloud-auth-plugin
+        sudo apt-get update
+        sudo apt-get install -y google-cloud-cli-gke-gcloud-auth-plugin
         echo "use-gcp-auth-plugin: true" >> ~/.kube/config
 
     # 8. kubectl이 GKE 클러스터에 접속하도록 인증 정보를 가져옵니다.
