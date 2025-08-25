@@ -123,7 +123,6 @@ async def startup_event():
     """서버 시작 시 실행"""
     print(f"🚀 {APP_NAME} 서버 시작됨 (포트: {PORT})")
     print(f"📋 [STARTUP] MongoDB 연결 상태: {MONGODB_AVAILABLE}")
-    print(f"📋 [STARTUP] CORS 허용 도메인: {app.user_middleware_stack[0].options.allow_origins}")
     print(f"📋 [STARTUP] 서버 URL: http://0.0.0.0:{PORT}")
 
 @app.on_event("shutdown")
