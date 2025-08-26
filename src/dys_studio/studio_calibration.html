@@ -1301,8 +1301,8 @@ function updateCameraMetrics(metrics) {
     console.log(`[UI] 깜빡임 점수 업데이트 (${dataSource}):`, blinkScore);
     
     // 표정 분석 결과 처리 (PyTorch 모델 기반)
-    let expressionScore = lastExpressionScore; // 이전 값 유지
-    let expressionText = lastExpressionText; // 이전 값 유지
+    let expressionScore = null;
+    let expressionText = '-';
     const currentTime = Date.now();
     
     if (metrics?.expressionAnalysis?.success) {
@@ -1319,6 +1319,10 @@ function updateCameraMetrics(metrics) {
           lastExpressionScore = expressionScore;
           lastExpressionText = expressionText;
           lastExpressionUpdate = currentTime;
+        } else {
+          // 이전 값 유지
+          expressionScore = lastExpressionScore;
+          expressionText = lastExpressionText;
         }
         
         // 표정 데이터를 전역 변수에 저장 (팝업용)
@@ -1366,6 +1370,11 @@ function updateCameraMetrics(metrics) {
         expressionText = '개선 필요';
       }
       
+      // MediaPipe 분석 결과도 저장
+      lastExpressionScore = expressionScore;
+      lastExpressionText = expressionText;
+      lastExpressionUpdate = currentTime;
+      
       console.log('[UI] MediaPipe 미소 분석 결과:', {
         smileIntensity,
         smileRatio,
@@ -1375,17 +1384,29 @@ function updateCameraMetrics(metrics) {
     } else if (metrics?.labels?.expression) {
       expressionText = metrics.labels.expression;
       expressionScore = 60; // 기본값
+      lastExpressionScore = expressionScore;
+      lastExpressionText = expressionText;
+      lastExpressionUpdate = currentTime;
+    } else {
+      // 데이터가 없으면 이전 값 유지
+      expressionScore = lastExpressionScore;
+      expressionText = lastExpressionText;
     }
     
     // 표정 점수 업데이트
     const expressionScoreElement = document.getElementById('expression-score');
     if (expressionScoreElement) {
-      expressionScoreElement.textContent = `${expressionScore}%`;
-      updateScoreColor(expressionScoreElement, expressionScore);
-      
-      // 종합 점수 계산기에 표정 점수 업데이트
-      if (window.ComprehensiveScoreCalculator) {
-        window.ComprehensiveScoreCalculator.updateVisualScore('expression', expressionScore);
+      if (expressionScore != null) {
+        expressionScoreElement.textContent = `${expressionScore}%`;
+        updateScoreColor(expressionScoreElement, expressionScore);
+        
+        // 종합 점수 계산기에 표정 점수 업데이트
+        if (window.ComprehensiveScoreCalculator) {
+          window.ComprehensiveScoreCalculator.updateVisualScore('expression', expressionScore);
+        }
+      } else {
+        expressionScoreElement.textContent = '-';
+        expressionScoreElement.style.color = '#6b7280';
       }
     }
     

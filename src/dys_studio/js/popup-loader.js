@@ -4,8 +4,8 @@
  */
 
 // 전역 변수들
-let lastExpressionScore = 60;
-let lastExpressionText = '중립적';
+let lastExpressionScore = null;
+let lastExpressionText = '-';
 let lastExpressionUpdate = 0;
 const EXPRESSION_UPDATE_INTERVAL = 2000; // 2초마다 업데이트
 
