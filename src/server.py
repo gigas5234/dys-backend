@@ -41,31 +41,31 @@ except ImportError as e:
 
 # analyzers 모듈 제거됨 - 클라이언트 측에서 처리
 
-# 음성 분석 모듈 import (선택적) - faster-whisper 사용
+# 음성 분석 모듈 import (새로운 voice 모듈 사용)
 VOICE_ANALYSIS_AVAILABLE = False
 try:
-    from dys_studio.voice_input import preload_models, process_audio_simple
+    from dys_studio.voice.voice_api import preload_voice_models, process_audio_simple
     VOICE_ANALYSIS_AVAILABLE = True
-    print("✅ 음성 분석 모듈 로드 성공 - faster-whisper 사용")
+    print("✅ 새로운 음성 분석 모듈 로드 성공")
 except ImportError as e:
-    print(f"⚠️ 음성 분석 모듈 로드 실패: {e}")
+    print(f"⚠️ 새로운 음성 분석 모듈 로드 실패: {e}")
     VOICE_ANALYSIS_AVAILABLE = False
 except Exception as e:
-    print(f"⚠️ 음성 분석 모듈 초기화 실패: {e}")
+    print(f"⚠️ 새로운 음성 분석 모듈 초기화 실패: {e}")
     VOICE_ANALYSIS_AVAILABLE = False
 
 # 음성 분석 모듈 강제 활성화 (개발용)
 if not VOICE_ANALYSIS_AVAILABLE:
-    print("🔄 음성 분석 모듈 강제 활성화 시도...")
+    print("🔄 새로운 음성 분석 모듈 강제 활성화 시도...")
     try:
         import sys
         import os
         sys.path.append(os.path.join(os.path.dirname(__file__), 'dys_studio'))
-        from voice_input import preload_models, process_audio_simple
+        from voice.voice_api import preload_voice_models, process_audio_simple
         VOICE_ANALYSIS_AVAILABLE = True
-        print("✅ 음성 분석 모듈 강제 활성화 성공")
+        print("✅ 새로운 음성 분석 모듈 강제 활성화 성공")
     except Exception as e:
-        print(f"❌ 음성 분석 모듈 강제 활성화 실패: {e}")
+        print(f"❌ 새로운 음성 분석 모듈 강제 활성화 실패: {e}")
         VOICE_ANALYSIS_AVAILABLE = False
 
 # TTS 모듈 import

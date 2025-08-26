@@ -114,7 +114,14 @@ vision-backend/
 │   └── 📄 README.md           # 페르소나 시스템 문서
 │
 ├── 📁 dys_studio/             # AI 분석 모듈
-│   ├── 📄 voice_input.py      # 음성 분석 및 처리
+│   ├── 📁 voice/              # 음성 분석 모듈 (새로운 구조)
+│   │   ├── 📄 __init__.py
+│   │   ├── 📄 voice_analyzer.py
+│   │   ├── 📄 voice_scorer.py
+│   │   ├── 📄 voice_processor.py
+│   │   ├── 📄 voice_api.py
+│   │   ├── 📄 test_voice_system.py
+│   │   └── 📄 README.md
 │   ├── 📄 expression_analyzer.py # 표정 분석
 
 │   ├── 📄 studio_calibration.html # 웹 인터페이스
@@ -184,7 +191,7 @@ RUNPOD_URL=https://runpod.io
 ```bash
 # 음성 분석 모델 다운로드
 python -c "
-from dys_studio.voice_input import preload_models
+from dys_studio.voice.voice_api import preload_voice_models
 preload_models()
 "
 
@@ -307,7 +314,7 @@ manager.create_persona_template(
 
 #### 사용 예시
 ```python
-from dys_studio.voice_input import analyze_voice_file
+from dys_studio.voice.voice_api import process_audio_simple
 
 # 음성 파일 분석
 result = analyze_voice_file("audio.wav")

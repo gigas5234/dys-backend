@@ -850,7 +850,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     }, 500);
 });
 
-
 // --- DOM 요소 가져오기 ---
 const feedbackPanel = document.getElementById('feedbackPanel');
 const feedbackToggleBtn = document.getElementById('feedbackToggleBtn');
@@ -859,12 +858,6 @@ const chatLog = document.getElementById('chatLog');
 const chatInput = document.getElementById('chatInput');
 const inputBtn = document.getElementById('inputBtn');
 const inputIcon = document.getElementById('inputIcon');
-
-// 채팅 매니저 인스턴스 (공유 입력)
-// DOMContentLoaded에서 초기화하도록 변경
-
-// --- 카메라 분석기 (별도 파일로 분리됨) ---
-// js/camera-analyzer.js에서 CameraAnalyzer 클래스와 관련 함수들이 로드됨
 
 // 모든 메트릭 초기화 함수
 function resetAllMetrics() {
@@ -923,11 +916,11 @@ function resetAllMetrics() {
       window.ComprehensiveScoreCalculator.resetAllScores();
   }
   
-      // 대화 주도권 분석기 초기화
-    if (window.ConversationAnalyzer) {
+  // 대화 주도권 분석기 초기화
+  if (window.ConversationAnalyzer) {
         window.ConversationAnalyzer.chatHistory = window.chatManager ? window.chatManager.chatHistory : [];
-        window.ConversationAnalyzer.analyzeConversation();
-    }
+      window.ConversationAnalyzer.analyzeConversation();
+  }
   
   console.log('[UI] ✅ 모든 메트릭 초기화 완료');
 }
@@ -1397,12 +1390,12 @@ function updateCameraMetrics(metrics) {
     const expressionScoreElement = document.getElementById('expression-score');
     if (expressionScoreElement) {
       if (expressionScore != null) {
-        expressionScoreElement.textContent = `${expressionScore}%`;
-        updateScoreColor(expressionScoreElement, expressionScore);
-        
-        // 종합 점수 계산기에 표정 점수 업데이트
-        if (window.ComprehensiveScoreCalculator) {
-          window.ComprehensiveScoreCalculator.updateVisualScore('expression', expressionScore);
+      expressionScoreElement.textContent = `${expressionScore}%`;
+      updateScoreColor(expressionScoreElement, expressionScore);
+      
+      // 종합 점수 계산기에 표정 점수 업데이트
+      if (window.ComprehensiveScoreCalculator) {
+        window.ComprehensiveScoreCalculator.updateVisualScore('expression', expressionScore);
         }
       } else {
         expressionScoreElement.textContent = '-';
@@ -1471,7 +1464,6 @@ feedbackToggleBtn.addEventListener('click', () => {
     }
 });
 
-// 기존 마이크 버튼 이벤트 리스너 제거 (새로운 inputBtn으로 대체됨)
 
 document.querySelectorAll('.suggestion-tags .tag').forEach(tag => {
     tag.addEventListener('click', () => {
@@ -1555,10 +1547,6 @@ document.querySelectorAll('.suggestion-tags .tag').forEach(tag => {
      video.load();
 }
 
-// --- MongoDB 세션 관리 ---
-// ChatManager로 이동됨 - js/chat-manager.js에서 관리
-
-// saveMessageToMongoDB 함수 제거됨 - 서버에서 통합 처리
 
    // --- 카메라 경고 함수들 ---
 function showCameraWarning() {
@@ -1820,13 +1808,13 @@ async function checkPermissionStatus() {
     }
 }
  
-      // --- 앱 초기화 ---
+ // --- 앱 초기화 ---
  async function initializeApp() {
      // MongoDB 세션 생성 (ChatManager 사용)
      if (window.chatManager) {
          const sessionCreated = await window.chatManager.createSession();
-         if (!sessionCreated) {
-             console.error('❌ [CHAT] 세션 생성에 실패했습니다.');
+     if (!sessionCreated) {
+         console.error('❌ [CHAT] 세션 생성에 실패했습니다.');
          }
      }
      
@@ -2092,8 +2080,6 @@ window.closePermissionMessage = closePermissionMessage;
 window.checkPermissionStatus = checkPermissionStatus;
 }
 
-// 깜빡임 통계 관리 (mediapipe-direct.js에서 처리됨)
-// blinkHistory, lastBlinkTime 등은 mediapipe-direct.js에서 관리됩니다.
 
 // 미소 통계 관리 (개선된 버전)
 let smileHistory = []; // 미소 히스토리 (안정화용)
@@ -2120,9 +2106,6 @@ function onLandmarkFrame(lmBuffer, ear) {
 
   const now = Date.now();
 
-  // 미소 히스토리는 updateCameraMetrics에서 처리됨 (metrics 객체가 있을 때)
-
-  // 자세 히스토리는 updateCameraMetrics에서 처리됨 (metrics 객체가 있을 때)
 
   // 랜드마크 배치에 추가 (WebSocket 전송용)
   if (!window.lmBatch) {
@@ -2142,11 +2125,6 @@ function onLandmarkFrame(lmBuffer, ear) {
   console.log('[LANDMARK] 배치에 추가됨:', window.lmBatch.length, '개 프레임');
 }
 
-// 깜빡임 계산 함수들은 mediapipe-direct.js에서 처리됩니다.
-// calculateShortBlinkRate, calculateBlinkRate 등은 mediapipe-direct.js에서 관리됩니다.
-
-// --- 팝업 관리자 모듈에서 처리됨 ---
-// 팝업 관련 함수들은 js/popup-manager.js에서 관리됩니다.
 
 // --- 시선 안정성 상세 정보 팝업 함수들 ---
 function showGazeDetails() {
@@ -2232,8 +2210,6 @@ function updateConcentrationPopupContent() {
     updateConcentrationExplanationInfo();
 }
 
-
-
 // 팝업 외부 클릭 시 닫기
 document.addEventListener('click', function(event) {
     const expressionPopup = document.getElementById('expression-details-popup');
@@ -2252,10 +2228,6 @@ document.addEventListener('click', function(event) {
         closeConcentrationDetails();
     }
 });
-
-// generatePersonalizedTips 함수 (ui-utils.js로 이동됨)
-
-// --- 랜드마크 배치 처리 (제거됨) ---
 
 </script>
 </body>
