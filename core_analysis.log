@@ -1,0 +1,5 @@
+2025-08-26 13:34:03,591 - INFO - Starting to preload models...
+2025-08-26 13:34:03,592 - WARNING - GPU not available. Falling back to CPU, which will be significantly slower.
+2025-08-26 13:34:16,463 - INFO - Using keyword-based emotion analysis for better compatibility
+2025-08-26 13:34:16,464 - INFO - Transformers 라이브러리 없음 - 음성 감정 분석 비활성화
+2025-08-26 13:34:16,464 - INFO - All models have been preloaded successfully!

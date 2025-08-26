@@ -30,6 +30,12 @@ spec:
           value: "*"
         - name: PORT
           value: "8000"
+        - name: WEBSOCKET_HOST
+          value: "34.64.136.237"  # GKE 외부 IP
+        - name: WEBSOCKET_PORT
+          value: "8001"
+        - name: CORS_ORIGINS
+          value: "*,https://dys-phi.vercel.app,https://localhost:3000"
         - name: OPENAI_API_KEY
           valueFrom:
             secretKeyRef:

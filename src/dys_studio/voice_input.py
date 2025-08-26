@@ -7,7 +7,14 @@ import numpy as np
 import torch
 import torchaudio
 from faster_whisper import WhisperModel
-from transformers import AutoTokenizer, AutoModelForSequenceClassification, pipeline
+
+# Transformers는 선택적으로 import
+try:
+    from transformers import AutoTokenizer, AutoModelForSequenceClassification, pipeline
+    TRANSFORMERS_AVAILABLE = True
+except ImportError:
+    TRANSFORMERS_AVAILABLE = False
+    print("⚠️ Transformers 라이브러리 없음 - 키워드 기반 감정 분석 사용")
 from dataclasses import dataclass
 
 # --- 로깅 설정 ---
@@ -86,8 +93,8 @@ KOREAN_EMOTION_LABELS = [ "기쁨", "슬픔", "분노", "중립", "두려움", "
 
 # 전역 모델 변수 (초기에는 비어있음)
 _asr_model: Optional[WhisperModel] = None
-_nli_tokenizer: Optional[AutoTokenizer] = None
-_nli_model: Optional[AutoModelForSequenceClassification] = None
+_nli_tokenizer = None  # Optional[AutoTokenizer] = None
+_nli_model = None  # Optional[AutoModelForSequenceClassification] = None
 _audio_clf = None
 
 # --- 핵심 기능 함수 ---
@@ -124,11 +131,16 @@ def preload_models():
     _nli_model = None
     
     # 3. 음성 감정 분석 모델 (wav2vec2)
-    try:
-        device_id = 0 if device == "cuda" else -1
-        _audio_clf = pipeline("audio-classification", model=AUDIO_EMO_MODEL_ID, device=device_id)
-    except ImportError:
-        logger.error("The 'transformers' pipeline requires additional libraries. Audio classification is disabled.")
+    if TRANSFORMERS_AVAILABLE:
+        try:
+            device_id = 0 if device == "cuda" else -1
+            _audio_clf = pipeline("audio-classification", model=AUDIO_EMO_MODEL_ID, device=device_id)
+            logger.info("음성 감정 분석 모델 로드 성공")
+        except ImportError:
+            logger.error("The 'transformers' pipeline requires additional libraries. Audio classification is disabled.")
+            _audio_clf = None
+    else:
+        logger.info("Transformers 라이브러리 없음 - 음성 감정 분석 비활성화")
         _audio_clf = None
     
     logger.info("All models have been preloaded successfully!")

@@ -6,10 +6,17 @@ WORKDIR /usr/src/app
 
 # 시스템 패키지 설치 (한 번에 설치하여 레이어 최적화)
 RUN apt-get update && apt-get install -y \
-    libgomp1 \
     supervisor \
     openssl \
     curl \
+    ffmpeg \
+    libsndfile1 \
+    libgomp1 \
+    libglib2.0-0 \
+    libsm6 \
+    libxext6 \
+    libxrender-dev \
+    libgtk-3-0 \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 

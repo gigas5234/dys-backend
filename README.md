@@ -165,6 +165,11 @@ SUPABASE_URL=your_supabase_url
 SUPABASE_ANON_KEY=your_supabase_anon_key
 JWT_SECRET_KEY=your_jwt_secret_key
 
+# 네트워크 설정
+WEBSOCKET_HOST=your_websocket_server_ip  # WebSocket 서버 IP (기본값: 자동 감지)
+WEBSOCKET_PORT=8001                      # WebSocket 서버 포트
+CORS_ORIGINS=*,https://yourdomain.com    # CORS 허용 도메인 (쉼표로 구분)
+
 # 파일 업로드 설정
 MAX_UPLOAD_BYTES=33554432
 

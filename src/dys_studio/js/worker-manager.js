@@ -140,6 +140,7 @@ async function setupLandmarkWorker(videoEl, onLandmarkFrame, hzProvider) {
             const metrics = {
                 smileIntensity,
                 ear,
+                earResult, // EAR 상세 결과 추가
                 neckAnalysis,
                 gazeAnalysis,
                 shoulderAnalysis,
