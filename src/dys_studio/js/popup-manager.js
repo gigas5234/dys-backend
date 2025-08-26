@@ -39,7 +39,10 @@ function updateExpressionPopupContent() {
     const expression = currentExpressionData.expression;
     const confidence = currentExpressionData.confidence;
     document.getElementById('expression-main-value').textContent = getExpressionKoreanName(expression);
-    document.getElementById('expression-confidence-value').textContent = `${(confidence * 100).toFixed(0)}%`;
+    // 신뢰도: 0.xxx (xx.x%) 형식으로 표시
+    const decimalText = typeof confidence === 'number' ? confidence.toFixed(3) : '0.000';
+    const percentText = typeof confidence === 'number' ? (confidence * 100).toFixed(1) + '%' : '0.0%';
+    document.getElementById('expression-confidence-value').textContent = `${decimalText} (${percentText})`;
     
     // 확률 정보 업데이트
     updateExpressionProbabilities();
