@@ -233,6 +233,11 @@ async def save_message(user_id: str, session_id: str, role: str, content: str) -
     try:
         from bson import ObjectId
         
+        # session_id 유효성 검사
+        if not session_id or session_id == "null":
+            print(f"❌ [SAVE_MESSAGE] 유효하지 않은 session_id: {session_id}")
+            return None
+        
         # Supabase UUID를 MongoDB ObjectId로 변환
         if len(user_id) == 36 and '-' in user_id:  # UUID 형식인지 확인
             print(f"🔄 [SAVE_MESSAGE] Supabase UUID 감지: {user_id}")
@@ -256,14 +261,18 @@ async def save_message(user_id: str, session_id: str, role: str, content: str) -
         
         # 세션의 마지막 메시지 시간 및 메시지 수 업데이트
         print(f"🔄 [SAVE_MESSAGE] 세션 정보 업데이트 중...")
-        await chat_sessions_collection.update_one(
-            {"_id": ObjectId(session_id)},
-            {
-                "$set": {"last_message_at": datetime.utcnow()},
-                "$inc": {"message_count": 1}
-            }
-        )
-        print(f"✅ [SAVE_MESSAGE] 세션 정보 업데이트 완료")
+        try:
+            await chat_sessions_collection.update_one(
+                {"_id": ObjectId(session_id)},
+                {
+                    "$set": {"last_message_at": datetime.utcnow()},
+                    "$inc": {"message_count": 1}
+                }
+            )
+            print(f"✅ [SAVE_MESSAGE] 세션 정보 업데이트 완료")
+        except Exception as session_error:
+            print(f"⚠️ [SAVE_MESSAGE] 세션 정보 업데이트 실패: {session_error}")
+            # 세션 업데이트 실패해도 메시지 저장은 성공으로 처리
         
         logger.info(f"✅ 메시지 저장 완료: {result.inserted_id}")
         return str(result.inserted_id)

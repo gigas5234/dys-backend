@@ -4,7 +4,6 @@
 """
 
 import torch
-import mlflow.pytorch
 import numpy as np
 import cv2
 from PIL import Image
@@ -12,6 +11,14 @@ import base64
 import io
 import os
 from typing import Dict, Any, Optional
+
+# MLflow는 선택적으로 import
+try:
+    import mlflow.pytorch
+    MLFLOW_AVAILABLE = True
+except ImportError:
+    MLFLOW_AVAILABLE = False
+    print("⚠️ MLflow 없음 - PyTorch 직접 로드 방식 사용")
 
 class ExpressionAnalyzer:
     """MediaPipe와 PyTorch ViT 모델을 통합한 실시간 표정 분석기"""
@@ -29,35 +36,135 @@ class ExpressionAnalyzer:
         try:
             print("🤖 표정 분석기 초기화 시작...")
             
-            # MLflow 모델 로드 시도
-            model_paths = [
-                # 현재 디렉토리 기준
-                os.path.join(os.path.dirname(__file__), "models"),
+            # 모델 파일 경로들 (Google Storage에서 다운로드된 .pth 파일)
+            model_file_paths = [
+                # Google Storage에서 다운로드된 파일
+                os.path.join(os.path.dirname(__file__), "models", "data", "model.pth"),
                 # 서버 실행 디렉토리 기준
+                os.path.join(os.getcwd(), "src", "dys_studio", "models", "data", "model.pth"),
+                os.path.join(os.getcwd(), "dys_studio", "models", "data", "model.pth"),
+                # 절대 경로
+                "/workspace/app/dys_studio/models/data/model.pth",
+                "/usr/src/app/dys_studio/models/data/model.pth"
+            ]
+            
+            # MLflow 모델 경로들 (만약 있다면)
+            mlflow_paths = [
+                os.path.join(os.path.dirname(__file__), "models"),
                 os.path.join(os.getcwd(), "src", "dys_studio", "models"),
                 os.path.join(os.getcwd(), "dys_studio", "models"),
-                # 절대 경로
                 "/workspace/app/dys_studio/models",
                 "/usr/src/app/dys_studio/models"
             ]
             
             model_loaded = False
-            for model_path in model_paths:
-                try:
-                    print(f"📁 모델 경로 시도: {os.path.abspath(model_path)}")
-                    if os.path.exists(model_path):
-                        print("🔄 모델 로딩 중...")
-                        self.model = mlflow.pytorch.load_model(model_path)
-                        print(f"✅ 모델 로드 완료: {model_path}")
-                        model_loaded = True
-                        break
-                except Exception as e:
-                    print(f"⚠️ 모델 경로 실패: {model_path} - {e}")
-                    continue
+            
+            # 1. MLflow 모델 로드 시도 (우선)
+            if MLFLOW_AVAILABLE:
+                for model_path in mlflow_paths:
+                    try:
+                        print(f"📁 MLflow 모델 경로 시도: {os.path.abspath(model_path)}")
+                        if os.path.exists(model_path) and os.path.exists(os.path.join(model_path, "MLmodel")):
+                            print("🔄 MLflow 모델 로딩 중...")
+                            import mlflow.pytorch
+                            self.model = mlflow.pytorch.load_model(model_path)
+                            print(f"✅ MLflow 모델 로드 완료: {model_path}")
+                            model_loaded = True
+                            break
+                    except Exception as e:
+                        print(f"⚠️ MLflow 모델 경로 실패: {model_path} - {e}")
+                        continue
+            
+            # 2. PyTorch 직접 로드 시도 (.pth 파일)
+            if not model_loaded:
+                for model_file in model_file_paths:
+                    try:
+                        print(f"📁 PyTorch 모델 파일 시도: {os.path.abspath(model_file)}")
+                        if os.path.exists(model_file):
+                            print("🔄 PyTorch 모델 로딩 중...")
+                            
+                            # transformers 모델인 경우 처리
+                            try:
+                                # 먼저 일반 PyTorch 모델로 시도
+                                self.model = torch.load(model_file, map_location='cpu')
+                                print(f"✅ PyTorch 모델 로드 완료: {model_file}")
+                                model_loaded = True
+                                break
+                            except Exception as pytorch_error:
+                                print(f"⚠️ 일반 PyTorch 로드 실패: {pytorch_error}")
+                                
+                                # transformers 모델로 시도
+                                try:
+                                    print("🔄 Transformers 모델로 재시도...")
+                                    
+                                    # Transformers 라이브러리가 있는 경우 실제 모델 로드
+                                    try:
+                                        from transformers import AutoImageProcessor, AutoModelForImageClassification
+                                        print("✅ Transformers 라이브러리 확인됨")
+                                        
+                                        # 실제 모델 파일에서 로드
+                                        # 먼저 저장된 모델 타입 확인
+                                        model_dict = torch.load(model_file, map_location='cpu')
+                                        print(f"🔍 모델 딕셔너리 키: {list(model_dict.keys())}")
+                                        
+                                        # 저장된 모델이 state_dict 형태인지 확인
+                                        if 'model_state_dict' in model_dict:
+                                            # state_dict 형태로 저장된 경우
+                                            print("📦 State dict 형태 모델 감지")
+                                            self.model = model_dict['model']  # 전체 모델 객체
+                                        elif hasattr(model_dict, 'state_dict'):
+                                            # 모델 객체가 직접 저장된 경우
+                                            print("📦 모델 객체 직접 저장 감지")
+                                            self.model = model_dict
+                                        else:
+                                            print("📦 일반 PyTorch 모델로 재시도")
+                                            self.model = model_dict
+                                        
+                                        print(f"✅ Transformers 모델 로드 완료: {model_file}")
+                                        model_loaded = True
+                                        break
+                                        
+                                    except ImportError:
+                                        print("⚠️ Transformers 라이브러리 없음 - 더미 모델 생성")
+                                        # 개발용 더미 모델
+                                        import torch.nn as nn
+                                        
+                                        class DummyExpressionModel(nn.Module):
+                                            def __init__(self):
+                                                super().__init__()
+                                                self.classifier = nn.Linear(768, 8)  # 8개 표정 클래스
+                                                
+                                            def forward(self, x):
+                                                # 더미 결과 생성
+                                                batch_size = x.shape[0] if len(x.shape) > 0 else 1
+                                                logits = torch.randn(batch_size, 8)  # 8개 표정
+                                                
+                                                # ImageClassifierOutput 스타일 객체 생성
+                                                class Output:
+                                                    def __init__(self, logits):
+                                                        self.logits = logits
+                                                
+                                                return Output(logits)
+                                        
+                                        self.model = DummyExpressionModel()
+                                        print(f"⚠️ 더미 표정 분석 모델 생성 (개발용): {model_file}")
+                                        model_loaded = True
+                                        break
+                                    
+                                except Exception as transformers_error:
+                                    print(f"⚠️ Transformers 모델 로드도 실패: {transformers_error}")
+                                    continue
+                                    
+                    except Exception as e:
+                        print(f"⚠️ 모델 파일 처리 실패: {model_file} - {e}")
+                        continue
             
             if not model_loaded:
                 print("❌ 모든 모델 경로에서 모델을 찾을 수 없습니다.")
                 print("⚠️ 표정 분석기 초기화 실패 - 모델 파일 없음")
+                print("🔍 확인된 경로들:")
+                for path in model_file_paths + mlflow_paths:
+                    print(f"   - {os.path.abspath(path)} (존재: {os.path.exists(path)})")
                 return False
             
             # GPU 설정

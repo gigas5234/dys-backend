@@ -79,20 +79,31 @@ async function initializeExpressionAnalyzer() {
         
         if (response.ok) {
             const result = await response.json();
+            console.log('[MEDIAPIPE-DIRECT] 🎭 표정 분석기 응답:', result);
+            
             if (result.success) {
                 expressionAnalyzer = true;
                 console.log('[MEDIAPIPE-DIRECT] ✅ 표정 분석기 초기화 완료');
                 return true;
             } else {
                 console.warn('[MEDIAPIPE-DIRECT] ⚠️ 표정 분석기 초기화 실패:', result.error);
+                console.warn('[MEDIAPIPE-DIRECT] 🔍 상세 정보:', result.details);
+                
+                // 상세 에러 로그
+                if (result.details) {
+                    console.warn('[MEDIAPIPE-DIRECT] 📋 에러 상세:', result.details);
+                }
+                
                 return false;
             }
         } else {
-            console.warn('[MEDIAPIPE-DIRECT] ⚠️ 표정 분석기 초기화 요청 실패');
+            const errorText = await response.text();
+            console.warn('[MEDIAPIPE-DIRECT] ⚠️ 표정 분석기 초기화 요청 실패:', response.status, errorText);
             return false;
         }
     } catch (error) {
-        console.warn('[MEDIAPIPE-DIRECT] ⚠️ 표정 분석기 초기화 오류:', error);
+        console.error('[MEDIAPIPE-DIRECT] ❌ 표정 분석기 초기화 오류:', error);
+        console.error('[MEDIAPIPE-DIRECT] 🔍 에러 스택:', error.stack);
         return false;
     }
 }

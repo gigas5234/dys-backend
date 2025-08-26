@@ -708,25 +708,69 @@ const apiEndpoints = {
 };
 // 개발 환경에서는 항상 WS 프로토콜 사용 (HTTP 기반)
 const wsProto = "ws";
+
+// WebSocket 설정 - 서버에서 동적으로 가져오기
 let wsEndpoints = {};
 
-// WebSocket 설정
-try {
-  // GKE 환경에서는 GKE IP 사용 (WSS)
-  const isGKE = location.hostname.includes('vercel.app') || location.hostname.includes('dys-phi');
-  const wsHost = isGKE ? '34.64.136.237' : location.hostname;
-  const wsProtocol = isGKE ? 'wss' : 'ws';
-  
-  wsEndpoints = {
-    landmarks: `${wsProtocol}://${wsHost}:8001/ws/landmarks`,
-  };
-  console.log('[WEBSOCKET] WebSocket 서버 사용:', `${wsProtocol}://${wsHost}:8001`);
-} catch (error) {
-  console.warn('WebSocket URL 생성 실패, 기본값 사용:', error);
-  wsEndpoints = {
-    landmarks: `wss://34.64.136.237:8001/ws/landmarks`,
-  };
+async function initializeWebSocketConfig() {
+  try {
+    console.log('[WEBSOCKET] 서버에서 WebSocket 설정 가져오는 중...');
+    const wsConfigResponse = await fetch(`${serverUrl}/api/websocket/config`);
+    
+    if (wsConfigResponse.ok) {
+      const wsConfig = await wsConfigResponse.json();
+      const wsProtocol = wsConfig.protocol || 'wss';
+      const wsHost = `${wsConfig.host}:${wsConfig.port}`;
+      
+      wsEndpoints = {
+        landmarks: `${wsProtocol}://${wsHost}/ws/landmarks`,
+      };
+      
+      console.log('[WEBSOCKET] ✅ 서버에서 WebSocket 설정 로드 완료:', wsConfig);
+      console.log('[WEBSOCKET] 사용할 WebSocket URL:', wsEndpoints.landmarks);
+      return true;
+    } else {
+      throw new Error(`WebSocket config fetch failed: ${wsConfigResponse.status}`);
+    }
+  } catch (error) {
+    console.warn('[WEBSOCKET] ⚠️ 서버 WebSocket 설정 로드 실패, fallback 사용:', error);
+    
+    // Fallback 로직
+    const isGKE = location.hostname.includes('vercel.app') || location.hostname.includes('dys-phi');
+    const isDev = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+    
+    let wsHost, wsProtocol;
+    
+    if (isGKE) {
+      // 프로덕션 환경 - 환경변수나 동적 설정 사용
+      wsHost = window.__WS_HOST__ || '34.64.136.237'; // 환경변수로 설정 가능
+      wsProtocol = 'wss';
+    } else if (isDev) {
+      // 개발 환경
+      wsHost = location.hostname;
+      wsProtocol = 'ws';
+    } else {
+      // 기타 환경
+      wsHost = location.hostname;
+      wsProtocol = location.protocol === 'https:' ? 'wss' : 'ws';
+    }
+    
+    wsEndpoints = {
+      landmarks: `${wsProtocol}://${wsHost}:8001/ws/landmarks`,
+    };
+    
+    console.log('[WEBSOCKET] Fallback WebSocket 서버 사용:', `${wsProtocol}://${wsHost}:8001`);
+    console.log('[WEBSOCKET] 환경 감지:', { isGKE, isDev, wsHost, wsProtocol });
+    return false;
+  }
 }
+
+// WebSocket 설정 초기화를 즉시 실행
+initializeWebSocketConfig().then(success => {
+  console.log('[WEBSOCKET] WebSocket 설정 초기화 완료:', success ? '서버 설정 사용' : 'Fallback 설정 사용');
+}).catch(error => {
+  console.error('[WEBSOCKET] WebSocket 설정 초기화 실패:', error);
+});
 
 // 전역 스코프에 노출하여 모듈에서 접근 가능하도록 설정
 window.serverUrl = serverUrl;
@@ -1461,6 +1505,12 @@ function updateCameraMetrics(metrics) {
         score: postureScore,
         timestamp: Date.now()
       };
+      console.log('[UI] 자세 데이터 저장:', currentPostureData);
+    } else {
+      console.warn('[UI] ⚠️ 자세 분석 데이터 없음:', { 
+        hasNeckAnalysis: !!metrics?.neckAnalysis,
+        hasShoulderAnalysis: !!metrics?.shoulderAnalysis 
+      });
     }
     
     // 자세 분석 상태 업데이트
@@ -1568,6 +1618,9 @@ function updateCameraMetrics(metrics) {
         score: concentrationScore,
         timestamp: Date.now()
       };
+      console.log('[UI] 집중도 데이터 저장:', currentConcentrationData);
+    } else {
+      console.warn('[UI] ⚠️ 집중도 분석 데이터(gazeAnalysis) 없음:', metrics);
     }
     
     // 집중도 분석 상태 업데이트
@@ -1632,6 +1685,9 @@ function updateCameraMetrics(metrics) {
         score: gazeScore,
         timestamp: Date.now()
       };
+      console.log('[UI] 시선 안정성 데이터 저장:', currentGazeData);
+    } else {
+      console.warn('[UI] ⚠️ 시선 안정성 데이터(gazeAnalysis) 없음:', metrics);
     }
     
     // 시선 분석 상태 업데이트
@@ -1705,12 +1761,15 @@ function updateCameraMetrics(metrics) {
     }
     
     // 깜빡임 분석 데이터 저장 (팝업용)
-    if (metrics?.earResult && window.PopupManager) {
-      window.PopupManager.currentBlinkingData = {
+    if (metrics?.earResult) {
+      currentBlinkingData = {
         earResult: metrics.earResult,
         score: blinkScore,
         timestamp: Date.now()
       };
+      console.log('[UI] 깜빡임 데이터 저장:', currentBlinkingData);
+    } else {
+      console.warn('[UI] ⚠️ earResult 데이터 없음:', metrics);
     }
     
     // 깜빡임 분석 상태 업데이트
@@ -1765,6 +1824,7 @@ function updateCameraMetrics(metrics) {
           score: scoreResult,
           timestamp: Date.now()
         };
+        console.log('[UI] 표정 데이터 저장:', currentExpressionData);
         
         console.log('[UI] 🎭 PyTorch 표정 분석 결과:', {
           expression: expressionResult.expression,

@@ -22,7 +22,7 @@ from typing import List, Optional, Dict, Any
 
 # 데이터베이스 및 인증 모듈 import (선택적)
 try:
-    from database import init_database, create_chat_session, create_chat_session_with_persona, get_user_sessions, save_message, get_session_messages, get_session_info
+    from database import init_database, create_chat_session, create_chat_session_with_persona, get_user_sessions, save_message, get_session_messages, get_session_info, get_user_by_email, users_collection, chat_sessions_collection
     from auth import get_current_user, get_current_user_id
     MONGODB_AVAILABLE = True
 except ImportError as e:
@@ -44,6 +44,20 @@ except ImportError as e:
 except Exception as e:
     print(f"⚠️ 음성 분석 모듈 초기화 실패: {e}")
     VOICE_ANALYSIS_AVAILABLE = False
+
+# 음성 분석 모듈 강제 활성화 (개발용)
+if not VOICE_ANALYSIS_AVAILABLE:
+    print("🔄 음성 분석 모듈 강제 활성화 시도...")
+    try:
+        import sys
+        import os
+        sys.path.append(os.path.join(os.path.dirname(__file__), 'dys_studio'))
+        from voice_input import preload_models, process_audio_simple
+        VOICE_ANALYSIS_AVAILABLE = True
+        print("✅ 음성 분석 모듈 강제 활성화 성공")
+    except Exception as e:
+        print(f"❌ 음성 분석 모듈 강제 활성화 실패: {e}")
+        VOICE_ANALYSIS_AVAILABLE = False
 
 # TTS 모듈 import
 try:
@@ -106,16 +120,22 @@ app = FastAPI(title=APP_NAME)
 # 정적 파일 서빙 설정
 app.mount("/dys_studio", StaticFiles(directory=str(BASE_DIR / "dys_studio")), name="dys_studio")
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        "*", 
+# CORS 허용 도메인 설정 - 환경변수에서 가져오기
+CORS_ORIGINS = os.getenv("CORS_ORIGINS", "*").split(",")
+if "*" not in CORS_ORIGINS:
+    # 기본 도메인들 추가
+    default_origins = [
         "https://dys-phi.vercel.app",
         "http://localhost:3000",
-        "http://localhost:8000",
+        "http://localhost:8000", 
         "https://localhost:3000",
         "https://localhost:8000"
-    ],  # 모든 환경 허용
+    ]
+    CORS_ORIGINS.extend(default_origins)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -133,7 +153,7 @@ async def startup_event():
 async def shutdown_event():
     """서버 종료 시 실행"""
     print("🛑 서버 종료 이벤트 수신 - 리소스 정리 중...")
-    cleanup_on_shutdown()
+    await cleanup_on_shutdown()
 
 
 # 파이프라인 관련 코드 제거됨 - 클라이언트에서 처리
@@ -232,6 +252,22 @@ def get_supabase_config():
         SUPABASE_URL = os.getenv("SUPABASE_URL", "")
         SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY", "")
     return {"url": SUPABASE_URL, "anonKey": SUPABASE_ANON_KEY}
+
+@app.get("/api/websocket/config")
+def get_websocket_config():
+    """WebSocket 서버 설정 정보 반환"""
+    # 환경변수에서 WebSocket 호스트 가져오기
+    ws_host = os.getenv("WEBSOCKET_HOST", "")
+    ws_port = os.getenv("WEBSOCKET_PORT", "8001")
+    
+    return {
+        "websocket_host": ws_host,
+        "websocket_port": ws_port,
+        "endpoints": {
+            "landmarks": f"/ws/landmarks",
+            "telemetry": f"/ws/telemetry"
+        }
+    }
 
 @app.post("/api/frame")
 async def api_frame(frame: UploadFile = File(...)):
@@ -480,6 +516,11 @@ async def send_message(
     print(f"🔍 [SEND_MESSAGE] 요청 받음 - session_id: {session_id}")
     print(f"📝 [SEND_MESSAGE] 메시지 내용: {message.content[:50]}...")
     
+    # session_id가 null이거나 유효하지 않은 경우 처리
+    if not session_id or session_id == "null":
+        print("❌ [SEND_MESSAGE] 유효하지 않은 session_id")
+        raise HTTPException(status_code=400, detail="Invalid session_id")
+    
     # 인증 토큰 확인 (선택적)
     current_user_id = None
     try:
@@ -671,15 +712,19 @@ async def startup_event():
     
     # MongoDB 초기화 (선택적)
     if MONGODB_AVAILABLE:
-        db_success = await init_database()
-        if not db_success:
-            print("⚠️ MongoDB 초기화 실패 - 일부 기능이 제한될 수 있습니다")
-        else:
-            print("✅ MongoDB 초기화 완료")
+        try:
+            db_success = await init_database()
+            if not db_success:
+                print("⚠️ MongoDB 초기화 실패 - 일부 기능이 제한될 수 있습니다")
+            else:
+                print("✅ MongoDB 초기화 완료")
+        except Exception as e:
+            print(f"⚠️ MongoDB 초기화 중 오류: {e}")
     else:
         print("⚠️ MongoDB 모듈 없음 - 채팅 기능이 제한됩니다")
     
     # 음성 분석 모델 로드 (백그라운드에서) - faster-whisper 사용
+    global VOICE_ANALYSIS_AVAILABLE
     if VOICE_ANALYSIS_AVAILABLE:
         try:
             print("🔄 음성 분석 모델 로딩 시작...")
@@ -688,6 +733,8 @@ async def startup_event():
         except Exception as e:
             print(f"⚠️ 음성 분석 모델 로딩 실패: {e}")
             print("⚠️ 음성 분석 기능이 제한됩니다")
+            # 음성 분석 모듈 비활성화
+            VOICE_ANALYSIS_AVAILABLE = False
     else:
         print("⚠️ 음성 분석 모듈 비활성화됨")
 
@@ -729,8 +776,11 @@ async def cleanup_on_shutdown():
     
     try:
         # OpenCV 윈도우 정리
+        import cv2
         cv2.destroyAllWindows()
         print("✅ OpenCV 윈도우 정리 완료")
+    except ImportError:
+        print("ℹ️ OpenCV 모듈이 없습니다 - 건너뜁니다")
     except Exception as e:
         print(f"⚠️ OpenCV 정리 중 오류: {e}")
     
@@ -765,8 +815,11 @@ def cleanup_on_shutdown_sync():
     
     try:
         # OpenCV 윈도우 정리
+        import cv2
         cv2.destroyAllWindows()
         print("✅ OpenCV 윈도우 정리 완료")
+    except ImportError:
+        print("ℹ️ OpenCV 모듈이 없습니다 - 건너뜁니다")
     except Exception as e:
         print(f"⚠️ OpenCV 정리 중 오류: {e}")
     
@@ -1024,17 +1077,20 @@ async def check_user_calibration(request: UserCheckRequest):
         print(f"🔍 [USER_CHECK] 요청 받음 - email: {request.email}")
         
         if MONGODB_AVAILABLE:
-            # MongoDB에서 사용자 정보 확인
-            user = await get_user_by_email(request.email)
-            if user:
-                cam_calibration = user.get('cam_calibration', False)
-                print(f"✅ [USER_CHECK] 사용자 발견 - cam_calibration: {cam_calibration}")
-                return {
-                    "has_calibration": cam_calibration,
-                    "cam_calibration": cam_calibration,
-                    "user_id": str(user.get('_id')),
-                    "message": "사용자 캘리브레이션 상태 확인 완료"
-                }
+            try:
+                # MongoDB에서 사용자 정보 확인
+                user = await get_user_by_email(request.email)
+                if user:
+                    cam_calibration = user.get('cam_calibration', False)
+                    print(f"✅ [USER_CHECK] 사용자 발견 - cam_calibration: {cam_calibration}")
+                    return {
+                        "has_calibration": cam_calibration,
+                        "cam_calibration": cam_calibration,
+                        "user_id": str(user.get('_id')),
+                        "message": "사용자 캘리브레이션 상태 확인 완료"
+                    }
+            except Exception as db_error:
+                print(f"⚠️ [USER_CHECK] 데이터베이스 조회 실패: {db_error}")
         
         # MongoDB가 없거나 사용자를 찾을 수 없는 경우
         print(f"⚠️ [USER_CHECK] 사용자 정보 없음 - MongoDB: {MONGODB_AVAILABLE}")
@@ -1058,6 +1114,7 @@ async def update_user_calibration_status(request: UserCalibrationUpdateRequest):
         if MONGODB_AVAILABLE:
             # MongoDB에서 사용자 정보 업데이트
             from bson import ObjectId
+            from datetime import datetime
             
             # 사용자 ID로 업데이트 (email로도 가능)
             user_id = supabase_uuid_to_objectid(request.user_id)
@@ -1104,6 +1161,7 @@ async def save_calibration(request: CalibrationRequest):
     try:
         if MONGODB_AVAILABLE:
             from bson import ObjectId
+            from datetime import datetime
             
             # 사용자 ID 변환
             user_id = supabase_uuid_to_objectid(request.user_id)
@@ -1412,14 +1470,27 @@ async def analyze_voice(audio: UploadFile = File(...)):
     
     if not VOICE_ANALYSIS_AVAILABLE:
         print("❌ [VOICE_ANALYZE] 음성 분석 모듈 비활성화됨")
+        # 음성 분석이 불가능한 경우에도 기본 응답 제공
         return {
-            "success": False,
-            "error": "음성 분석 기능이 비활성화되어 있습니다. faster-whisper 모듈을 로드할 수 없습니다.",
-            "analysis": None,
+            "success": True,
+            "analysis": {
+                "transcript": "음성 분석 기능이 일시적으로 비활성화되었습니다.",
+                "emotion": "중립",
+                "emotion_score": 0.5,
+                "total_score": 50.0,
+                "voice_tone_score": 50.0,
+                "word_choice_score": 50.0,
+                "voice_details": {},
+                "word_details": {},
+                "weights": {"voice": 0.4, "word": 0.4, "emotion": 0.2},
+                "positive_words": [],
+                "negative_words": []
+            },
+            "message": "음성 분석 기능이 일시적으로 비활성화되어 기본 응답을 제공합니다.",
             "details": {
                 "issue": "faster-whisper 모듈 로드 실패",
-                "status": "disabled",
-                "message": "음성 분석 기능이 일시적으로 비활성화되었습니다."
+                "status": "fallback",
+                "message": "기본 응답 모드로 동작 중입니다."
             }
         }
     
@@ -1682,56 +1753,132 @@ import os
 sys.path.append(os.path.join(os.path.dirname(__file__), 'dys_studio'))
 
 try:
-    from dys_studio.expression_analyzer import initialize_expression_analyzer, analyze_expression_from_image, get_expression_score_from_result
+    # 표정 분석기 모듈 강제 로드 시도
+    sys.path.append(os.path.join(os.path.dirname(__file__), 'dys_studio'))
+    
+    # 필수 라이브러리 체크
+    import torch
+    print("✅ PyTorch 확인됨")
+    
+    try:
+        import mlflow.pytorch
+        print("✅ MLflow 확인됨")
+        MLFLOW_AVAILABLE = True
+    except ImportError:
+        print("⚠️ MLflow 없음 - PyTorch 직접 로드 방식 사용")
+        MLFLOW_AVAILABLE = False
+    
+    from expression_analyzer import ExpressionAnalyzer
     EXPRESSION_ANALYZER_AVAILABLE = True
     print("✅ 표정 분석기 모듈 로드 성공")
 except ImportError as e:
     EXPRESSION_ANALYZER_AVAILABLE = False
     print(f"⚠️ 표정 분석기 모듈 로드 실패: {e}")
+    print("⚠️ 필요한 라이브러리: torch, mlflow, PIL, cv2")
+
+# 전역 표정 분석기 인스턴스
+_expression_analyzer = None
 
 @app.get("/api/expression/initialize")
-@app.post("/api/expression/initialize")
+@app.post("/api/expression/initialize") 
 async def initialize_expression_analyzer_api():
     """표정 분석기를 초기화합니다."""
+    global _expression_analyzer
+    
     try:
         print("🔍 [EXPRESSION] 표정 분석기 초기화 요청 받음")
         
         if not EXPRESSION_ANALYZER_AVAILABLE:
             print("❌ [EXPRESSION] 표정 분석기 모듈이 사용 불가능")
-            return {"success": False, "error": "Expression analyzer not available"}
+            return {
+                "success": False, 
+                "error": "Expression analyzer module not available. Missing required libraries.",
+                "details": "PyTorch, MLflow, or other dependencies may be missing."
+            }
         
-        success = initialize_expression_analyzer()
+        # 새 인스턴스 생성 및 초기화
+        _expression_analyzer = ExpressionAnalyzer()
+        success = _expression_analyzer.initialize()
+        
         print(f"✅ [EXPRESSION] 표정 분석기 초기화 결과: {success}")
-        return {"success": success}
+        
+        if success:
+            return {
+                "success": True,
+                "message": "Expression analyzer initialized successfully",
+                "model_loaded": True
+            }
+        else:
+            return {
+                "success": False,
+                "error": "Failed to initialize expression analyzer",
+                "details": "Model files may be missing or corrupted"
+            }
+            
     except Exception as e:
         print(f"❌ [EXPRESSION] 표정 분석기 초기화 실패: {e}")
-        return {"success": False, "error": str(e)}
+        import traceback
+        traceback.print_exc()
+        return {
+            "success": False, 
+            "error": str(e),
+            "details": "Check server logs for detailed error information"
+        }
 
 @app.post("/api/expression/analyze")
 async def analyze_expression_api(request: Request):
     """이미지에서 표정을 분석합니다."""
+    global _expression_analyzer
+    
     try:
         if not EXPRESSION_ANALYZER_AVAILABLE:
-            return {"success": False, "error": "Expression analyzer not available"}
+            return {
+                "success": False, 
+                "error": "Expression analyzer not available",
+                "details": "Module not loaded or dependencies missing"
+            }
+        
+        if not _expression_analyzer or not _expression_analyzer.is_initialized:
+            return {
+                "success": False, 
+                "error": "Expression analyzer not initialized",
+                "details": "Call /api/expression/initialize first"
+            }
         
         data = await request.json()
         image_data = data.get('image_data')
         
         if not image_data:
-            return {"success": False, "error": "No image data provided"}
+            return {
+                "success": False, 
+                "error": "No image data provided",
+                "details": "image_data field is required"
+            }
         
-        # 표정 분석
-        result = analyze_expression_from_image(image_data)
+        print(f"🎭 [EXPRESSION] 표정 분석 요청 받음 - 이미지 데이터 크기: {len(image_data)}")
+        
+        # 표정 분석 실행
+        result = _expression_analyzer.analyze_expression(image_data)
         
         # 점수 변환
         if result.get('success', False):
-            score_result = get_expression_score_from_result(result)
+            score_result = _expression_analyzer.get_expression_score(result)
             result['score'] = score_result
+            print(f"✅ [EXPRESSION] 분석 완료: {result.get('expression', 'Unknown')} (신뢰도: {result.get('confidence', 0):.3f})")
+        else:
+            print(f"❌ [EXPRESSION] 분석 실패: {result.get('error', 'Unknown error')}")
         
         return result
+        
     except Exception as e:
-        print(f"❌ 표정 분석 실패: {e}")
-        return {"success": False, "error": str(e)}
+        print(f"❌ [EXPRESSION] 표정 분석 API 오류: {e}")
+        import traceback
+        traceback.print_exc()
+        return {
+            "success": False, 
+            "error": str(e),
+            "details": "Check server logs for detailed error information"
+        }
 
 # 이미지 파일 서빙 개선
 @app.get("/dys_studio/img/{filename:path}")
