@@ -103,6 +103,7 @@ def preload_models():
     """
     분석에 필요한 모든 AI 모델을 메모리에 로드합니다.
     GPU 사용을 기본으로 하며, GPU가 없을 경우 CPU를 사용합니다.
+    음성 분석 모듈이 실패해도 ASR 모델은 로드됩니다.
     """
     global _asr_model, _nli_tokenizer, _nli_model, _audio_clf
     
@@ -131,28 +132,45 @@ def preload_models():
         logger.warning("⚠️ GPU를 사용할 수 없습니다. CPU로 대체 (속도가 현저히 느려집니다)")
         logger.info(f"💻 사용 디바이스: {device}, ASR 연산 타입: {asr_compute_type}")
 
-    # 1. 음성 인식 모델 (Whisper)
-    _asr_model = WhisperModel(ASR_MODEL_NAME, device=device, compute_type=asr_compute_type)
+    # 1. 음성 인식 모델 (Whisper) - 필수 모델
+    try:
+        _asr_model = WhisperModel(ASR_MODEL_NAME, device=device, compute_type=asr_compute_type)
+        logger.info("✅ ASR 모델 로드 성공")
+    except Exception as e:
+        logger.error(f"❌ ASR 모델 로드 실패: {e}")
+        _asr_model = None
     
     # 2. 텍스트 감정 분석 모델 (키워드 기반으로 단순화)
     logger.info("Using keyword-based emotion analysis for better compatibility")
     _nli_tokenizer = None
     _nli_model = None
     
-    # 3. 음성 감정 분석 모델 (wav2vec2)
+    # 3. 음성 감정 분석 모델 (wav2vec2) - 선택적 모델
+    _audio_clf = None
     if TRANSFORMERS_AVAILABLE:
         try:
             device_id = 0 if device == "cuda" else -1
             _audio_clf = pipeline("audio-classification", model=AUDIO_EMO_MODEL_ID, device=device_id)
-            logger.info("음성 감정 분석 모델 로드 성공")
-        except ImportError:
-            logger.error("The 'transformers' pipeline requires additional libraries. Audio classification is disabled.")
+            logger.info("✅ 음성 감정 분석 모델 로드 성공")
+        except Exception as e:
+            logger.warning(f"⚠️ 음성 감정 분석 모델 로드 실패 (키워드 기반으로 대체): {e}")
             _audio_clf = None
     else:
-        logger.info("Transformers 라이브러리 없음 - 음성 감정 분석 비활성화")
+        logger.info("Transformers 라이브러리 없음 - 음성 감정 분석 비활성화 (키워드 기반으로 대체)")
         _audio_clf = None
     
-    logger.info("All models have been preloaded successfully!")
+    # 최종 상태 보고
+    if _asr_model is not None:
+        logger.info("✅ ASR 모델 로드됨 - STT 기능 사용 가능")
+    else:
+        logger.warning("⚠️ ASR 모델 로드 실패 - STT 기능 제한됨")
+    
+    if _audio_clf is not None:
+        logger.info("✅ 음성 감정 분석 모델 로드됨")
+    else:
+        logger.info("ℹ️ 음성 감정 분석 모델 비활성화 - 키워드 기반 감정 분석 사용")
+    
+    logger.info("🎯 모델 로딩 완료 - 키워드 기반 감정 분석으로 대체 가능")
 
 
 def analyze_voice_tone(audio_array: np.ndarray, sr: int) -> VoiceToneAnalysis:
@@ -245,7 +263,9 @@ def calculate_dating_empathy_score(voice_analysis: VoiceToneAnalysis, word_analy
 
 def transcribe_korean(audio_array: np.ndarray) -> str:
     """오디오 데이터를 한국어 텍스트로 변환합니다."""
-    if _asr_model is None: raise RuntimeError("ASR model is not loaded. Call preload_models() first.")
+    if _asr_model is None:
+        logger.warning("ASR model is not loaded. Cannot perform transcription.")
+        return ""
     try:
         segments, _ = _asr_model.transcribe(audio_array, language="ko", beam_size=5)
         return " ".join(seg.text for seg in segments).strip()
@@ -255,7 +275,9 @@ def transcribe_korean(audio_array: np.ndarray) -> str:
 
 def classify_emotion_audio(audio_array: np.ndarray) -> List[Tuple[str, float]]:
     """오디오 데이터에서 직접 감정을 분류합니다."""
-    if _audio_clf is None: return [("중립", 1.0)]
+    if _audio_clf is None:
+        logger.info("Audio emotion classifier not loaded, using neutral emotion")
+        return [("중립", 1.0)]
     try:
         result = _audio_clf({"array": audio_array, "sampling_rate": TARGET_SR}, top_k=None)
         # 결과를 한국어 레이블로 변환하고 점수 합산
@@ -321,30 +343,64 @@ def classify_emotion_by_keywords(text: str) -> List[Tuple[str, float]]:
 def process_audio_simple(audio_array: np.ndarray) -> dict:
     """
     오디오 배열을 입력받아 모든 분석을 수행하고 결과를 딕셔너리로 반환하는 메인 함수.
+    음성 분석 모듈이 실패해도 STT와 키워드 기반 감정 분석은 작동합니다.
     """
-    if _asr_model is None:
-        raise RuntimeError("Models are not loaded. Call preload_models() before processing audio.")
-        
     result = {}
     try:
-        # 1. 음성 인식 (STT)
-        transcript = transcribe_korean(audio_array)
-        result['transcript'] = transcript or "음성 인식 실패"
+        # 1. 음성 인식 (STT) - ASR 모델이 없어도 기본값 처리
+        transcript = ""
+        if _asr_model is not None:
+            try:
+                transcript = transcribe_korean(audio_array)
+            except Exception as e:
+                logger.warning(f"STT failed, using fallback: {e}")
+                transcript = "음성 인식 실패"
+        else:
+            logger.warning("ASR model not loaded, skipping STT")
+            transcript = "음성 인식 모듈 비활성화"
         
-        # 2. 감정 분석 (음성 + 텍스트)
-        audio_scores = classify_emotion_audio(audio_array)
-        text_scores = classify_emotion_ko_zeroshot(transcript)
+        result['transcript'] = transcript
         
-        # 텍스트가 있으면 텍스트 기반, 없으면 음성 기반 감정 사용
-        final_emotion_scores = text_scores if transcript else audio_scores
+        # 2. 감정 분석 - 음성 분석 모듈이 실패해도 키워드 기반으로 대체
+        final_emotion_scores = [("중립", 1.0)]  # 기본값
+        
+        if transcript and transcript != "음성 인식 실패" and transcript != "음성 인식 모듈 비활성화":
+            # 텍스트가 있으면 키워드 기반 감정 분석 사용
+            final_emotion_scores = classify_emotion_by_keywords(transcript)
+            logger.info(f"Using keyword-based emotion analysis: {final_emotion_scores}")
+        else:
+            # 음성 감정 분석 시도 (모듈이 로드된 경우)
+            if _audio_clf is not None:
+                try:
+                    audio_scores = classify_emotion_audio(audio_array)
+                    final_emotion_scores = audio_scores
+                    logger.info(f"Using audio-based emotion analysis: {audio_scores}")
+                except Exception as e:
+                    logger.warning(f"Audio emotion analysis failed, using neutral: {e}")
+            else:
+                logger.info("Audio emotion module not loaded, using neutral emotion")
+        
         top_emotion, top_score = final_emotion_scores[0]
         result['emotion'] = str(top_emotion)
         result['emotion_score'] = float(top_score)
         
-        # 3. 종합 점수 계산
+        # 3. 종합 점수 계산 - 음성 분석이 실패해도 기본값으로 계산
         elapsed_sec = len(audio_array) / TARGET_SR
-        voice_analysis = analyze_voice_tone(audio_array, TARGET_SR)
-        word_analysis = analyze_word_choice(transcript, elapsed_sec)
+        
+        # 음성 톤 분석 (실패 시 기본값 사용)
+        try:
+            voice_analysis = analyze_voice_tone(audio_array, TARGET_SR)
+        except Exception as e:
+            logger.warning(f"Voice tone analysis failed, using defaults: {e}")
+            voice_analysis = VoiceToneAnalysis(0.5, 3.0, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5)
+        
+        # 단어 선택 분석 (STT 결과가 있으면 사용, 없으면 기본값)
+        if transcript and transcript not in ["음성 인식 실패", "음성 인식 모듈 비활성화"]:
+            word_analysis = analyze_word_choice(transcript, elapsed_sec)
+        else:
+            logger.warning("No transcript available, using default word analysis")
+            word_analysis = WordChoiceAnalysis([], [], [], [], [], 0.5, 0.5, 0.5, 0.5)
+        
         dating_score = calculate_dating_empathy_score(voice_analysis, word_analysis, final_emotion_scores)
         
         # 4. 최종 결과 딕셔너리에 추가 (JSON 직렬화 가능하도록 변환)
@@ -363,9 +419,9 @@ def process_audio_simple(audio_array: np.ndarray) -> dict:
         logger.critical(f"Critical error in audio processing pipeline: {e}", exc_info=True)
         # 오류 발생 시 기본값 반환
         return {
-            'transcript': '처리 중 오류 발생', 'emotion': '오류', 'emotion_score': 0.0,
-            'total_score': 0.0, 'voice_tone_score': 0.0, 'voice_details': {},
-            'word_choice_score': 0.0, 'word_details': {}, 'weights': {},
+            'transcript': '처리 중 오류 발생', 'emotion': '중립', 'emotion_score': 1.0,
+            'total_score': 50.0, 'voice_tone_score': 50.0, 'voice_details': {},
+            'word_choice_score': 50.0, 'word_details': {}, 'weights': {},
             'positive_words': [], 'negative_words': []
         }
     return result
