@@ -1,20 +1,26 @@
 # 파이썬 3.10 버전을 기반
-FROM python:3.10
+FROM python:3.10-slim
 
 # 작업 디렉토리 설정
 WORKDIR /usr/src/app
 
-# CTranslate2 실행에 필요한 시스템 라이브러리 설치
+# 시스템 패키지 설치 (한 번에 설치하여 레이어 최적화)
 RUN apt-get update && apt-get install -y \
     libgomp1 \
-    && rm -rf /var/lib/apt/lists/*
+    supervisor \
+    openssl \
+    curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
 
-# Supervisor 및 OpenSSL 설치
-RUN apt-get update && apt-get install -y supervisor openssl
+# pip 업그레이드 및 캐시 정리
+RUN pip install --upgrade pip setuptools wheel
 
 # requirements.txt 파일을 먼저 복사하여 의존성 설치
 COPY requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
+
+# 의존성 설치 최적화 (타임아웃 증가, 재시도 로직)
+RUN pip install --no-cache-dir --timeout=300 --retries=3 -r requirements.txt
 
 # 나머지 프로젝트 파일들을 복사
 COPY . .
