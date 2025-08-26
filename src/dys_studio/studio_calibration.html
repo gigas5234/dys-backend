@@ -2317,7 +2317,8 @@ function removeTypingIndicator() {
         showTypingIndicator();
       
         // 서버 API로 메시지 전송 (MongoDB 저장 + AI 응답 생성)
-        const response = await fetch(`${window.serverUrl || 'https://dys-phi.vercel.app/api/gke'}/api/chat/sessions/${currentSessionId}/messages`, {
+        const apiBase = (window.serverUrl && window.serverUrl.replace(/\/$/, '')) || 'https://dys-phi.vercel.app';
+        const response = await fetch(`${apiBase}/api/gke/api/chat/sessions/${currentSessionId}/messages`.replace('/api/gke/api', '/api/gke'), {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
