@@ -125,7 +125,7 @@
             
             // 이미지 경로 수정
             const imagePath = this.personaImage ? 
-                `${this.serverUrl}/dys_studio/img/persona/${this.personaImage.split('/').pop()}` : 
+                `${this.apiBase}/dys_studio/img/persona/${this.personaImage.split('/').pop()}` : 
                 '/img/default-avatar.png';
             
             personaCard.innerHTML = `
@@ -202,8 +202,8 @@
                 
                 this.showTyping();
 
-                // Preserve original MongoDB API call and URL fix
-                const url = `${this.apiBase}/api/gke/api/chat/sessions/${this.currentSessionId}/messages`.replace('/api/gke/api', '/api/gke');
+                // MongoDB API call with correct URL
+                const url = `${this.apiBase}/api/chat/sessions/${this.currentSessionId}/messages`;
                 const resp = await fetch(url, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -258,7 +258,7 @@
             summaryDiv.textContent = '분석 중...';
             
             try {
-                const response = await fetch(`${this.serverUrl}/api/feedback`, {
+                const response = await fetch(`${this.apiBase}/api/feedback`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
