@@ -37,3 +37,104 @@
     </div>
   </div>
 </div>
+
+<script>
+// 깜빡임 상세 정보 팝업 관련 함수들
+function updateBlinkingFactorsInfo() {
+    const factorsDiv = document.getElementById('blinking-factors');
+    
+    // 깜빡임 분석에 사용되는 요소들
+    const factorInfo = [
+        { name: 'EAR (Eye Aspect Ratio)', value: '0.2-0.3', description: '눈의 종횡비율로 깜빡임 감지' },
+        { name: '깜빡임 임계값', value: '0.21', description: '깜빡임으로 판단하는 EAR 기준값' },
+        { name: '깜빡임 지속시간', value: '0.1-0.4초', description: '일반적인 깜빡임 지속 시간' },
+        { name: '정상 깜빡임 빈도', value: '15-20회/분', description: '건강한 눈의 깜빡임 빈도' },
+        { name: '눈 건조증 감지', value: '5회/분 이하', description: '눈 건조증 의심 기준' },
+        { name: '과도한 깜빡임', value: '25회/분 이상', description: '긴장이나 스트레스 의심 기준' }
+    ];
+    
+    let html = '';
+    factorInfo.forEach(item => {
+        html += `
+            <div class="factor-item">
+                <div class="factor-name">${item.name}</div>
+                <div class="factor-value">${item.value}</div>
+                <div class="factor-description">${item.description}</div>
+            </div>
+        `;
+    });
+    
+    factorsDiv.innerHTML = html;
+}
+
+function updateBlinkingCriteriaInfo() {
+    const criteriaDiv = document.getElementById('blinking-criteria-text');
+    
+    const criteria = `
+        <div class="criteria-section">
+            <h4>😉 깜빡임 평가 기준</h4>
+            <ul>
+                <li><strong>EAR 값 (40%)</strong>: 눈의 종횡비율 측정</li>
+                <li><strong>깜빡임 빈도 (30%)</strong>: 분당 깜빡임 횟수</li>
+                <li><strong>깜빡임 패턴 (30%)</strong>: 깜빡임의 규칙성과 자연스러움</li>
+            </ul>
+            
+            <h4>👁️ 깜빡임 분석 방법</h4>
+            <ul>
+                <li><strong>눈 윤곽 추적</strong>: 32개 랜드마크로 눈의 형태 측정</li>
+                <li><strong>EAR 계산</strong>: 눈의 높이와 너비 비율 계산</li>
+                <li><strong>깜빡임 감지</strong>: EAR 값이 임계값 이하로 떨어질 때</li>
+                <li><strong>빈도 분석</strong>: 일정 시간 동안의 깜빡임 횟수 계산</li>
+            </ul>
+            
+            <h4>📊 점수 기준</h4>
+            <ul>
+                <li><strong>90-100점</strong>: 매우 자연스러운 깜빡임 (완벽한 상태)</li>
+                <li><strong>70-89점</strong>: 자연스러운 깜빡임 (좋은 상태)</li>
+                <li><strong>50-69점</strong>: 보통 깜빡임 (일반적인 상태)</li>
+                <li><strong>30-49점</strong>: 불규칙한 깜빡임 (주의 필요)</li>
+                <li><strong>0-29점</strong>: 매우 불규칙한 깜빡임 (심각한 문제)</li>
+            </ul>
+        </div>
+    `;
+    
+    criteriaDiv.innerHTML = criteria;
+}
+
+function updateBlinkingExplanationInfo() {
+    const explanationDiv = document.getElementById('blinking-explanation-text');
+    
+    if (!currentBlinkingData) {
+        explanationDiv.innerHTML = '깜빡임 분석 데이터가 없습니다.';
+        return;
+    }
+    
+    const { ear, blinkStatus, blinkRate, score } = currentBlinkingData;
+    
+    let explanation = `<div class="explanation-section">`;
+    explanation += `<h4>📈 현재 분석 결과</h4>`;
+    explanation += `<ul>`;
+    explanation += `<li><strong>깜빡임 상태</strong>: ${blinkStatus ? '깜빡임 중' : '눈 뜬 상태'}</li>`;
+    explanation += `<li><strong>EAR 값</strong>: ${ear.toFixed(3)}</li>`;
+    explanation += `<li><strong>깜빡임 빈도</strong>: ${blinkRate}회/분</li>`;
+    explanation += `<li><strong>최종 점수</strong>: ${score}점</li>`;
+    explanation += `</ul>`;
+    
+    // 점수 해석
+    if (score >= 90) {
+        explanation += `<p>🎯 <strong>완벽한 깜빡임 패턴</strong>: 매우 자연스럽고 건강한 깜빡임을 보이고 있습니다.</p>`;
+    } else if (score >= 70) {
+        explanation += `<p>🎯 <strong>자연스러운 깜빡임</strong>: 건강하고 자연스러운 깜빡임을 보이고 있습니다.</p>`;
+    } else if (score >= 50) {
+        explanation += `<p>🎯 <strong>보통 깜빡임</strong>: 일반적인 수준의 깜빡임을 보이고 있습니다.</p>`;
+    } else if (score >= 30) {
+        explanation += `<p>🎯 <strong>개선이 필요한 깜빡임</strong>: 깜빡임이 다소 불규칙하거나 부족합니다.</p>`;
+    } else {
+        explanation += `<p>🎯 <strong>매우 개선이 필요한 깜빡임</strong>: 깜빡임에 심각한 문제가 있을 수 있습니다.</p>`;
+    }
+    
+    explanation += `</div>`;
+    
+    explanationDiv.innerHTML = explanation;
+}
+</script>
