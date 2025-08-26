@@ -266,8 +266,8 @@ async function setupLandmarkWorker(videoEl, onLandmarkFrame, hzProvider) {
                 }
             }
             
-            // 다음 프레임 예약 (3 FPS로 조절 - 과부하 방지)
-            setTimeout(processFrame, 333);
+            // 다음 프레임 예약 (2 FPS로 조절 - 성능 개선)
+            setTimeout(processFrame, 500);
         };
         
         // 비디오가 준비되면 프레임 처리 시작

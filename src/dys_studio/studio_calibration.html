@@ -1383,8 +1383,8 @@ function updateCameraMetrics(metrics) {
         const shoulderTilt = Math.abs(metrics.shoulderAnalysis.shoulderTilt || 0);
         const forwardHeadRatio = metrics.neckAnalysis.forwardHeadRatio || 0.05;
         
-        // 통일된 자세 점수 계산 로직 (초기 기본값 없음)
-        postureScore = null;
+        // 통일된 자세 점수 계산 로직 (기본 점수 70점부터 시작)
+        postureScore = 70; // 기본 점수 설정
         
         // 어깨 기울기 페널티
         if (shoulderTilt > 20) postureScore -= 8;
