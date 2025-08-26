@@ -37,3 +37,105 @@
     </div>
   </div>
 </div>
+
+<script>
+// 집중도 상세 정보 팝업 관련 함수들
+function updateConcentrationFactorsInfo() {
+    const factorsDiv = document.getElementById('concentration-factors');
+    
+    // 집중도 분석에 사용되는 요소들
+    const factorInfo = [
+        { name: '시선 안정성', value: '35%', description: '시선이 한 곳에 머무는 정도' },
+        { name: '시선 집중도', value: '35%', description: '시선이 화면 중앙에 집중되는 정도' },
+        { name: '표정 따뜻함', value: '30%', description: '긍정적인 표정으로 집중력 표현' },
+        { name: '눈동자 추적', value: '실시간', description: '눈동자 움직임으로 집중 상태 판단' },
+        { name: '시선 이탈 시간', value: '2초 이내', description: '시선이 화면을 벗어나는 시간' },
+        { name: '집중 지속성', value: '연속성', description: '지속적인 집중 상태 유지' }
+    ];
+    
+    let html = '';
+    factorInfo.forEach(item => {
+        html += `
+            <div class="factor-item">
+                <div class="factor-name">${item.name}</div>
+                <div class="factor-value">${item.value}</div>
+                <div class="factor-description">${item.description}</div>
+            </div>
+        `;
+    });
+    
+    factorsDiv.innerHTML = html;
+}
+
+function updateConcentrationCriteriaInfo() {
+    const criteriaDiv = document.getElementById('concentration-criteria-text');
+    
+    const criteria = `
+        <div class="criteria-section">
+            <h4>🎯 집중도 평가 기준</h4>
+            <ul>
+                <li><strong>시선 안정성 (35%)</strong>: 시선이 한 곳에 머무는 정도</li>
+                <li><strong>시선 집중도 (35%)</strong>: 시선이 화면 중앙에 집중되는 정도</li>
+                <li><strong>표정 따뜻함 (30%)</strong>: 긍정적인 표정으로 집중력 표현</li>
+            </ul>
+            
+            <h4>🧠 집중도 분석 방법</h4>
+            <ul>
+                <li><strong>눈동자 추적</strong>: 32개 랜드마크로 눈동자 위치 추적</li>
+                <li><strong>시선 방향 분석</strong>: 화면 중앙 대비 시선 위치 계산</li>
+                <li><strong>집중 지속성</strong>: 일정 시간 동안의 집중 상태 유지</li>
+                <li><strong>시선 이탈 감지</strong>: 화면을 벗어나는 시선 감지</li>
+            </ul>
+            
+            <h4>📊 점수 기준</h4>
+            <ul>
+                <li><strong>90-100점</strong>: 매우 높은 집중도 (완벽한 집중)</li>
+                <li><strong>70-89점</strong>: 높은 집중도 (좋은 집중)</li>
+                <li><strong>50-69점</strong>: 보통 집중도 (일반적인 집중)</li>
+                <li><strong>30-49점</strong>: 낮은 집중도 (집중력 저하)</li>
+                <li><strong>0-29점</strong>: 매우 낮은 집중도 (심각한 집중력 문제)</li>
+            </ul>
+        </div>
+    `;
+    
+    criteriaDiv.innerHTML = criteria;
+}
+
+function updateConcentrationExplanationInfo() {
+    const explanationDiv = document.getElementById('concentration-explanation-text');
+    
+    if (!currentConcentrationData) {
+        explanationDiv.innerHTML = '집중도 분석 데이터가 없습니다.';
+        return;
+    }
+    
+    const { jumpDistance, velocity, isFocused, gazeDirection, score } = currentConcentrationData;
+    
+    let explanation = `<div class="explanation-section">`;
+    explanation += `<h4>📈 현재 분석 결과</h4>`;
+    explanation += `<ul>`;
+    explanation += `<li><strong>집중 상태</strong>: ${isFocused ? '집중 중' : '분산됨'}</li>`;
+    explanation += `<li><strong>시선 방향</strong>: ${gazeDirection || '중앙'}</li>`;
+    explanation += `<li><strong>점프 거리</strong>: ${(jumpDistance * 100).toFixed(2)}% (화면 대비)</li>`;
+    explanation += `<li><strong>이동 속도</strong>: ${velocity.toFixed(4)} (픽셀/프레임)</li>`;
+    explanation += `<li><strong>최종 점수</strong>: ${score}점</li>`;
+    explanation += `</ul>`;
+    
+    // 점수 해석
+    if (score >= 90) {
+        explanation += `<p>🎯 <strong>완벽한 집중도</strong>: 시선이 매우 안정적이고 화면에 완벽하게 집중하고 있습니다.</p>`;
+    } else if (score >= 70) {
+        explanation += `<p>🎯 <strong>우수한 집중도</strong>: 시선이 안정적이고 화면에 잘 집중하고 있습니다.</p>`;
+    } else if (score >= 50) {
+        explanation += `<p>🎯 <strong>보통 집중도</strong>: 시선이 어느 정도 안정적이고 적절히 집중하고 있습니다.</p>`;
+    } else if (score >= 30) {
+        explanation += `<p>🎯 <strong>개선이 필요한 집중도</strong>: 시선이 불안정하고 집중력이 저하되고 있습니다.</p>`;
+    } else {
+        explanation += `<p>🎯 <strong>매우 개선이 필요한 집중도</strong>: 시선이 매우 불안정하고 심각한 집중력 문제가 있습니다.</p>`;
+    }
+    
+    explanation += `</div>`;
+    
+    explanationDiv.innerHTML = explanation;
+}
+</script>

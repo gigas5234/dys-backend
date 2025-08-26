@@ -285,7 +285,7 @@ class ExpressionAnalyzer:
                                     
                     except Exception as e:
                         print(f"⚠️ 모델 파일 처리 실패: {model_file} - {e}")
-                        continue
+                    continue
             
             if not model_loaded:
                 print("❌ 모든 모델 경로에서 모델을 찾을 수 없습니다.")

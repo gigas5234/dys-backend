@@ -118,6 +118,30 @@ async function loadInitialGuidePopup() {
         if (html) {
             container.innerHTML = html;
             console.log('✅ 초기 안내 팝업 로드 완료');
+            // 이벤트 바인딩: 시작하기 버튼 클릭 처리
+            const startBtn = document.getElementById('close-guide-btn');
+            if (startBtn) {
+                startBtn.addEventListener('click', () => {
+                    // 초기 안내 팝업 닫기
+                    if (typeof hideInitialGuidePopup === 'function') {
+                        hideInitialGuidePopup();
+                    }
+                    // 캘리브레이션 오버레이 숨기기 (레이어 충돌 방지)
+                    const calibrationOverlay = document.getElementById('calibration-overlay');
+                    if (calibrationOverlay) {
+                        calibrationOverlay.classList.add('hidden');
+                    }
+                    // 메인 콘텐츠 표시
+                    const main = document.getElementById('main-content');
+                    if (main) {
+                        main.classList.add('visible');
+                    }
+                    // 앱 시작 로직 트리거
+                    if (typeof startApp === 'function') {
+                        try { startApp(); } catch (e) { console.warn('[INIT] startApp 실패:', e); }
+                    }
+                });
+            }
         }
     }
 }
