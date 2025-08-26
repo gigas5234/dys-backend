@@ -37,6 +37,35 @@
     let lastExpressionText = '중립적';
     let lastExpressionUpdate = 0;
     const EXPRESSION_UPDATE_INTERVAL = 2000; // 2초마다 업데이트
+    
+    // 팝업 로더 함수
+    async function loadPopup(popupName) {
+        try {
+            const response = await fetch(`popups/${popupName}.html`);
+            if (response.ok) {
+                const html = await response.text();
+                return html;
+            } else {
+                console.error(`팝업 로드 실패: ${popupName}`);
+                return null;
+            }
+        } catch (error) {
+            console.error(`팝업 로드 오류: ${popupName}`, error);
+            return null;
+        }
+    }
+    
+    // 깜빡임 팝업 로드
+    async function loadBlinkingPopup() {
+        const container = document.getElementById('blinking-popup-container');
+        if (container) {
+            const html = await loadPopup('blinking-details-popup');
+            if (html) {
+                container.innerHTML = html;
+                console.log('✅ 깜빡임 팝업 로드 완료');
+            }
+        }
+    }
     </script>
 </head>
 <body>
@@ -311,44 +340,7 @@
     </div>
 
     <!-- 깜빡임 상세 정보 팝업 -->
-    <div id="blinking-details-popup" class="details-popup">
-      <div class="details-popup-content">
-        <div class="details-popup-header">
-          <h3>😉 깜빡임 분석 상세</h3>
-          <button class="details-popup-close" onclick="closeBlinkingDetails()">×</button>
-        </div>
-        <div class="details-popup-body">
-          <div class="blinking-summary">
-            <div class="blinking-main">
-              <div class="blinking-label">깜빡임 상태</div>
-              <div id="blinking-main-value" class="blinking-main-value">-</div>
-            </div>
-            <div class="blinking-rate">
-              <div class="blinking-label">깜빡임 빈도</div>
-              <div id="blinking-rate-value" class="blinking-rate-value">-</div>
-            </div>
-          </div>
-          <div class="blinking-breakdown">
-            <div class="blinking-label">분석 요소</div>
-            <div id="blinking-factors" class="blinking-factors">
-              <!-- 동적으로 생성됨 -->
-            </div>
-          </div>
-          <div class="blinking-criteria">
-            <div class="blinking-label">평가 기준</div>
-            <div id="blinking-criteria-text" class="blinking-criteria-text">
-              깜빡임 분석 데이터가 없습니다.
-            </div>
-          </div>
-          <div class="blinking-explanation">
-            <div class="blinking-label">점수 계산 근거</div>
-            <div id="blinking-explanation-text" class="blinking-explanation-text">
-              깜빡임 분석 데이터가 없습니다.
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+    <div id="blinking-popup-container"></div>
 
     <button id="feedbackToggleBtn" class="feedback-toggle-btn">피드백</button>
 
@@ -1094,6 +1086,9 @@ async function waitForCalibrationModule(timeout = 5000) {
 
 // --- 캘리브레이션 로직 (별도 파일로 분리됨) ---
 document.addEventListener('DOMContentLoaded', async () => {
+    // 팝업 로드
+    await loadBlinkingPopup();
+    
     // 페이지 로드 시 모든 메트릭 초기화
     setTimeout(() => {
         resetAllMetrics();
