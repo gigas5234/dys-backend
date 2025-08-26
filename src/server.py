@@ -32,20 +32,9 @@ except ImportError as e:
 
 # analyzers 모듈 제거됨 - 클라이언트 측에서 처리
 
-# 음성 분석 모듈 import (선택적)
+# 음성 분석 모듈 import (선택적) - libctranslate2 호환성 문제로 비활성화
 VOICE_ANALYSIS_AVAILABLE = False
-try:
-    # ctranslate2 호환성 문제로 인해 선택적 로드
-    import ctranslate2
-    from dys_studio.voice_input import preload_models, process_audio_simple
-    VOICE_ANALYSIS_AVAILABLE = True
-    print("✅ 음성 분석 모듈 로드 성공")
-except ImportError as e:
-    print(f"⚠️ 음성 분석 모듈 로드 실패: {e}")
-    VOICE_ANALYSIS_AVAILABLE = False
-except Exception as e:
-    print(f"⚠️ 음성 분석 모듈 초기화 실패: {e}")
-    VOICE_ANALYSIS_AVAILABLE = False
+print("⚠️ 음성 분석 모듈이 libctranslate2 호환성 문제로 비활성화되었습니다.")
 
 # TTS 모듈 import
 try:
@@ -681,7 +670,7 @@ async def startup_event():
     else:
         print("⚠️ MongoDB 모듈 없음 - 채팅 기능이 제한됩니다")
     
-    # 음성 분석 모델 로드 (백그라운드에서)
+    # 음성 분석 모델 로드 (백그라운드에서) - 현재 비활성화됨
     if VOICE_ANALYSIS_AVAILABLE:
         try:
             print("🔄 음성 분석 모델 로딩 시작...")
@@ -690,7 +679,8 @@ async def startup_event():
         except Exception as e:
             print(f"⚠️ 음성 분석 모델 로딩 실패: {e}")
     else:
-        print("⚠️ 음성 분석 모듈 없음 - 음성 분석 기능이 제한됩니다")
+        print("⚠️ 음성 분석 모듈 비활성화됨 - libctranslate2 호환성 문제")
+        print("⚠️ 음성 분석 기능이 일시적으로 비활성화되었습니다.")
 
 # WebSocket 연결 관리
 _active_websockets = set()
@@ -1428,92 +1418,59 @@ async def analyze_voice(audio: UploadFile = File(...)):
     print(f"🎤 [VOICE_ANALYZE] 음성 분석 요청 받음 - 파일명: {audio.filename}")
     
     if not VOICE_ANALYSIS_AVAILABLE:
-        print("❌ [VOICE_ANALYZE] 음성 분석 모듈 없음")
+        print("❌ [VOICE_ANALYZE] 음성 분석 모듈 비활성화됨")
         return {
             "success": False,
-            "error": "음성 분석 기능이 비활성화되어 있습니다.",
-            "analysis": None
+            "error": "음성 분석 기능이 비활성화되어 있습니다. libctranslate2 라이브러리 호환성 문제로 인해 현재 사용할 수 없습니다.",
+            "analysis": None,
+            "details": {
+                "issue": "libctranslate2 라이브러리 호환성 문제",
+                "status": "disabled",
+                "message": "음성 분석 기능이 일시적으로 비활성화되었습니다."
+            }
         }
     
-    try:
-        # 오디오 파일 읽기
-        audio_data = await audio.read()
-        print(f"📊 [VOICE_ANALYZE] 오디오 데이터 크기: {len(audio_data)} bytes")
-        
-        # 오디오 데이터를 numpy 배열로 변환
-        import io
-        import torchaudio
-        
-        # WebM 또는 WAV 파일 처리
-        audio_bytes = io.BytesIO(audio_data)
-        
-        try:
-            # WebM 파일을 WAV로 변환 (ffmpeg 사용)
-            import subprocess
-            import tempfile
-            
-            # 임시 파일 생성
-            with tempfile.NamedTemporaryFile(suffix='.webm', delete=False) as temp_webm:
-                temp_webm.write(audio_data)
-                temp_webm_path = temp_webm.name
-            
-            with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as temp_wav:
-                temp_wav_path = temp_wav.name
-            
-            # ffmpeg로 WebM → WAV 변환
-            subprocess.run([
-                'ffmpeg', '-i', temp_webm_path, 
-                '-ar', '16000',  # 16kHz 샘플링
-                '-ac', '1',      # 모노
-                '-y',            # 덮어쓰기
-                temp_wav_path
-            ], check=True, capture_output=True)
-            
-            # 변환된 WAV 파일 로드
-            waveform, sample_rate = torchaudio.load(temp_wav_path)
-            
-            # numpy 배열로 변환
-            audio_array = waveform.squeeze().numpy()
-            print(f"🔄 [VOICE_ANALYZE] WebM→WAV 변환 및 전처리 완료 - 길이: {len(audio_array)}, 샘플레이트: {sample_rate}Hz")
-            
-            # 임시 파일 정리
-            os.unlink(temp_webm_path)
-            os.unlink(temp_wav_path)
-            
-        except Exception as e:
-            print(f"❌ [VOICE_ANALYZE] 오디오 전처리 실패: {e}")
-            return {
-                "success": False,
-                "error": f"오디오 파일 처리 실패: {str(e)}",
-                "analysis": None
-            }
-        
-        # 음성 분석 수행
-        print("🔄 [VOICE_ANALYZE] 음성 분석 시작...")
-        analysis_result = await asyncio.to_thread(process_audio_simple, audio_array)
-        print(f"✅ [VOICE_ANALYZE] 음성 분석 완료")
-        
-        # 결과 로그
-        print(f"📝 [VOICE_ANALYZE] 분석 결과:")
-        print(f"   - 인식된 텍스트: {analysis_result.get('transcript', 'N/A')}")
-        print(f"   - 감정: {analysis_result.get('emotion', 'N/A')} ({analysis_result.get('emotion_score', 0):.2f})")
-        print(f"   - 종합 점수: {analysis_result.get('total_score', 0):.1f}")
-        print(f"   - 음성 톤 점수: {analysis_result.get('voice_tone_score', 0):.1f}")
-        print(f"   - 단어 선택 점수: {analysis_result.get('word_choice_score', 0):.1f}")
-        
-        return {
-            "success": True,
-            "analysis": analysis_result,
-            "message": "음성 분석 완료"
-        }
-        
-    except Exception as e:
-        print(f"❌ [VOICE_ANALYZE] 음성 분석 중 오류: {e}")
-        return {
-            "success": False,
-            "error": f"음성 분석 중 오류 발생: {str(e)}",
-            "analysis": None
-        }
+    # 음성 분석이 비활성화된 경우 더미 응답 반환
+    return {
+        "success": True,
+        "analysis": {
+            "transcript": "음성 분석 기능이 비활성화되어 있습니다.",
+            "emotion": "중립",
+            "emotion_score": 0.5,
+            "total_score": 50.0,
+            "voice_tone_score": 50.0,
+            "word_choice_score": 50.0,
+            "voice_details": {
+                "pitch_variation": 0.5,
+                "speaking_speed": 3.0,
+                "volume_consistency": 0.5,
+                "warmth_score": 0.5,
+                "enthusiasm_level": 0.5,
+                "politeness_level": 0.5,
+                "confidence_level": 0.5,
+                "volume_strength": 0.5
+            },
+            "word_details": {
+                "positive_words": [],
+                "negative_words": [],
+                "polite_phrases": [],
+                "empathy_indicators": [],
+                "enthusiasm_indicators": [],
+                "politeness_score": 0.5,
+                "empathy_score": 0.5,
+                "enthusiasm_score": 0.5,
+                "valence_score": 0.5
+            },
+            "weights": {
+                "voice": 0.4,
+                "word": 0.4,
+                "emotion": 0.2
+            },
+            "positive_words": [],
+            "negative_words": []
+        },
+        "message": "음성 분석 기능이 비활성화되어 더미 데이터를 반환합니다."
+    }
 
 # ====== TTS 관련 API ======
 
