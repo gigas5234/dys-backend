@@ -137,4 +137,9 @@ function updateBlinkingExplanationInfo() {
     
     explanationDiv.innerHTML = explanation;
 }
+
+// 전역 스코프에 함수들 노출
+window.updateBlinkingFactorsInfo = updateBlinkingFactorsInfo;
+window.updateBlinkingCriteriaInfo = updateBlinkingCriteriaInfo;
+window.updateBlinkingExplanationInfo = updateBlinkingExplanationInfo;
 </script>

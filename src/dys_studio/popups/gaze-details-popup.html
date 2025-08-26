@@ -137,4 +137,9 @@ function updateGazeExplanationInfo() {
     
     explanationDiv.innerHTML = explanation;
 }
+
+// 전역 스코프에 함수들 노출
+window.updateGazeLandmarksInfo = updateGazeLandmarksInfo;
+window.updateGazeCriteriaInfo = updateGazeCriteriaInfo;
+window.updateGazeExplanationInfo = updateGazeExplanationInfo;
 </script>

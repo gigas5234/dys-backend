@@ -138,4 +138,9 @@ function updatePostureExplanationInfo() {
     
     explanationDiv.innerHTML = explanation;
 }
+
+// 전역 스코프에 함수들 노출
+window.updatePostureFactorsInfo = updatePostureFactorsInfo;
+window.updatePostureCriteriaInfo = updatePostureCriteriaInfo;
+window.updatePostureExplanationInfo = updatePostureExplanationInfo;
 </script>
