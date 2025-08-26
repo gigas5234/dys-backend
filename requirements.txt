@@ -22,14 +22,17 @@ torch==2.1.1
 torchaudio==2.1.1
 transformers==4.35.2
 faster-whisper==0.9.0
-edge-tts==6.1.9
-mlflow  # 표정 분석기 모듈 추가
+edge-tts>=7.2.1
+mlflow>=2.8.0  # 표정 분석기 모듈 추가
 # ctranslate2==3.22.0  # 음성 분석 모듈 (libctranslate2 호환성 문제로 비활성화)
 opencv-python-headless  # OpenCV headless 버전 (GUI 없음)
 
 # Audio Processing
 numpy==1.24.3
 librosa==0.10.1
+
+# Image Processing
+Pillow>=10.0.0  # 이미지 처리
 
 # Data Processing
 pydantic==2.5.0
