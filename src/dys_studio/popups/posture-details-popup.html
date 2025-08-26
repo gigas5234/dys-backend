@@ -1,0 +1,39 @@
+<!-- 자세 상세 정보 팝업 -->
+<div id="posture-details-popup" class="details-popup">
+  <div class="details-popup-content">
+    <div class="details-popup-header">
+      <h3>✨ 자세 분석 상세</h3>
+      <button class="details-popup-close" onclick="closePostureDetails()">×</button>
+    </div>
+    <div class="details-popup-body">
+      <div class="posture-summary">
+        <div class="posture-main">
+          <div class="posture-label">자세 상태</div>
+          <div id="posture-main-value" class="posture-main-value">-</div>
+        </div>
+        <div class="posture-score">
+          <div class="posture-label">자세 점수</div>
+          <div id="posture-score-value" class="posture-score-value">-%</div>
+        </div>
+      </div>
+      <div class="posture-breakdown">
+        <div class="posture-label">분석 요소</div>
+        <div id="posture-factors" class="posture-factors">
+          <!-- 동적으로 생성됨 -->
+        </div>
+      </div>
+      <div class="posture-criteria">
+        <div class="posture-label">평가 기준</div>
+        <div id="posture-criteria-text" class="posture-criteria-text">
+          자세 분석 데이터가 없습니다.
+        </div>
+      </div>
+      <div class="posture-explanation">
+        <div class="posture-label">점수 계산 근거</div>
+        <div id="posture-explanation-text" class="posture-explanation-text">
+          자세 분석 데이터가 없습니다.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

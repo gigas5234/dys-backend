@@ -1,0 +1,39 @@
+<!-- 시선 안정성 상세 정보 팝업 -->
+<div id="gaze-details-popup" class="details-popup">
+  <div class="details-popup-content">
+    <div class="details-popup-header">
+      <h3>👁️ 시선 안정성 분석 상세</h3>
+      <button class="details-popup-close" onclick="closeGazeDetails()">×</button>
+    </div>
+    <div class="details-popup-body">
+      <div class="gaze-summary">
+        <div class="gaze-main">
+          <div class="gaze-label">시선 상태</div>
+          <div id="gaze-main-value" class="gaze-main-value">-</div>
+        </div>
+        <div class="gaze-stability">
+          <div class="gaze-label">안정성 점수</div>
+          <div id="gaze-stability-value" class="gaze-stability-value">-%</div>
+        </div>
+      </div>
+      <div class="gaze-breakdown">
+        <div class="gaze-label">랜드마크 정보</div>
+        <div id="gaze-landmarks" class="gaze-landmarks">
+          <!-- 동적으로 생성됨 -->
+        </div>
+      </div>
+      <div class="gaze-criteria">
+        <div class="gaze-label">평가 기준</div>
+        <div id="gaze-criteria-text" class="gaze-criteria-text">
+          시선 분석 데이터가 없습니다.
+        </div>
+      </div>
+      <div class="gaze-explanation">
+        <div class="gaze-label">점수 계산 근거</div>
+        <div id="gaze-explanation-text" class="gaze-explanation-text">
+          시선 분석 데이터가 없습니다.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
