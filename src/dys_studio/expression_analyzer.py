@@ -69,6 +69,19 @@ class ExpressionAnalyzer:
                             import mlflow.pytorch
                             # CPU 매핑으로 CUDA 호환성 문제 해결
                             self.model = mlflow.pytorch.load_model(model_path, map_location='cpu')
+                            
+                            # ViT 모델인 경우 config 속성 확인 및 추가
+                            if hasattr(self.model, 'config'):
+                                if not hasattr(self.model.config, 'output_attentions'):
+                                    self.model.config.output_attentions = False
+                                    print("🔧 output_attentions 속성 추가")
+                                if not hasattr(self.model.config, 'output_hidden_states'):
+                                    self.model.config.output_hidden_states = False
+                                    print("🔧 output_hidden_states 속성 추가")
+                                if not hasattr(self.model.config, 'use_return_dict'):
+                                    self.model.config.use_return_dict = True
+                                    print("🔧 use_return_dict 속성 추가")
+                            
                             print(f"✅ MLflow 모델 로드 완료: {model_path}")
                             model_loaded = True
                             break
@@ -88,6 +101,19 @@ class ExpressionAnalyzer:
                             try:
                                 # 먼저 일반 PyTorch 모델로 시도
                                 self.model = torch.load(model_file, map_location='cpu')
+                                
+                                # ViT 모델인 경우 config 속성 확인 및 추가
+                                if hasattr(self.model, 'config'):
+                                    if not hasattr(self.model.config, 'output_attentions'):
+                                        self.model.config.output_attentions = False
+                                        print("🔧 output_attentions 속성 추가")
+                                    if not hasattr(self.model.config, 'output_hidden_states'):
+                                        self.model.config.output_hidden_states = False
+                                        print("🔧 output_hidden_states 속성 추가")
+                                    if not hasattr(self.model.config, 'use_return_dict'):
+                                        self.model.config.use_return_dict = True
+                                        print("🔧 use_return_dict 속성 추가")
+                                
                                 print(f"✅ PyTorch 모델 로드 완료: {model_file}")
                                 model_loaded = True
                                 break
@@ -139,6 +165,14 @@ class ExpressionAnalyzer:
                                         
                                         # 새 모델 생성
                                         self.model = ViTForImageClassification(config)
+                                        
+                                        # ViTConfig에 누락된 속성들 강제 추가
+                                        if not hasattr(self.model.config, 'output_attentions'):
+                                            self.model.config.output_attentions = False
+                                        if not hasattr(self.model.config, 'output_hidden_states'):
+                                            self.model.config.output_hidden_states = False
+                                        if not hasattr(self.model.config, 'use_return_dict'):
+                                            self.model.config.use_return_dict = True
                                         
                                         # 저장된 모델이 state_dict 형태인지 확인하고 로드
                                         if isinstance(model_dict, dict):
@@ -317,6 +351,15 @@ class ExpressionAnalyzer:
             # GPU로 이동
             if self.device.type == 'cuda':
                 image_tensor = image_tensor.to(self.device)
+            
+            # 모델 config 속성 재확인 (런타임 안전장치)
+            if hasattr(self.model, 'config'):
+                if not hasattr(self.model.config, 'output_attentions'):
+                    self.model.config.output_attentions = False
+                if not hasattr(self.model.config, 'output_hidden_states'):
+                    self.model.config.output_hidden_states = False
+                if not hasattr(self.model.config, 'use_return_dict'):
+                    self.model.config.use_return_dict = True
             
             # 추론
             with torch.no_grad():
