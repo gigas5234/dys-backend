@@ -135,7 +135,7 @@
       <div class="camera-warning-icon">📹</div>
       <div class="camera-warning-text">
         <h3>카메라 인식 불안정</h3>
-        <p>자세를 고정하고 피드백을 받으세요</p>
+        <p>카메라 위치를 조정하거나 얼굴이 정면을 향하도록 해주세요.<br>정확한 분석을 위해 카메라가 얼굴을 잘 인식할 수 있도록 위치를 조정해주세요.</p>
       </div>
       <button class="camera-warning-close" onclick="this.parentElement.parentElement.style.display='none'">×</button>
     </div>
@@ -1325,11 +1325,14 @@ function updateCameraMetrics(metrics) {
     
     if (!isFaceDetected) {
       console.log('[UI] ⚠️ 얼굴이 감지되지 않음 - UI 초기화');
-      postureElement.textContent = '0%';
-      gazeElement.textContent = '0%';
-      concentrationElement.textContent = '0%';
-      blinkElement.textContent = '0%';
-      expressionElement.textContent = '0%';
+      postureElement.textContent = '-';
+      gazeElement.textContent = '-';
+      concentrationElement.textContent = '-';
+      blinkElement.textContent = '-';
+      expressionElement.textContent = '-';
+      
+      // 카메라 위치/정보 부족 경고 표시
+      showCameraWarningInline();
       
       // 상태 표시도 초기화
       const expressionStatusElement = document.getElementById('expression-status');
@@ -1355,11 +1358,14 @@ function updateCameraMetrics(metrics) {
       currentConcentrationData = null;
       
       // 표정 분석 데이터 초기화
-      lastExpressionScore = 60;
-      lastExpressionText = '중립적';
+      lastExpressionScore = null;
+      lastExpressionText = '-';
       lastExpressionUpdate = 0;
       
       return;
+    } else {
+      // 얼굴이 감지되면 카메라 경고 숨기기
+      hideCameraWarningInline();
     }
     
     // 자세 점수 (초기에는 점수 미표시)
@@ -1429,7 +1435,7 @@ function updateCameraMetrics(metrics) {
     }
     
     // 종합 점수 계산기에 자세 점수 업데이트
-    if (window.ComprehensiveScoreCalculator) {
+    if (window.ComprehensiveScoreCalculator && postureScore != null) {
       window.ComprehensiveScoreCalculator.updateVisualScore('posture', postureScore);
     }
     
@@ -1474,11 +1480,16 @@ function updateCameraMetrics(metrics) {
     });
     
     if (metrics?.gazeAnalysis) {
-      gazeElement.textContent = `${metrics.gazeAnalysis.stabilityScore}%`;
-      
-      // 종합 점수 계산기에 시선 안정성 점수 업데이트
-      if (window.ComprehensiveScoreCalculator) {
-        window.ComprehensiveScoreCalculator.updateVisualScore('gaze_stability', metrics.gazeAnalysis.stabilityScore);
+      const stabilityScore = metrics.gazeAnalysis.stabilityScore;
+      if (stabilityScore != null) {
+        gazeElement.textContent = `${stabilityScore}%`;
+        
+        // 종합 점수 계산기에 시선 안정성 점수 업데이트
+        if (window.ComprehensiveScoreCalculator) {
+          window.ComprehensiveScoreCalculator.updateVisualScore('gaze_stability', stabilityScore);
+        }
+      } else {
+        gazeElement.textContent = '-';
       }
     } else if (metrics?.scores?.stability != null) {
       const stabilityScore = Math.round(metrics.scores.stability);
@@ -1488,14 +1499,16 @@ function updateCameraMetrics(metrics) {
       if (window.ComprehensiveScoreCalculator) {
         window.ComprehensiveScoreCalculator.updateVisualScore('gaze_stability', stabilityScore);
       }
+    } else {
+      gazeElement.textContent = '-';
     }
     
     // 집중도 점수 (통일된 데이터 구조 처리)
-    let concentrationScore = 60; // 기본값
+    let concentrationScore = null; // 기본값 제거
     
     if (metrics?.gazeAnalysis) {
       // 통일된 분석 데이터 구조
-      const stabilityScore = metrics.gazeAnalysis.stabilityScore || 60;
+      const stabilityScore = metrics.gazeAnalysis.stabilityScore || null;
       const isFocused = metrics.gazeAnalysis.isFocused || false;
       const gazeDirection = metrics.gazeAnalysis.gazeDirection || 'center';
       const jumpDistance = metrics.gazeAnalysis.jumpDistance || 0.03;
@@ -1525,25 +1538,33 @@ function updateCameraMetrics(metrics) {
       // 집중 상태 보너스
       if (isFocused) concentrationScore += 10;
       
-      // 안정성 점수와 평균 계산
-      concentrationScore = Math.round((concentrationScore + stabilityScore) / 2);
+      // 안정성 점수가 있으면 평균 계산, 없으면 계산된 점수만 사용
+      if (stabilityScore != null) {
+        concentrationScore = Math.round((concentrationScore + stabilityScore) / 2);
+      } else {
+        concentrationScore = Math.round(concentrationScore);
+      }
       
       console.log('[UI] MediaPipe 집중도 점수 계산:', { stabilityScore, isFocused, gazeDirection, jumpDistance, velocity, concentrationScore });
     } else if (metrics?.gazeScore !== undefined) {
       // 워커 데이터 구조 (직접 점수)
-      concentrationScore = metrics.gazeScore || 60;
+      concentrationScore = metrics.gazeScore;
       
       console.log('[UI] 워커 데이터 집중도 점수 계산:', { gazeScore: metrics.gazeScore, concentrationScore });
     } else if (metrics?.scores?.attention != null) {
       concentrationScore = Math.round(metrics.scores.attention);
     }
     
-    concentrationScore = Math.min(100, Math.max(0, Math.round(concentrationScore)));
-    concentrationElement.textContent = `${concentrationScore}%`;
-    updateScoreColor(concentrationElement, concentrationScore);
+    if (concentrationScore != null) {
+      concentrationScore = Math.min(100, Math.max(0, Math.round(concentrationScore)));
+      concentrationElement.textContent = `${concentrationScore}%`;
+      updateScoreColor(concentrationElement, concentrationScore);
+    } else {
+      concentrationElement.textContent = '-';
+    }
     
     // 종합 점수 계산기에 집중도 점수 업데이트
-    if (window.ComprehensiveScoreCalculator) {
+    if (window.ComprehensiveScoreCalculator && concentrationScore != null) {
       window.ComprehensiveScoreCalculator.updateAuditoryScore('concentration', concentrationScore);
     }
     
@@ -1562,7 +1583,7 @@ function updateCameraMetrics(metrics) {
     // 집중도 분석 상태 업데이트
     const concentrationStatusElement = document.getElementById('concentration-status');
     if (concentrationStatusElement) {
-      if (metrics?.gazeAnalysis) {
+      if (metrics?.gazeAnalysis && concentrationScore != null) {
         const isFocused = metrics.gazeAnalysis.isFocused;
         concentrationStatusElement.textContent = isFocused ? '집중 중' : '분산됨';
         concentrationStatusElement.style.color = isFocused ? '#10b981' : '#f59e0b';
@@ -1575,11 +1596,11 @@ function updateCameraMetrics(metrics) {
     console.log(`[UI] 집중도 점수 업데이트 (${dataSource}):`, concentrationScore);
     
     // 시선 안정성 점수 (워커 데이터와 HTTP 분석 데이터 모두 지원)
-    let gazeScore = 60; // 기본값
+    let gazeScore = null; // 기본값 제거
     
     if (metrics?.gazeAnalysis) {
       // HTTP 분석 데이터 구조
-      const stabilityScore = metrics.gazeAnalysis.stabilityScore || 60;
+      const stabilityScore = metrics.gazeAnalysis.stabilityScore || null;
       const jumpDistance = metrics.gazeAnalysis.jumpDistance || 0.03;
       const velocity = metrics.gazeAnalysis.velocity || 0.02;
       
@@ -1603,16 +1624,20 @@ function updateCameraMetrics(metrics) {
       console.log('[UI] HTTP 분석 시선 안정성 점수 계산:', { stabilityScore, jumpDistance, velocity, gazeScore });
     } else if (metrics?.gazeScore !== undefined) {
       // 워커 데이터 구조 (직접 점수)
-      gazeScore = metrics.gazeScore || 60;
+      gazeScore = metrics.gazeScore;
       
       console.log('[UI] 워커 데이터 시선 안정성 점수 계산:', { gazeScore: metrics.gazeScore });
     } else if (metrics?.scores?.stability != null) {
       gazeScore = Math.round(metrics.scores.stability);
     }
     
-    gazeScore = Math.min(100, Math.max(0, Math.round(gazeScore)));
-    gazeElement.textContent = `${gazeScore}%`;
-    updateScoreColor(gazeElement, gazeScore);
+    if (gazeScore != null) {
+      gazeScore = Math.min(100, Math.max(0, Math.round(gazeScore)));
+      gazeElement.textContent = `${gazeScore}%`;
+      updateScoreColor(gazeElement, gazeScore);
+    } else {
+      gazeElement.textContent = '-';
+    }
     
     // 시선 분석 데이터 저장 (팝업용)
     if (metrics?.gazeAnalysis) {
@@ -1629,7 +1654,7 @@ function updateCameraMetrics(metrics) {
     // 시선 분석 상태 업데이트
     const gazeStatusElement = document.getElementById('gaze-status');
     if (gazeStatusElement) {
-      if (metrics?.gazeAnalysis) {
+      if (metrics?.gazeAnalysis && gazeScore != null) {
         const isFocused = metrics.gazeAnalysis.isFocused;
         gazeStatusElement.textContent = isFocused ? '집중 중' : '분산됨';
         gazeStatusElement.style.color = isFocused ? '#10b981' : '#f59e0b';
@@ -1642,7 +1667,7 @@ function updateCameraMetrics(metrics) {
     console.log(`[UI] 시선 안정성 점수 업데이트 (${dataSource}):`, gazeScore);
     
     // 깜빡임 점수 (MediaPipe earResult 기반)
-    let blinkScore = 80; // 기본값
+    let blinkScore = null; // 기본값 제거
     
     if (metrics?.earResult?.blinkStatus) {
       // MediaPipe에서 받은 blinkStatus 사용
@@ -1682,17 +1707,21 @@ function updateCameraMetrics(metrics) {
     } else if (metrics?.scores?.blink != null) {
       blinkScore = Math.round(metrics.scores.blink);
     } else {
-      // 분석 데이터가 없을 때 기본값 사용
-      blinkScore = 80;
-      console.log('[UI] 깜빡임 분석 데이터 없음, 기본값 사용:', blinkScore);
+      // 분석 데이터가 없을 때 null로 설정
+      blinkScore = null;
+      console.log('[UI] 깜빡임 분석 데이터 없음, 점수 미표시');
     }
     
-    blinkScore = Math.min(100, Math.max(0, Math.round(blinkScore)));
-    blinkElement.textContent = `${blinkScore}%`;
-    updateScoreColor(blinkElement, blinkScore);
+    if (blinkScore != null) {
+      blinkScore = Math.min(100, Math.max(0, Math.round(blinkScore)));
+      blinkElement.textContent = `${blinkScore}%`;
+      updateScoreColor(blinkElement, blinkScore);
+    } else {
+      blinkElement.textContent = '-';
+    }
     
     // 종합 점수 계산기에 깜빡임 점수 업데이트
-    if (window.ComprehensiveScoreCalculator) {
+    if (window.ComprehensiveScoreCalculator && blinkScore != null) {
       window.ComprehensiveScoreCalculator.updateVisualScore('blinking', blinkScore);
     }
     
@@ -1711,7 +1740,7 @@ function updateCameraMetrics(metrics) {
     // 깜빡임 분석 상태 업데이트
     const blinkingStatusElement = document.getElementById('blinking-status');
     if (blinkingStatusElement) {
-      if (metrics?.earResult?.blinkStatus) {
+      if (metrics?.earResult?.blinkStatus && blinkScore != null) {
         const blinkStatus = metrics.earResult.blinkStatus;
         if (blinkStatus === 'open') {
           blinkingStatusElement.textContent = '눈 뜸';
