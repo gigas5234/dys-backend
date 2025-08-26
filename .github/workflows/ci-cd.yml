@@ -21,16 +21,33 @@ jobs:
 
       - name: Configure Docker for Artifact Registry
         run: gcloud auth configure-docker asia-northeast3-docker.pkg.dev --quiet
+        
+      - name: Debug Build Environment
+        run: |
+          echo "=== Build Environment Info ==="
+          echo "Available disk space:"
+          df -h
+          echo "Available memory:"
+          free -h
+          echo "Docker version:"
+          docker version
+          echo "Docker info:"
+          docker info
 
       - name: Build Docker Image
         run: |
           docker build \
+            --progress=plain \
+            --no-cache \
+            --build-arg BUILDKIT_INLINE_CACHE=1 \
             -t asia-northeast3-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/dys-backend/dys-backend:${{ github.sha }} \
             .
+        timeout-minutes: 30
 
       - name: Push Docker Image
         run: |
           docker push asia-northeast3-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/dys-backend/dys-backend:${{ github.sha }}
+        timeout-minutes: 15
 
   deploy-to-gke:
     needs: build-and-push-to-gcr
@@ -98,3 +115,13 @@ jobs:
             kubectl logs "$POD" -c dys-backend-container --tail=200 || true
             kubectl logs "$POD" -c dys-backend-container --previous --tail=200 || true
           fi
+          
+          echo "=== Build Debug Info ==="
+          echo "Docker version:"
+          docker version || true
+          echo "Docker info:"
+          docker info || true
+          echo "Available disk space:"
+          df -h || true
+          echo "Available memory:"
+          free -h || true
