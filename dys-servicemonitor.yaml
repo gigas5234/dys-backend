@@ -1,0 +1,69 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: dys-backend-monitor
+  namespace: monitoring
+  labels:
+    app: dys-backend
+    prometheus: monitoring
+spec:
+  selector:
+    matchLabels:
+      app: dys-backend
+  namespaceSelector:
+    matchNames:
+    - default  # DYS 백엔드가 배포된 네임스페이스
+  endpoints:
+  - port: http  # 서비스 포트명
+    path: /metrics  # 메트릭 엔드포인트
+    interval: 30s
+    scrapeTimeout: 10s
+  - port: websocket  # WebSocket 포트
+    path: /metrics
+    interval: 30s
+    scrapeTimeout: 10s
+---
+# DYS 백엔드 서비스에 메트릭 레이블 추가
+apiVersion: v1
+kind: Service
+metadata:
+  name: dys-backend-metrics
+  labels:
+    app: dys-backend
+    prometheus: monitoring
+spec:
+  type: ClusterIP
+  selector:
+    app: dys-backend
+  ports:
+  - name: http
+    protocol: TCP
+    port: 8000
+    targetPort: 8000
+  - name: websocket
+    protocol: TCP
+    port: 8001
+    targetPort: 8001
+---
+# PodMonitor for 동적 Pod 추적
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: dys-backend-pods
+  namespace: monitoring
+  labels:
+    app: dys-backend
+spec:
+  selector:
+    matchLabels:
+      app: dys-backend
+  namespaceSelector:
+    matchNames:
+    - default
+  podMetricsEndpoints:
+  - port: http
+    path: /metrics
+    interval: 30s
+  - port: websocket  
+    path: /metrics
+    interval: 30s

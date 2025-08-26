@@ -1,0 +1,189 @@
+# Prometheus 커스텀 설정
+# 노드 변경 및 빌드 추적을 위한 설정
+
+prometheus:
+  prometheusSpec:
+    # 모든 ServiceMonitor 자동 감지
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+    
+    # 데이터 보존 기간 (빌드 히스토리 추적)
+    retention: 30d
+    retentionSize: 40GB
+    
+    # 스크래핑 간격 (빠른 노드 변경 감지)
+    scrapeInterval: 15s
+    evaluationInterval: 15s
+    
+    # 스토리지 설정
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 50Gi
+          storageClassName: standard-rwo
+    
+    # 추가 스크래핑 설정 (노드 및 Pod 추적)
+    additionalScrapeConfigs:
+    - job_name: 'kubernetes-pods'
+      kubernetes_sd_configs:
+      - role: pod
+      relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+        action: keep
+        regex: true
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+        action: replace
+        target_label: __metrics_path__
+        regex: (.+)
+      - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+        action: replace
+        regex: ([^:]+)(?::\d+)?;(\d+)
+        replacement: ${1}:${2}
+        target_label: __address__
+      - action: labelmap
+        regex: __meta_kubernetes_pod_label_(.+)
+      - source_labels: [__meta_kubernetes_namespace]
+        action: replace
+        target_label: kubernetes_namespace
+      - source_labels: [__meta_kubernetes_pod_name]
+        action: replace
+        target_label: kubernetes_pod_name
+      - source_labels: [__meta_kubernetes_pod_node_name]
+        action: replace
+        target_label: kubernetes_node_name
+    
+    # DYS 백엔드 특별 추적
+    - job_name: 'dys-backend-tracking'
+      kubernetes_sd_configs:
+      - role: pod
+        namespaces:
+          names:
+          - default
+      relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_label_app]
+        action: keep
+        regex: dys-backend
+      - source_labels: [__meta_kubernetes_pod_ip]
+        action: replace
+        target_label: __address__
+        replacement: ${1}:8000
+      - source_labels: [__meta_kubernetes_pod_name]
+        action: replace
+        target_label: pod_name
+      - source_labels: [__meta_kubernetes_pod_node_name]
+        action: replace
+        target_label: node_name
+      - source_labels: [__meta_kubernetes_pod_phase]
+        action: replace
+        target_label: pod_phase
+      - source_labels: [__meta_kubernetes_pod_ready]
+        action: replace
+        target_label: pod_ready
+      - source_labels: [__meta_kubernetes_pod_container_image]
+        action: replace
+        target_label: container_image
+      metrics_path: '/metrics'
+      scrape_interval: 15s
+
+grafana:
+  enabled: true
+  adminPassword: "dys-monitoring-2024"
+  
+  # 외부 접속 설정
+  service:
+    type: LoadBalancer
+    port: 3000
+  
+  # 데이터 영구 저장
+  persistence:
+    enabled: true
+    size: 10Gi
+    storageClassName: standard-rwo
+  
+  # 초기 대시보드 설정
+  dashboardProviders:
+    dashboardproviders.yaml:
+      apiVersion: 1
+      providers:
+      - name: 'default'
+        orgId: 1
+        folder: ''
+        type: file
+        disableDeletion: false
+        editable: true
+        options:
+          path: /var/lib/grafana/dashboards/default
+  
+  # DYS 백엔드 전용 대시보드
+  dashboards:
+    default:
+      # Kubernetes 클러스터 대시보드
+      kubernetes-cluster:
+        gnetId: 7249
+        revision: 1
+        datasource: Prometheus
+      
+      # Node Exporter 대시보드  
+      node-exporter:
+        gnetId: 1860
+        revision: 37
+        datasource: Prometheus
+      
+      # Pod 모니터링 대시보드
+      kubernetes-pods:
+        gnetId: 6417
+        revision: 1
+        datasource: Prometheus
+
+# AlertManager 설정
+alertmanager:
+  enabled: true
+  service:
+    type: LoadBalancer
+  
+  # 빌드 및 노드 변경 알림 설정
+  config:
+    global:
+      smtp_smarthost: 'localhost:587'
+      smtp_from: 'alertmanager@dys-backend.com'
+    
+    route:
+      group_by: ['alertname']
+      group_wait: 10s
+      group_interval: 10s
+      repeat_interval: 1h
+      receiver: 'web.hook'
+    
+    receivers:
+    - name: 'web.hook'
+      webhook_configs:
+      - url: 'http://dys-backend.default.svc.cluster.local/api/monitoring/alerts'
+        send_resolved: true
+
+# Node Exporter 설정 (노드 메트릭 수집)
+nodeExporter:
+  enabled: true
+  
+# kube-state-metrics 설정 (Kubernetes 오브젝트 상태)
+kubeStateMetrics:
+  enabled: true
+
+# Prometheus Operator 설정
+prometheusOperator:
+  enabled: true
+  
+  # CRD 자동 생성
+  manageCrds: true
+  
+  # 리소스 제한
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
