@@ -116,7 +116,7 @@ vision-backend/
 ├── 📁 dys_studio/             # AI 분석 모듈
 │   ├── 📄 voice_input.py      # 음성 분석 및 처리
 │   ├── 📄 expression_analyzer.py # 표정 분석
-│   ├── 📄 test_expression_model.py # 표정 모델 테스트
+
 │   ├── 📄 studio_calibration.html # 웹 인터페이스
 │   ├── 📁 models/             # AI 모델 파일
 │   ├── 📁 js/                 # JavaScript 파일
@@ -188,8 +188,7 @@ from dys_studio.voice_input import preload_models
 preload_models()
 "
 
-# 표정 분석 모델 확인
-python dys_studio/test_expression_model.py
+# 표정 분석 모델 확인 (expression_analyzer.py에서 자동 처리됨)
 ```
 
 ---

@@ -37,3 +37,104 @@
     </div>
   </div>
 </div>
+
+<script>
+// 시선 안정성 상세 정보 팝업 관련 함수들
+function updateGazeLandmarksInfo() {
+    const landmarksDiv = document.getElementById('gaze-landmarks');
+    
+    // 시선 분석에만 사용되는 MediaPipe FaceMesh 랜드마크 정보
+    const landmarkInfo = [
+        { name: '왼쪽 눈 윤곽', value: '16개', description: '왼쪽 눈의 윤곽선을 구성하는 랜드마크' },
+        { name: '오른쪽 눈 윤곽', value: '16개', description: '오른쪽 눈의 윤곽선을 구성하는 랜드마크' },
+        { name: '왼쪽 눈썹', value: '10개', description: '왼쪽 눈썹의 윤곽선을 구성하는 랜드마크' },
+        { name: '오른쪽 눈썹', value: '10개', description: '오른쪽 눈썹의 윤곽선을 구성하는 랜드마크' },
+        { name: '눈동자 중심', value: '2개', description: '왼쪽/오른쪽 눈동자의 중심점' },
+        { name: '시선 추적용', value: '54개', description: '시선 방향과 안정성 분석에 사용되는 총 랜드마크' }
+    ];
+    
+    let html = '';
+    landmarkInfo.forEach(item => {
+        html += `
+            <div class="landmark-item">
+                <div class="landmark-name">${item.name}</div>
+                <div class="landmark-value">${item.value}</div>
+                <div class="landmark-description">${item.description}</div>
+            </div>
+        `;
+    });
+    
+    landmarksDiv.innerHTML = html;
+}
+
+function updateGazeCriteriaInfo() {
+    const criteriaDiv = document.getElementById('gaze-criteria-text');
+    
+    const criteria = `
+        <div class="criteria-section">
+            <h4>🎯 시선 안정성 평가 기준</h4>
+            <ul>
+                <li><strong>점프 거리 (40%)</strong>: 눈동자 중심점의 급격한 이동 거리</li>
+                <li><strong>속도 (30%)</strong>: 눈동자 이동의 평균 속도 (픽셀/프레임)</li>
+                <li><strong>안정성 (30%)</strong>: 눈동자가 한 영역에 머무는 정도</li>
+            </ul>
+            
+            <h4>👁️ 시선 분석 방법</h4>
+            <ul>
+                <li><strong>눈 윤곽 추적</strong>: 32개 랜드마크로 눈의 위치와 크기 측정</li>
+                <li><strong>눈동자 중심 계산</strong>: 눈 윤곽 내부의 중심점 추정</li>
+                <li><strong>시선 방향 분석</strong>: 눈동자 중심의 화면 내 위치 변화 추적</li>
+                <li><strong>안정성 판단</strong>: 일정 시간 동안의 시선 변화량 계산</li>
+            </ul>
+            
+            <h4>📊 점수 기준</h4>
+            <ul>
+                <li><strong>90-100점</strong>: 매우 안정적인 시선 (집중력 우수)</li>
+                <li><strong>70-89점</strong>: 안정적인 시선 (적절한 집중)</li>
+                <li><strong>50-69점</strong>: 보통 수준의 시선 (일반적인 상태)</li>
+                <li><strong>30-49점</strong>: 불안정한 시선 (집중력 저하)</li>
+                <li><strong>0-29점</strong>: 매우 불안정한 시선 (심각한 집중력 문제)</li>
+            </ul>
+        </div>
+    `;
+    
+    criteriaDiv.innerHTML = criteria;
+}
+
+function updateGazeExplanationInfo() {
+    const explanationDiv = document.getElementById('gaze-explanation-text');
+    
+    if (!currentGazeData) {
+        explanationDiv.innerHTML = '시선 분석 데이터가 없습니다.';
+        return;
+    }
+    
+    const { jumpDistance, velocity, isFocused, score } = currentGazeData;
+    
+    let explanation = `<div class="explanation-section">`;
+    explanation += `<h4>📈 현재 분석 결과</h4>`;
+    explanation += `<ul>`;
+    explanation += `<li><strong>시선 상태</strong>: ${isFocused ? '집중 중' : '분산됨'}</li>`;
+    explanation += `<li><strong>점프 거리</strong>: ${(jumpDistance * 100).toFixed(2)}% (화면 대비)</li>`;
+    explanation += `<li><strong>이동 속도</strong>: ${velocity.toFixed(4)} (픽셀/프레임)</li>`;
+    explanation += `<li><strong>최종 점수</strong>: ${score}점</li>`;
+    explanation += `</ul>`;
+    
+    // 점수 해석
+    if (score >= 90) {
+        explanation += `<p>🎯 <strong>매우 우수한 시선 안정성</strong>: 시선이 매우 안정적으로 유지되고 있습니다.</p>`;
+    } else if (score >= 70) {
+        explanation += `<p>🎯 <strong>우수한 시선 안정성</strong>: 시선이 안정적으로 유지되고 있습니다.</p>`;
+    } else if (score >= 50) {
+        explanation += `<p>🎯 <strong>보통 수준의 시선 안정성</strong>: 시선이 어느 정도 안정적입니다.</p>`;
+    } else if (score >= 30) {
+        explanation += `<p>🎯 <strong>개선이 필요한 시선 안정성</strong>: 시선이 다소 불안정합니다.</p>`;
+    } else {
+        explanation += `<p>🎯 <strong>매우 개선이 필요한 시선 안정성</strong>: 시선이 매우 불안정합니다.</p>`;
+    }
+    
+    explanation += `</div>`;
+    
+    explanationDiv.innerHTML = explanation;
+}
+</script>
