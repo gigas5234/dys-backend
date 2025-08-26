@@ -32,9 +32,18 @@ except ImportError as e:
 
 # analyzers 모듈 제거됨 - 클라이언트 측에서 처리
 
-# 음성 분석 모듈 import (선택적) - libctranslate2 호환성 문제로 비활성화
+# 음성 분석 모듈 import (선택적) - faster-whisper 사용
 VOICE_ANALYSIS_AVAILABLE = False
-print("⚠️ 음성 분석 모듈이 libctranslate2 호환성 문제로 비활성화되었습니다.")
+try:
+    from dys_studio.voice_input import preload_models, process_audio_simple
+    VOICE_ANALYSIS_AVAILABLE = True
+    print("✅ 음성 분석 모듈 로드 성공 - faster-whisper 사용")
+except ImportError as e:
+    print(f"⚠️ 음성 분석 모듈 로드 실패: {e}")
+    VOICE_ANALYSIS_AVAILABLE = False
+except Exception as e:
+    print(f"⚠️ 음성 분석 모듈 초기화 실패: {e}")
+    VOICE_ANALYSIS_AVAILABLE = False
 
 # TTS 모듈 import
 try:
@@ -670,17 +679,17 @@ async def startup_event():
     else:
         print("⚠️ MongoDB 모듈 없음 - 채팅 기능이 제한됩니다")
     
-    # 음성 분석 모델 로드 (백그라운드에서) - 현재 비활성화됨
+    # 음성 분석 모델 로드 (백그라운드에서) - faster-whisper 사용
     if VOICE_ANALYSIS_AVAILABLE:
         try:
             print("🔄 음성 분석 모델 로딩 시작...")
             await asyncio.to_thread(preload_models)
-            print("✅ 음성 분석 모델 로딩 완료")
+            print("✅ 음성 분석 모델 로딩 완료 - faster-whisper 사용")
         except Exception as e:
             print(f"⚠️ 음성 분석 모델 로딩 실패: {e}")
+            print("⚠️ 음성 분석 기능이 제한됩니다")
     else:
-        print("⚠️ 음성 분석 모듈 비활성화됨 - libctranslate2 호환성 문제")
-        print("⚠️ 음성 분석 기능이 일시적으로 비활성화되었습니다.")
+        print("⚠️ 음성 분석 모듈 비활성화됨")
 
 # WebSocket 연결 관리
 _active_websockets = set()
@@ -810,16 +819,12 @@ def _get_telemetry() -> dict:
     """
     Pipeline에서 현재 지표를 읽어 dict로 반환.
     메서드/필드 이름이 프로젝트마다 달 수 있으니 여러 후보를 시도.
-    실패 시 _fake_scores()로 폴백.
+    실패 시 HTTPException을 발생시킴.
     """
     global _pipeline
     if not _pipeline:
-        print("⚠️ 파이프라인이 없음 - 더미 데이터 반환")
-        d = _fake_scores()
-        d["simulation_mode"] = True
-        d["message"] = "파이프라인이 초기화되지 않았습니다."
-        d["data_source"] = "no_pipeline"
-        return d
+        print("❌ 파이프라인이 없음 - 오류 반환")
+        raise HTTPException(status_code=503, detail="Pipeline not initialized")
 
     # Pipeline의 latest() 메서드 시도
     try:
@@ -855,13 +860,9 @@ def _get_telemetry() -> dict:
         print(f"⚠️ WebSocket 텔레메트리 가져오기 실패: {e}")
         pass
 
-    # 폴백: 더미 데이터
-    print("⚠️ 파이프라인 데이터 가져오기 실패 - 더미 데이터 반환")
-    d = _fake_scores()
-    d["simulation_mode"] = True
-    d["message"] = "파이프라인 오류로 더미 데이터를 사용합니다."
-    d["data_source"] = "fallback"
-    return d
+    # 폴백: 오류 반환
+    print("❌ 파이프라인 데이터 가져오기 실패 - 오류 반환")
+    raise HTTPException(status_code=503, detail="Failed to get pipeline data")
 
 def _ensure_pipeline_started():
     """파이프라인이 start 가능한 경우 보장 시작."""
@@ -1357,8 +1358,8 @@ async def generate_ai_response(user_message: str, session_id: str) -> str:
     "OpenAI GPT-4o-mini를 사용하여 AI 응답 생성"
     try:
         if not OPENAI_API_KEY:
-            print(" [AI_RESPONSE] OpenAI API 키가 없음 - 더미 응답 사용")
-            return f"안녕하세요! '{user_message}'에 대해 답변드리겠습니다. (OpenAI API 키 필요)"
+            print("❌ [AI_RESPONSE] OpenAI API 키가 없음 - 오류 반환")
+            raise HTTPException(status_code=503, detail="OpenAI API key not configured")
         
         # 페르소나 정보 로드 (JSON 파일에서)
         persona_context = await load_persona_context(session_id)
@@ -1399,78 +1400,97 @@ async def generate_ai_response(user_message: str, session_id: str) -> str:
         return ai_response
         
     except Exception as e:
-        print(f" [AI_RESPONSE] OpenAI API 호출 실패: {e}")
-        # 폴백 응답
-        fallback_responses = [
-            "흥미로운 이야기네요! 더 자세히 들려주세요 ",
-            "정말 좋은 생각이에요! 어떤 기분이셨나요?",
-            "와, 그런 일이 있으셨군요! 더 들려주세요.",
-            "재미있네요! 그때 어떤 느낌이었나요?",
-            "좋은 말씀이에요! 다른 이야기도 들려주세요."
-        ]
-        return fallback_responses[hash(user_message) % len(fallback_responses)]
+        print(f"❌ [AI_RESPONSE] OpenAI API 호출 실패: {e}")
+        raise HTTPException(status_code=500, detail=f"AI response generation failed: {str(e)}")
 
 # ====== 음성 분석 API 엔드포인트 ======
 
 @app.post("/api/voice/analyze")
 async def analyze_voice(audio: UploadFile = File(...)):
-    """음성 파일 분석 및 감정/톤 분석"""
+    """음성 파일을 텍스트로 변환 (faster-whisper 사용)"""
     print(f"🎤 [VOICE_ANALYZE] 음성 분석 요청 받음 - 파일명: {audio.filename}")
     
     if not VOICE_ANALYSIS_AVAILABLE:
         print("❌ [VOICE_ANALYZE] 음성 분석 모듈 비활성화됨")
         return {
             "success": False,
-            "error": "음성 분석 기능이 비활성화되어 있습니다. libctranslate2 라이브러리 호환성 문제로 인해 현재 사용할 수 없습니다.",
+            "error": "음성 분석 기능이 비활성화되어 있습니다. faster-whisper 모듈을 로드할 수 없습니다.",
             "analysis": None,
             "details": {
-                "issue": "libctranslate2 라이브러리 호환성 문제",
+                "issue": "faster-whisper 모듈 로드 실패",
                 "status": "disabled",
                 "message": "음성 분석 기능이 일시적으로 비활성화되었습니다."
             }
         }
     
-    # 음성 분석이 비활성화된 경우 더미 응답 반환
-    return {
-        "success": True,
-        "analysis": {
-            "transcript": "음성 분석 기능이 비활성화되어 있습니다.",
-            "emotion": "중립",
-            "emotion_score": 0.5,
-            "total_score": 50.0,
-            "voice_tone_score": 50.0,
-            "word_choice_score": 50.0,
-            "voice_details": {
-                "pitch_variation": 0.5,
-                "speaking_speed": 3.0,
-                "volume_consistency": 0.5,
-                "warmth_score": 0.5,
-                "enthusiasm_level": 0.5,
-                "politeness_level": 0.5,
-                "confidence_level": 0.5,
-                "volume_strength": 0.5
-            },
-            "word_details": {
-                "positive_words": [],
-                "negative_words": [],
-                "polite_phrases": [],
-                "empathy_indicators": [],
-                "enthusiasm_indicators": [],
-                "politeness_score": 0.5,
-                "empathy_score": 0.5,
-                "enthusiasm_score": 0.5,
-                "valence_score": 0.5
-            },
-            "weights": {
-                "voice": 0.4,
-                "word": 0.4,
-                "emotion": 0.2
-            },
-            "positive_words": [],
-            "negative_words": []
-        },
-        "message": "음성 분석 기능이 비활성화되어 더미 데이터를 반환합니다."
-    }
+    try:
+        # 오디오 파일 읽기
+        audio_data = await audio.read()
+        print(f"📊 [VOICE_ANALYZE] 오디오 데이터 크기: {len(audio_data)} bytes")
+        
+        # 오디오 데이터를 numpy 배열로 변환
+        import io
+        import torchaudio
+        import tempfile
+        import os
+        
+        # WebM 또는 WAV 파일 처리
+        with tempfile.NamedTemporaryFile(suffix='.webm', delete=False) as temp_webm:
+            temp_webm.write(audio_data)
+            temp_webm_path = temp_webm.name
+        
+        with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as temp_wav:
+            temp_wav_path = temp_wav.name
+        
+        try:
+            # ffmpeg로 WebM → WAV 변환
+            import subprocess
+            subprocess.run([
+                'ffmpeg', '-i', temp_webm_path, 
+                '-ar', '16000',  # 16kHz 샘플링
+                '-ac', '1',      # 모노
+                '-y',            # 덮어쓰기
+                temp_wav_path
+            ], check=True, capture_output=True)
+            
+            # 변환된 WAV 파일 로드
+            waveform, sample_rate = torchaudio.load(temp_wav_path)
+            
+            # numpy 배열로 변환
+            audio_array = waveform.squeeze().numpy()
+            print(f"🔄 [VOICE_ANALYZE] WebM→WAV 변환 및 전처리 완료 - 길이: {len(audio_array)}, 샘플레이트: {sample_rate}Hz")
+            
+            # faster-whisper로 음성 분석 수행
+            print("🔄 [VOICE_ANALYZE] faster-whisper로 음성 분석 시작...")
+            analysis_result = await asyncio.to_thread(process_audio_simple, audio_array)
+            print(f"✅ [VOICE_ANALYZE] 음성 분석 완료")
+            
+            # 결과 로그
+            print(f"📝 [VOICE_ANALYZE] 분석 결과:")
+            print(f"   - 인식된 텍스트: {analysis_result.get('transcript', 'N/A')}")
+            print(f"   - 감정: {analysis_result.get('emotion', 'N/A')} ({analysis_result.get('emotion_score', 0):.2f})")
+            print(f"   - 종합 점수: {analysis_result.get('total_score', 0):.1f}")
+            print(f"   - 음성 톤 점수: {analysis_result.get('voice_tone_score', 0):.1f}")
+            print(f"   - 단어 선택 점수: {analysis_result.get('word_choice_score', 0):.1f}")
+            
+            return {
+                "success": True,
+                "analysis": analysis_result,
+                "message": "음성 분석 완료 - faster-whisper 사용"
+            }
+            
+        finally:
+            # 임시 파일 정리
+            os.unlink(temp_webm_path)
+            os.unlink(temp_wav_path)
+        
+    except Exception as e:
+        print(f"❌ [VOICE_ANALYZE] 음성 분석 중 오류: {e}")
+        return {
+            "success": False,
+            "error": f"음성 분석 중 오류 발생: {str(e)}",
+            "analysis": None
+        }
 
 # ====== TTS 관련 API ======
 
@@ -1484,7 +1504,6 @@ async def text_to_speech(request: Request):
         data = await request.json()
         text = data.get("text", "")
         voice = data.get("voice", "ko-KR-SunHiNeural")  # 기본 한국어 여성 목소리
-        # rate는 클라이언트에서 처리 (SSML 방지)
         
         if not text:
             raise HTTPException(status_code=400, detail="Text is required")
@@ -1500,6 +1519,9 @@ async def text_to_speech(request: Request):
         ]
         
         # 임시 파일 생성
+        import tempfile
+        import os
+        
         with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as temp_file:
             temp_path = temp_file.name
         

@@ -29,32 +29,36 @@ class ExpressionAnalyzer:
         try:
             print("🤖 표정 분석기 초기화 시작...")
             
-            # MLflow 모델 로드
-            # 서버가 /workspace/app에서 실행되므로 dys_studio/models 경로 사용
-            current_dir = os.path.dirname(__file__)
-            if current_dir.endswith('dys_studio'):
-                model_path = os.path.join(current_dir, "models")
-            else:
-                # 서버 실행 디렉토리에서의 경로
-                model_path = os.path.join(current_dir, "dys_studio", "models")
+            # MLflow 모델 로드 시도
+            model_paths = [
+                # 현재 디렉토리 기준
+                os.path.join(os.path.dirname(__file__), "models"),
+                # 서버 실행 디렉토리 기준
+                os.path.join(os.getcwd(), "src", "dys_studio", "models"),
+                os.path.join(os.getcwd(), "dys_studio", "models"),
+                # 절대 경로
+                "/workspace/app/dys_studio/models",
+                "/usr/src/app/dys_studio/models"
+            ]
             
-            print(f"📁 모델 경로: {os.path.abspath(model_path)}")
+            model_loaded = False
+            for model_path in model_paths:
+                try:
+                    print(f"📁 모델 경로 시도: {os.path.abspath(model_path)}")
+                    if os.path.exists(model_path):
+                        print("🔄 모델 로딩 중...")
+                        self.model = mlflow.pytorch.load_model(model_path)
+                        print(f"✅ 모델 로드 완료: {model_path}")
+                        model_loaded = True
+                        break
+                except Exception as e:
+                    print(f"⚠️ 모델 경로 실패: {model_path} - {e}")
+                    continue
             
-            # 모델 경로 존재 확인
-            if not os.path.exists(model_path):
-                print(f"❌ 모델 경로가 존재하지 않습니다: {model_path}")
-                # 대안 경로 시도
-                alternative_path = "/workspace/app/dys_studio/models"
-                if os.path.exists(alternative_path):
-                    model_path = alternative_path
-                    print(f"✅ 대안 경로 사용: {model_path}")
-                else:
-                    raise FileNotFoundError(f"모델을 찾을 수 없습니다: {model_path}")
-            
-            # 모델 로드
-            print("🔄 모델 로딩 중...")
-            self.model = mlflow.pytorch.load_model(model_path)
-            print("✅ 모델 로드 완료!")
+            if not model_loaded:
+                print("❌ 모든 모델 경로에서 모델을 찾을 수 없습니다.")
+                print("⚠️ 표정 분석기 초기화 실패 - 모델 파일 없음")
+                return False
             
             # GPU 설정
             self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -131,7 +135,7 @@ class ExpressionAnalyzer:
             print("❌ 표정 분석기가 초기화되지 않았습니다.")
             return {
                 'success': False,
-                'error': 'Analyzer not initialized'
+                'error': 'Expression analyzer not initialized'
             }
         
         try:
