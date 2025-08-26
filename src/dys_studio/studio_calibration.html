@@ -24,130 +24,34 @@
     <script src="js/voice-input.js?v=20241222-2"></script>
     <!-- TTS 관리 모듈 -->
     <script src="js/tts-manager.js?v=20241223-2"></script>
+    <!-- TTS 유틸리티 함수들 -->
+    <script src="js/tts-utils.js?v=20241226-1"></script>
     <!-- 팝업 관리 모듈 -->
     <script src="js/popup-manager.js?v=20241223-2"></script>
     <!-- 대화 주도권 분석 모듈 -->
     <script src="js/conversation-analyzer.js?v=20241223"></script>
     <!-- 종합 점수 계산 모듈 -->
     <script src="js/comprehensive-score-calculator.js?v=20241223"></script>
-    
-    <script>
-    // 전역 변수들
-    let lastExpressionScore = 60;
-    let lastExpressionText = '중립적';
-    let lastExpressionUpdate = 0;
-    const EXPRESSION_UPDATE_INTERVAL = 2000; // 2초마다 업데이트
-    
-    // 팝업 로더 함수
-    async function loadPopup(popupName) {
-        try {
-            const response = await fetch(`popups/${popupName}.html`);
-            if (response.ok) {
-                const html = await response.text();
-                return html;
-            } else {
-                console.error(`팝업 로드 실패: ${popupName}`);
-                return null;
-            }
-        } catch (error) {
-            console.error(`팝업 로드 오류: ${popupName}`, error);
-            return null;
-        }
-    }
-    
-    // 깜빡임 팝업 로드
-    async function loadBlinkingPopup() {
-        const container = document.getElementById('blinking-popup-container');
-        if (container) {
-            const html = await loadPopup('blinking-details-popup');
-            if (html) {
-                container.innerHTML = html;
-                console.log('✅ 깜빡임 팝업 로드 완료');
-            }
-        }
-    }
-    </script>
+    <!-- 팝업 로더 모듈 -->
+    <script src="js/popup-loader.js?v=20241226-1"></script>
+    <!-- UI 유틸리티 모듈 -->
+    <script src="js/ui-utils.js?v=20241226-1"></script>
 </head>
 <body>
 
 
 
-<div id="calibration-overlay" class="calibration-overlay">
-    <div class="calibration-popup">
-        <div id="initial-view">
-            <div class="icon">
-                <img src="" alt="카메라" id="cameraIcon">
-            </div>
-            <h2>자세 기준 측정</h2>
-            <p class="sub">정확한 측정을 위해 아래 사항을 먼저 확인해 주세요.</p>
-
-            <ul>
-                <li><span class="dot"></span><span>모니터를 <strong>정면으로 응시</strong>합니다.</span></li>
-                <li><span class="dot"></span><span><strong>어깨를 곧게 펴고 올바른 자세</strong>를 유지합니다.</span></li>
-                <li><span class="dot"></span><span>카메라가 꺼져 있거나 연결되지 않으면 측정이 어렵습니다.</span></li>
-            </ul>
-
-            <p class="note">
-                <span>정확한 피드백 제공을 위해 <strong>카메라 기반 자세 측정</strong>이 필요합니다.</span>
-            </p>
-
-            <div class="button-group">
-                <button id="skip-calibration-btn" class="btn btn-secondary">건너뛰기</button>
-                <button id="start-calibration-btn" class="btn btn-primary">자세 측정 시작</button>
-            </div>
-        </div>
-        <div id="progress-view" class="hidden">
-            <div class="icon">👤</div>
-            <h2>자세 측정 중</h2>
-            <p id="instruction-text">카메라 정면에서 정자세를 유지해 주세요.<br>(모니터 정가운데를 주시)</p>
-            <div class="progress-bar-container">
-                <div id="progress-bar-fill" class="progress-bar-fill"></div>
-            </div>
-            <div id="countdown-text" class="countdown-text">측정 완료까지 5초...</div>
-        </div>
-    </div>
-</div>
-
-   <!-- 초기 안내 팝업 -->
-  <div id="initial-guide-overlay" class="initial-guide-overlay">
-      <div class="initial-guide-popup">
-          <h3>❤️ 데이트 시작!</h3>
-          <p>AI 파트너와 대화를 시작해 보세요.<br>마이크 버튼이나 텍스트 입력으로<br>자연스럽게 대화를 나누어 보세요.</p>
-          <button id="close-guide-btn" class="btn">시작하기</button>
-      </div>
-  </div>
- 
- <!-- 확인 팝업 -->
- <div id="confirm-overlay" class="confirm-overlay">
-     <div class="confirm-popup">
-         <h3>데이트 종료</h3>
-         <p>정말로 데이트를 끝내시겠습니까?</p>
-         <div class="button-group">
-             <button id="cancel-end-btn" class="btn btn-secondary">아니오</button>
-             <button id="confirm-end-btn" class="btn btn-primary">예</button>
-         </div>
-     </div>
- </div>
-
-       <!-- 카메라 경고 메시지 (상단 바) -->
-   <div id="camera-warning" class="camera-warning hidden">
-     <span class="warning-icon">⚠️</span>
-     <span class="warning-text">카메라 권한이 필요합니다. 피드백 분석을 위해 카메라를 허용해 주세요.</span>
-     <button class="warning-close" onclick="hideCameraWarning()">×</button>
-   </div>
-   
-   <!-- 카메라 토스트 경고 메시지 (우측 상단) -->
-   <div id="camera-toast" class="camera-toast hidden">
-     <span class="toast-icon">⚠️</span>
-     <span class="toast-text">카메라 권한이 필요합니다</span>
-     <button class="toast-close" onclick="hideCameraToast()">×</button>
-   </div>
+<!-- 팝업 컨테이너들 -->
+<div id="calibration-popup-container"></div>
+<div id="initial-guide-popup-container"></div>
+<div id="confirm-popup-container"></div>
+<div id="camera-warning-popup-container"></div>
  
  <!-- 상단 헤더 -->
  <header class="top-header">
    <div class="logo">
      <div class="logo-icon">🎬</div>
-     <span>데연소 스튜디오</span>
+     <span>데이트 장소</span>
    </div>
    <div class="user-info">
      <div class="action-buttons">
@@ -158,17 +62,6 @@
  </header>
 
 <div class="main-content" id="main-content">
-  <!-- 카메라 경고 알림 (인라인) -->
-  <div id="camera-warning-inline" class="camera-warning-inline" style="display: none;">
-    <div class="camera-warning-content">
-      <div class="camera-warning-icon">📹</div>
-      <div class="camera-warning-text">
-        <h3>카메라 인식 불안정</h3>
-        <p>카메라 위치를 조정하거나 얼굴이 정면을 향하도록 해주세요.<br>정확한 분석을 위해 카메라가 얼굴을 잘 인식할 수 있도록 위치를 조정해주세요.</p>
-      </div>
-      <button class="camera-warning-close" onclick="this.parentElement.parentElement.style.display='none'">×</button>
-    </div>
-  </div>
 
   <div id="feedbackPanel" class="feedback-panel">
       <div class="card">
@@ -345,245 +238,20 @@
     <button id="feedbackToggleBtn" class="feedback-toggle-btn">피드백</button>
 
     <!-- 대화 주도권 상세 정보 팝업 -->
-    <div id="initiative-details-popup" class="details-popup">
-      <div class="details-popup-content">
-        <div class="details-popup-header">
-          <h3>🎭 대화 주도권 분석 상세</h3>
-          <button class="details-popup-close" onclick="closeInitiativeDetails()">×</button>
-        </div>
-        <div class="details-popup-body">
-          <div class="initiative-summary">
-            <div class="initiative-main">
-              <div class="initiative-label">주도권 점수</div>
-              <div id="initiative-main-value" class="initiative-main-value">50%</div>
-            </div>
-            <div class="initiative-status">
-              <div class="initiative-label">상태</div>
-              <div id="initiative-status-text" class="initiative-status-text">균형적</div>
-            </div>
-          </div>
-          <div class="initiative-visual">
-            <div class="initiative-label">주도권 분배</div>
-            <div class="initiative-bar-large">
-              <div id="initiative-user-bar-large" class="user-bar-large" style="width: 50%;">
-                <span class="bar-label">나</span>
-              </div>
-              <div id="initiative-ai-bar-large" class="ai-bar-large" style="width: 50%;">
-                <span class="bar-label">AI</span>
-              </div>
-            </div>
-          </div>
-          <div class="initiative-breakdown">
-            <div class="initiative-label">상세 통계</div>
-            <div class="stats-grid">
-              <div class="stat-item">
-                <div class="stat-label">메시지 수</div>
-                <div class="stat-value">
-                  <span id="user-message-count" class="user-stat">0</span> : 
-                  <span id="ai-message-count" class="ai-stat">0</span>
-                </div>
-              </div>
-              <div class="stat-item">
-                <div class="stat-label">메시지 길이</div>
-                <div class="stat-value">
-                  <span id="user-length" class="user-stat">0</span> : 
-                  <span id="ai-length" class="ai-stat">0</span>
-                </div>
-              </div>
-              <div class="stat-item">
-                <div class="stat-label">질문 수</div>
-                <div class="stat-value">
-                  <span id="user-questions" class="user-stat">0</span> : 
-                  <span id="ai-questions" class="ai-stat">0</span>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="initiative-criteria">
-            <div class="initiative-label">평가 기준</div>
-            <div class="criteria-list">
-              <div class="criteria-item">
-                <span class="criteria-weight">30%</span>
-                <span class="criteria-text">메시지 수 비율</span>
-              </div>
-              <div class="criteria-item">
-                <span class="criteria-weight">25%</span>
-                <span class="criteria-text">메시지 길이 비율</span>
-              </div>
-              <div class="criteria-item">
-                <span class="criteria-weight">25%</span>
-                <span class="criteria-text">질문 비율</span>
-              </div>
-              <div class="criteria-item">
-                <span class="criteria-weight">20%</span>
-                <span class="criteria-text">대화 시작 패턴</span>
-              </div>
-            </div>
-          </div>
-          <div class="initiative-explanation">
-            <div class="initiative-label">주도권 해석</div>
-            <div id="initiative-explanation-text" class="initiative-explanation-text">
-              대화 주도권은 메시지 수, 길이, 질문 빈도 등을 종합적으로 분석하여 계산됩니다.
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+    <div id="initiative-popup-container"></div>
 
     <!-- 표정 상세 정보 팝업 -->
-    <div id="expression-details-popup" class="details-popup">
-      <div class="details-popup-content">
-        <div class="details-popup-header">
-          <h3>😊 표정 분석 상세</h3>
-          <button class="details-popup-close" onclick="closeExpressionDetails()">×</button>
-        </div>
-        <div class="details-popup-body">
-          <div class="expression-summary">
-            <div class="expression-main">
-              <div class="expression-label">주요 표정</div>
-              <div id="expression-main-value" class="expression-main-value">-</div>
-            </div>
-            <div class="expression-confidence">
-              <div class="expression-label">신뢰도</div>
-              <div id="expression-confidence-value" class="expression-confidence-value">-%</div>
-            </div>
-          </div>
-          <div class="expression-breakdown">
-            <div class="expression-label">표정별 확률</div>
-            <div id="expression-probabilities" class="expression-probabilities">
-              <!-- 동적으로 생성됨 -->
-            </div>
-          </div>
-          <div class="expression-explanation">
-            <div class="expression-label">점수 계산 근거</div>
-            <div id="expression-explanation-text" class="expression-explanation-text">
-              표정 분석 데이터가 없습니다.
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+    <div id="expression-popup-container"></div>
 
  
     <!-- 시선 안정성 상세 정보 팝업 -->
-    <div id="gaze-details-popup" class="details-popup">
-      <div class="details-popup-content">
-        <div class="details-popup-header">
-          <h3>👁️ 시선 안정성 분석 상세</h3>
-          <button class="details-popup-close" onclick="closeGazeDetails()">×</button>
-        </div>
-        <div class="details-popup-body">
-          <div class="gaze-summary">
-            <div class="gaze-main">
-              <div class="gaze-label">시선 상태</div>
-              <div id="gaze-main-value" class="gaze-main-value">-</div>
-            </div>
-            <div class="gaze-stability">
-              <div class="gaze-label">안정성 점수</div>
-              <div id="gaze-stability-value" class="gaze-stability-value">-%</div>
-            </div>
-          </div>
-          <div class="gaze-breakdown">
-            <div class="gaze-label">랜드마크 정보</div>
-            <div id="gaze-landmarks" class="gaze-landmarks">
-              <!-- 동적으로 생성됨 -->
-            </div>
-          </div>
-          <div class="gaze-criteria">
-            <div class="gaze-label">평가 기준</div>
-            <div id="gaze-criteria-text" class="gaze-criteria-text">
-              시선 분석 데이터가 없습니다.
-            </div>
-          </div>
-          <div class="gaze-explanation">
-            <div class="gaze-label">점수 계산 근거</div>
-            <div id="gaze-explanation-text" class="gaze-explanation-text">
-              시선 분석 데이터가 없습니다.
-            </div>
-          </div>
-        </div>
-          </div>
-  </div>
+    <div id="gaze-popup-container"></div>
 
     <!-- 집중도 상세 정보 팝업 -->
-    <div id="concentration-details-popup" class="details-popup">
-      <div class="details-popup-content">
-        <div class="details-popup-header">
-          <h3>🎯 집중도 분석 상세</h3>
-          <button class="details-popup-close" onclick="closeConcentrationDetails()">×</button>
-        </div>
-        <div class="details-popup-body">
-          <div class="concentration-summary">
-            <div class="concentration-main">
-              <div class="concentration-label">집중 상태</div>
-              <div id="concentration-main-value" class="concentration-main-value">-</div>
-            </div>
-            <div class="concentration-score">
-              <div class="concentration-label">집중도 점수</div>
-              <div id="concentration-score-value" class="concentration-score-value">-%</div>
-            </div>
-          </div>
-          <div class="concentration-breakdown">
-            <div class="concentration-label">분석 요소</div>
-            <div id="concentration-factors" class="concentration-factors">
-              <!-- 동적으로 생성됨 -->
-            </div>
-          </div>
-          <div class="concentration-criteria">
-            <div class="concentration-label">평가 기준</div>
-            <div id="concentration-criteria-text" class="concentration-criteria-text">
-              집중도 분석 데이터가 없습니다.
-            </div>
-          </div>
-          <div class="concentration-explanation">
-            <div class="concentration-label">점수 계산 근거</div>
-            <div id="concentration-explanation-text" class="concentration-explanation-text">
-              집중도 분석 데이터가 없습니다.
-            </div>
-          </div>
-        </div>
-          </div>
-  </div>
+    <div id="concentration-popup-container"></div>
 
     <!-- 자세 상세 정보 팝업 -->
-    <div id="posture-details-popup" class="details-popup">
-      <div class="details-popup-content">
-        <div class="details-popup-header">
-          <h3>✨ 자세 분석 상세</h3>
-          <button class="details-popup-close" onclick="closePostureDetails()">×</button>
-        </div>
-        <div class="details-popup-body">
-          <div class="posture-summary">
-            <div class="posture-main">
-              <div class="posture-label">자세 상태</div>
-              <div id="posture-main-value" class="posture-main-value">-</div>
-            </div>
-            <div class="posture-score">
-              <div class="posture-label">자세 점수</div>
-              <div id="posture-score-value" class="posture-score-value">-%</div>
-            </div>
-          </div>
-          <div class="posture-breakdown">
-            <div class="posture-label">분석 요소</div>
-            <div id="posture-factors" class="posture-factors">
-              <!-- 동적으로 생성됨 -->
-            </div>
-          </div>
-          <div class="posture-criteria">
-            <div class="posture-label">평가 기준</div>
-            <div id="posture-criteria-text" class="posture-criteria-text">
-              자세 분석 데이터가 없습니다.
-            </div>
-          </div>
-          <div class="posture-explanation">
-            <div class="posture-label">점수 계산 근거</div>
-            <div id="posture-explanation-text" class="posture-explanation-text">
-              자세 분석 데이터가 없습니다.
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+    <div id="posture-popup-container"></div>
 
          <div class="card video-container">
        <header>❤️ 데이트 중</header>
@@ -1087,7 +755,7 @@ async function waitForCalibrationModule(timeout = 5000) {
 // --- 캘리브레이션 로직 (별도 파일로 분리됨) ---
 document.addEventListener('DOMContentLoaded', async () => {
     // 팝업 로드
-    await loadBlinkingPopup();
+    await loadAllPopups();
     
     // 페이지 로드 시 모든 메트릭 초기화
     setTimeout(() => {
@@ -1871,32 +1539,7 @@ function updateCameraMetrics(metrics) {
     
     console.log(`[UI] 표정 점수 업데이트 (${dataSource}):`, { expressionScore, expressionText });
     
-    // 점수 색상 업데이트 함수
-    function updateScoreColor(element, score) {
-      // 기존 색상 클래스 제거
-      element.classList.remove('excellent', 'good', 'fair', 'poor');
-      
-      // 점수에 따른 색상 클래스 추가
-      if (score >= 80) {
-        element.classList.add('excellent');
-        element.setAttribute('data-score', 'excellent');
-      } else if (score >= 60) {
-        element.classList.add('good');
-        element.setAttribute('data-score', 'good');
-      } else if (score >= 40) {
-        element.classList.add('fair');
-        element.setAttribute('data-score', 'fair');
-      } else {
-        element.classList.add('poor');
-        element.setAttribute('data-score', 'poor');
-      }
-      
-      // 업데이트 애니메이션 추가
-      element.classList.add('updating');
-      setTimeout(() => {
-        element.classList.remove('updating');
-      }, 300);
-    }
+    // 점수 색상 업데이트 함수 (ui-utils.js로 이동됨)
     
     // 개인화된 꿀팁 업데이트
     const tips = generatePersonalizedTips(metrics);
@@ -1921,345 +1564,19 @@ function updateCameraMetrics(metrics) {
 
 
 
-function clamp01To100(v) {
-  if (v == null || isNaN(v)) return null;
-  if (v <= 1) return Math.round(v * 100);
-  return Math.round(Math.max(0, Math.min(100, v)));
-}
-
-function mapFrameResultToMetrics(result) {
-  // 얼굴 인식 상태 확인 (완화: ear_value 조건 제거)
-  const cameraBlocked = result?.coaching_message === '카메라가 보이지 않아서 피드백을 할 수 없습니다.';
-  const noFace = result?.status === 'no-face';
-  const isFaceDetected = !(cameraBlocked || noFace);
-  
-  // 얼굴이 전혀 감지되지 않는 명시적 경우만 0으로
-  if (!isFaceDetected) {
-    return {
-      scores: { attention: 0, stability: 0, blink: 0, posture: 0 },
-      labels: { expression: '-' },
-      status: result?.status || 'no-face',
-      coaching_message: result?.coaching_message,
-      ear_value: result?.ear_value,
-      frame_processed: result?.frame_processed === true
-    };
-  }
-  
-  // 다양한 결과 포맷을 5개 지표로 적응 매핑
-  const scores = {};
-  const labels = {};
-
-  // 우선순위 1: result.scores에 A,S,R,P,W 등이 존재하는 경우
-  const s = result?.scores || {};
-  if (typeof s.A !== 'undefined') scores.attention = clamp01To100(s.A);
-  if (typeof s.S !== 'undefined') scores.stability = clamp01To100(s.S);
-  if (typeof s.R !== 'undefined') scores.blink = clamp01To100(s.R); // Relax≈Blink proxy
-  // P는 백업으로만 사용 (개별 점수들이 우선)
-  if (typeof s.P !== 'undefined' && s.P > 0) {
-    scores.posture_backup = clamp01To100(s.P);
-  }
-  if (typeof s.W !== 'undefined') {
-    const w = clamp01To100(s.W);
-    labels.expression = w != null ? (w >= 66 ? '긍정적' : w >= 40 ? '중립적' : '개선 필요') : undefined;
-  }
-
-  // 우선순위 2: 개별 필드 명시적 값
-  if (scores.attention == null && typeof result.attention === 'number') scores.attention = clamp01To100(result.attention);
-  if (scores.stability == null && typeof result.stability_score === 'number') scores.stability = clamp01To100(result.stability_score);
-  if (scores.stability == null && typeof result.stability === 'number') scores.stability = clamp01To100(result.stability);
-  if (scores.blink == null && typeof result.blink === 'number') scores.blink = clamp01To100(result.blink);
-  
-  // 자세 점수 우선순위: 개별 점수들 > enhanced_posture_score > posture_score > posture > scores.P 백업
-  
-  // 1. 개별 자세 점수들을 우선적으로 계산
-  const individualScores = [];
-  if (typeof result.chin_forward_score === 'number') individualScores.push(result.chin_forward_score);
-  if (typeof result.neck_tilt_score === 'number') individualScores.push(result.neck_tilt_score);
-  if (typeof result.neck_score === 'number') individualScores.push(result.neck_score);
-  if (typeof result.back_score === 'number') individualScores.push(result.back_score);
-  if (typeof result.shoulder_blade_score === 'number') individualScores.push(result.shoulder_blade_score);
-  if (typeof result.shoulder_width_score === 'number') individualScores.push(result.shoulder_width_score);
-  if (typeof result.torso_height_score === 'number') individualScores.push(result.torso_height_score);
-  if (typeof result.neck_length_score === 'number') individualScores.push(result.neck_length_score);
-  if (typeof result.neck_angle_score === 'number') individualScores.push(result.neck_angle_score);
-  
-  if (individualScores.length > 0) {
-    const avgIndividualScore = individualScores.reduce((a, b) => a + b, 0) / individualScores.length;
-    scores.posture = clamp01To100(avgIndividualScore);
-  }
-  
-  // 2. 백업 점수들
-  if (scores.posture == null && typeof result.enhanced_posture_score === 'number') {
-    scores.posture = clamp01To100(result.enhanced_posture_score);
-  }
-  if (scores.posture == null && typeof result.posture_score === 'number') {
-    scores.posture = clamp01To100(result.posture_score);
-  }
-  if (scores.posture == null && typeof result.posture === 'number') {
-    scores.posture = clamp01To100(result.posture);
-  }
-
-  // 추가 후보 키들
-  if (scores.attention == null && typeof result.attention_score === 'number') scores.attention = clamp01To100(result.attention_score);
-  if (scores.attention == null && typeof result.focus === 'number') scores.attention = clamp01To100(result.focus);
-  if (scores.attention == null && typeof result.focus_score === 'number') scores.attention = clamp01To100(result.focus_score);
-  if (scores.attention == null && typeof result.gaze_attention === 'number') scores.attention = clamp01To100(result.gaze_attention);
-  if (scores.blink == null && typeof result.blink_score === 'number') scores.blink = clamp01To100(result.blink_score);
-  if (scores.blink == null && typeof result.blinking === 'number') scores.blink = clamp01To100(result.blinking);
-
-  // 3. 기하학적 측정값 기반 점수 (개별 점수보다 우선)
-  if (scores.posture == null) {
-    // 3a. 상태 문자열 기반 점수 (개별 점수들이 없을 때만 사용)
-    const hasIndividualScores = individualScores.length > 0;
-    
-    if (!hasIndividualScores) {
-      const status = typeof result.posture_status === 'string' ? result.posture_status.toLowerCase() : '';
-      const enhancedStatus = typeof result.enhanced_posture_status === 'string' ? result.enhanced_posture_status.toLowerCase() : '';
-      const backStatus = typeof result.back_status === 'string' ? result.back_status.toLowerCase() : '';
-      const neckStatus = typeof result.neck_status === 'string' ? result.neck_status.toLowerCase() : '';
-      
-      if (status || enhancedStatus || backStatus || neckStatus) {
-        const allStatuses = [status, enhancedStatus, backStatus, neckStatus].filter(s => s);
-        let maxScore = 0;
-        
-        for (const s of allStatuses) {
-          if (s.includes('매우 좋') || s.includes('excellent') || s.includes('best')) maxScore = Math.max(maxScore, 95);
-          else if (s.includes('좋') || s.includes('good')) maxScore = Math.max(maxScore, 85);
-          else if (s.includes('보통') || s.includes('ok') || s.includes('neutral')) maxScore = Math.max(maxScore, 70);
-          else if (s.includes('개선') || s.includes('나쁨') || s.includes('bad')) maxScore = Math.max(maxScore, 50); // 35 → 50으로 완화
-          else if (s.includes('데이터없음') || s.includes('no data')) maxScore = Math.max(maxScore, 0);
-        }
-        
-        if (maxScore > 0) scores.posture = maxScore;
-      }
-    }
-    
-    // 3b. 기하학적 측정값 기반 점수 (더 정교한 계산)
-    if (scores.posture == null) {
-      const fwd = typeof result.forward_head === 'number' ? Math.abs(result.forward_head) : null;
-      const tilt = typeof result.shoulder_tilt === 'number' ? Math.abs(result.shoulder_tilt) : null;
-      const fwdRatio = typeof result.forward_head_ratio === 'number' ? Math.abs(result.forward_head_ratio) : null;
-      const shoulderOpen = typeof result.shoulder_open_deg === 'number' ? result.shoulder_open_deg : null;
-      const torsoLean = typeof result.torso_lean_deg === 'number' ? result.torso_lean_deg : null;
-      // 골반 각도 제거 요청에 따라 제외
-      const pelvisOpen = null;
-      
-      if (fwd != null || tilt != null || fwdRatio != null || shoulderOpen != null || torsoLean != null) {
-        let totalPenalty = 0;
-        let factorCount = 0;
-        
-        // 전방두 페널티 (0.35 이하가 좋음)
-        if (fwd != null) {
-          const nf = Math.min(1, fwd / 0.35);
-          totalPenalty += nf * 30;
-          factorCount++;
-        }
-        
-        // 어깨 기울임 페널티 (가중치 상향)
-        if (tilt != null) {
-          const nt = Math.min(1, tilt / 0.25);
-          totalPenalty += nt * 35; // 25 → 35
-          factorCount++;
-        }
-        
-        // 전방두 비율 페널티 (0.5 이하가 좋음)
-        if (fwdRatio != null) {
-          const nfr = Math.min(1, fwdRatio / 0.5);
-          totalPenalty += nfr * 20;
-          factorCount++;
-        }
-        
-        // 어깨 각도 페널티 (가중치 상향, 170-180도가 좋음)
-        if (shoulderOpen != null) {
-          const so = Math.abs(shoulderOpen - 175) / 10; // 175도 기준
-          const nso = Math.min(1, so);
-          totalPenalty += nso * 25; // 15 → 25
-          factorCount++;
-        }
-        
-        // 몸통 기울임 페널티 (175-185도가 좋음)
-        if (torsoLean != null) {
-          const tl = Math.abs(torsoLean - 180) / 10; // 180도 기준
-          const ntl = Math.min(1, tl);
-          totalPenalty += ntl * 10;
-          factorCount++;
-        }
-        
-        // 골반 각도는 평가에서 제외
-        
-        // 평균 페널티 계산
-        const avgPenalty = factorCount > 0 ? totalPenalty / factorCount : 0;
-        const base = 100;
-        scores.posture = Math.round(Math.max(0, Math.min(100, base - avgPenalty)));
-      }
-    }
-    
-    // 4. 백업 점수들 (scores.P 등)
-    if (scores.posture == null && scores.posture_backup != null) {
-      scores.posture = scores.posture_backup;
-    }
-  }
-
-  // 자세 디버그 로깅 활성화
-  if (window.__ANALYZER_DEBUG_POSTURE__ && window.__ANALYZER_DEBUG_POSTURE__ < 20) {
-    console.log('[ANALYZER][POSTURE]', {
-      // 직접 점수
-      from_scores_P: result?.scores?.P,
-      enhanced_posture_score: result?.enhanced_posture_score,
-      posture_score: result?.posture_score,
-      posture: result?.posture,
-      
-      // 상태 문자열
-      posture_status: result?.posture_status,
-      enhanced_posture_status: result?.enhanced_posture_status,
-      back_status: result?.back_status,
-      neck_status: result?.neck_status,
-      
-      // 기하학적 측정값
-      forward_head: result?.forward_head,
-      forward_head_ratio: result?.forward_head_ratio,
-      shoulder_tilt: result?.shoulder_tilt,
-      shoulder_open_deg: result?.shoulder_open_deg,
-      torso_lean_deg: result?.torso_lean_deg,
-      pelvis_open_deg: result?.pelvis_open_deg,
-      
-      // 개별 점수
-      back_score: result?.back_score,
-      neck_score: result?.neck_score,
-      chin_forward_score: result?.chin_forward_score,
-      neck_tilt_score: result?.neck_tilt_score,
-      shoulder_blade_score: result?.shoulder_blade_score,
-      shoulder_width_score: result?.shoulder_width_score,
-      torso_height_score: result?.torso_height_score,
-      neck_length_score: result?.neck_length_score,
-      neck_angle_score: result?.neck_angle_score,
-      
-      // 최종 결과
-      mapped: scores.posture,
-      individual_scores_count: individualScores.length,
-      individual_scores_avg: individualScores.length > 0 ? individualScores.reduce((a, b) => a + b, 0) / individualScores.length : null,
-      
-      // 계산 방식
-      calculation: {
-        direct_score: (result?.scores?.P != null || result?.enhanced_posture_score != null || result?.posture_score != null || result?.posture != null) ? 'yes' : 'no',
-        status_based: (result?.posture_status || result?.enhanced_posture_status || result?.back_status || result?.neck_status) ? 'yes' : 'no',
-        geometry_based: (result?.forward_head != null || result?.shoulder_tilt != null || result?.forward_head_ratio != null || result?.shoulder_open_deg != null || result?.torso_lean_deg != null || result?.pelvis_open_deg != null) ? 'yes' : 'no',
-        individual_scores: (result?.back_score != null || result?.neck_score != null) ? 'yes' : 'no'
-      }
-    });
-    window.__ANALYZER_DEBUG_POSTURE__ += 1;
-  }
-
-  // 우선순위 3: 서버에서 기존 피드백 스타일 키 사용 시
-  if (scores.stability == null && typeof result.gaze_stability === 'number') scores.stability = clamp01To100(result.gaze_stability);
-  if (scores.attention == null && typeof result.concentration === 'number') scores.attention = clamp01To100(result.concentration);
-  if (scores.posture == null && typeof result.posture === 'number') scores.posture = clamp01To100(result.posture);
-  if (scores.blink == null && typeof result.blinking === 'number') scores.blink = clamp01To100(result.blinking);
-
-  // 보조: blink_rate(Hz/min)를 0-100으로 근사 맵핑
-  if (scores.blink == null && typeof result.blink_rate === 'number') {
-    // 10~25 범위를 70~30으로 뒤집어 맵핑 (낮을수록 안정)
-    const br = result.blink_rate;
-    const norm = 100 - Math.max(0, Math.min(100, (br - 10) * 5));
-    scores.blink = Math.round(norm);
-  }
-
-  // 표정/미소
-  if (!labels.expression) {
-    if (typeof result.smile_score === 'number') {
-      const w = clamp01To100(result.smile_score);
-      labels.expression = w != null ? (w >= 66 ? '긍정적' : w >= 40 ? '중립적' : '개선 필요') : undefined;
-    } else if (typeof result.warmth_label === 'string') {
-      labels.expression = result.warmth_label;
-    } else if (typeof result.expression === 'string') {
-      labels.expression = result.expression;
-    }
-  }
-
-  // 최종 보정: null 채우기 + 원본 상태 전달
-  const out = {
-    scores: {
-      attention: scores.attention ?? 0,
-      stability: scores.stability ?? 0,
-      blink: scores.blink ?? 0,
-      posture: scores.posture ?? 0
-    },
-    labels: { expression: labels.expression ?? '-' },
-    status: result?.status,
-    coaching_message: result?.coaching_message,
-    ear_value: result?.ear_value,
-    frame_processed: result?.frame_processed === true
-  };
-  return out;
-}
+// mapFrameResultToMetrics 함수 (ui-utils.js로 이동됨)
 
 // scheduleAnalyzerStart 함수는 js/camera-analyzer.js에서 제공됨
 
 // --- AI API는 서버에서 처리됨 (OpenAI GPT-4o-mini 사용) ---
 
- // --- 초기 안내 팝업 제어 함수 ---
- function showInitialGuidePopup() {
-     document.getElementById('initial-guide-overlay').classList.add('visible');
- }
- 
-   function hideInitialGuidePopup() {
-      document.getElementById('initial-guide-overlay').classList.remove('visible');
-
-  }
- 
-
- 
-   // --- 카메라 경고 메시지 제어 함수 ---
-  function showCameraWarning() {
-      // 상단 바 스타일 경고 메시지 표시
-      document.getElementById('camera-warning').classList.remove('hidden');
-      document.getElementById('main-content').classList.add('with-warning');
-  }
-  
-  function hideCameraWarning() {
-      document.getElementById('camera-warning').classList.add('hidden');
-      document.getElementById('main-content').classList.remove('with-warning');
-  }
-  
-  // --- 인라인 카메라 경고 메시지 제어 함수 ---
-  function showCameraWarningInline() {
-      document.getElementById('camera-warning-inline').style.display = 'block';
-  }
-  
-  function hideCameraWarningInline() {
-      document.getElementById('camera-warning-inline').style.display = 'none';
-  }
-  
-  // --- 카메라 토스트 경고 메시지 제어 함수 ---
-  function showCameraToast() {
-      document.getElementById('camera-toast').classList.remove('hidden');
-      // 5초 후 자동으로 숨기기
-      setTimeout(() => {
-          hideCameraToast();
-      }, 5000);
-  }
-  
-  function hideCameraToast() {
-      document.getElementById('camera-toast').classList.add('hidden');
-  }
-  
-  // --- 확인 팝업 제어 함수 ---
-  function showConfirmDialog() {
-      document.getElementById('confirm-overlay').classList.add('visible');
-  }
-  
-  function hideConfirmDialog() {
-      document.getElementById('confirm-overlay').classList.remove('visible');
-  }
+// 팝업 제어 함수들 (ui-utils.js로 이동됨)
 
 // --- 채팅 관련 변수 ---
 let chatHistory = [];
 let currentSessionId = null; // MongoDB 세션 ID
 
-// --- 피드백 패널 제어 ---
-function toggleFeedbackPanel() { 
-    feedbackPanel.classList.toggle('visible'); 
-}
+// 피드백 패널 제어 함수 (ui-utils.js로 이동됨)
 
 // --- 채팅 기능 ---
 function addPersonaCard() {
@@ -2378,14 +1695,7 @@ function removeTypingIndicator() {
                 // TTS로 AI 응답 읽어주기 (대화 내용만 정리)
                 if (window.ttsManager && window.ttsManager.isEnabled) {
                     setTimeout(() => {
-                        console.log('[TTS] 원본 AI 응답:', result.ai_response);
-                        const cleanText = cleanTextForTTS(result.ai_response);
-                        if (cleanText && cleanText.trim().length > 0) {
-                            console.log('[TTS] 정리된 텍스트로 TTS 호출:', cleanText);
-                            window.ttsManager.speak(cleanText);
-                        } else {
-                            console.warn('[TTS] 정리 후 텍스트가 비어있어 TTS 호출하지 않음');
-                        }
+                        speakAIResponse(result.ai_response);
                     }, 500); // 0.5초 후 음성 재생 (채팅 버블 애니메이션 완료 후)
                 }
             }
@@ -2404,148 +1714,7 @@ function removeTypingIndicator() {
     }
 }
 
-// --- TTS용 텍스트 정리 함수 ---
-function cleanTextForTTS(text) {
-    if (!text || typeof text !== 'string') {
-        console.warn('[TTS] 유효하지 않은 텍스트:', text);
-        return null;
-    }
-    
-    console.log('[TTS] 원본 텍스트:', text);
-    
-    // 1. HTML 태그 및 SSML 태그 제거
-    let cleanText = text
-        .replace(/<[^>]*>/g, '') // HTML 태그 제거
-        .replace(/<speak[^>]*>/gi, '') // SSML speak 태그 제거
-        .replace(/<\/speak>/gi, '') // SSML speak 닫기 태그 제거
-        .replace(/<prosody[^>]*>/gi, '') // SSML prosody 태그 제거
-        .replace(/<\/prosody>/gi, '') // SSML prosody 닫기 태그 제거
-        .replace(/<voice[^>]*>/gi, '') // SSML voice 태그 제거
-        .replace(/<\/voice>/gi, '') // SSML voice 닫기 태그 제거
-        .replace(/<break[^>]*>/gi, '') // SSML break 태그 제거
-        .replace(/<emphasis[^>]*>/gi, '') // SSML emphasis 태그 제거
-        .replace(/<\/emphasis>/gi, '') // SSML emphasis 닫기 태그 제거
-        .replace(/<say-as[^>]*>/gi, '') // SSML say-as 태그 제거
-        .replace(/<\/say-as>/gi, '') // SSML say-as 닫기 태그 제거
-        .replace(/<phoneme[^>]*>/gi, '') // SSML phoneme 태그 제거
-        .replace(/<\/phoneme>/gi, '') // SSML phoneme 닫기 태그 제거
-        .replace(/<sub[^>]*>/gi, '') // SSML sub 태그 제거
-        .replace(/<\/sub>/gi, '') // SSML sub 닫기 태그 제거
-        .replace(/<audio[^>]*>/gi, '') // SSML audio 태그 제거
-        .replace(/<mark[^>]*>/gi, '') // SSML mark 태그 제거
-        .replace(/<bookmark[^>]*>/gi, '') // SSML bookmark 태그 제거
-        .replace(/<p[^>]*>/gi, '') // SSML p 태그 제거
-        .replace(/<\/p>/gi, '') // SSML p 닫기 태그 제거
-        .replace(/<s[^>]*>/gi, '') // SSML s 태그 제거
-        .replace(/<\/s>/gi, '') // SSML s 닫기 태그 제거
-        .replace(/<w[^>]*>/gi, '') // SSML w 태그 제거
-        .replace(/<\/w>/gi, '') // SSML w 닫기 태그 제거
-        .replace(/<m[^>]*>/gi, '') // SSML m 태그 제거
-        .replace(/<\/m>/gi, '') // SSML m 닫기 태그 제거
-        .replace(/<t[^>]*>/gi, '') // SSML t 태그 제거
-        .replace(/<\/t>/gi, '') // SSML t 닫기 태그 제거
-        .replace(/xmlns="[^"]*"/gi, '') // XML 네임스페이스 제거
-        .replace(/xml:lang="[^"]*"/gi, '') // XML 언어 속성 제거
-        .replace(/version="[^"]*"/gi, ''); // XML 버전 속성 제거
-    
-    // 2. 특수 문자 및 이모지 정리
-    cleanText = cleanText
-        .replace(/[🎤🎬📹🎥🎭🎪🎨🎯🎲🎮🎰🎱🎳🎴🎵🎶🎷🎸🎹🎺🎻🎼🎽🎾🎿🏀🏁🏂🏃🏄🏅🏆🏇🏈🏉🏊🏋🏌🏍🏎🏏🏐🏑🏒🏓🏔🏕🏖🏗🏘🏙🏚🏛🏜🏝🏞🏟🏠🏡🏢🏣🏤🏥🏦🏧🏨🏩🏪🏫🏬🏭🏮🏯🏰🏱🏲🏳🏴🏵🏶🏷🏸🏹🏺🏻🏼🏽🏾🏿]/g, '') // 이모지 제거
-        .replace(/[🔴🟠🟡🟢🔵🟣⚫⚪🟤🔺🔻🔸🔹🔶🔷🔳🔲▪️▫️◾◽◼️◻️🟥🟧🟨🟩🟦🟪⬛⬜🟫]/g, '') // 색상 이모지 제거
-        .replace(/[📱📲📳📴📵📶📷📸📹📺📻📼📽📾📿🔀🔁🔂🔄🔃⏩⏪⏫⏬⏭⏮⏯⏰⏱⏲⏳⏸⏹⏺⏻]/g, '') // 기타 이모지 제거
-        .replace(/[💻💼💽💾💿📀📁📂📃📄📅📆📇📈📉📊📋📌📍📎📏📐📑📒📓📔📕📖📗📘📙📚📛📜📝📞📟📠📡📢📣📤📥📦📧📨📩📪📫📬📭📮📯📰📱📲📳📴📵📶📷📸📹📺📻📼📽📾📿]/g, '') // 더 많은 이모지 제거
-        .replace(/[😀😃😄😁😆😅😂🤣😊😇🙂🙃😉😌😍🥰😘😗😙😚😋😛😝😜🤪🤨🧐🤓😎🤩🥳😏😒😞😔😟😕🙁☹️😣😖😫😩🥺😢😭😤😠😡🤬🤯😳🥵🥶😱😨😰😥😓🤗🤔🤭🤫🤥😶😐😑😯😦😧😮😲🥱😴🤤😪😵🤐🥴🤢🤮🤧😷🤒🤕🤑🤠]/g, '') // 감정 이모지 제거
-        .replace(/[👋🤚🖐️✋🖖👌🤌🤏✌️🤞🤟🤘🤙👈👉👆🖕👇☝️👍👎✊👊👋👌✌️🤞🤟🤘🤙👈👉👆🖕👇☝️👍👎✊👊]/g, '') // 손 이모지 제거
-        .replace(/[👶👧🧒👦👩🧑👨👵🧓👴👲👳🧕👮🕵️👷👸🤴👳👲🧕👮🕵️👷👸🤴]/g, '') // 사람 이모지 제거
-        .replace(/[🐶🐱🐭🐹🐰🦊🐻🐼🐻‍❄️🐨🐯🦁🐮🐷🐽🐸🐵🙈🙉🙊🐒🐔🐧🐦🐤🐣🐥🦆🦅🦉🦇🐺🐗🐴🦄🐝🐛🦋🐌🐞🐜🦟🦗🕷️🕸️🦂🐢🐍🦎🦖🦕🐙🦑🦐🦞🦀🐡🐠🐟🐬🐳🐋🦈🐊🐅🐆🦓🦍🦧🐘🦛🦏🐪🐫🦙🦒🐃🐂🐄🐎🐖🐏🐑🦌🐕🐩🦮🐕‍🦺🐈🐈‍⬛🐓🦃🦚🦜🦢🦩🕊️🐇🦝🦨🦡🦫🦦🦥🐁🐀🐿️🦔]/g, '') // 동물 이모지 제거
-        .replace(/[🌱🌲🌳🌴🌵🌾🌿☘️🍀🍁🍂🍃🍄🍄‍🟫🍅🍆🌶️🌽🥕🥬🥒🥦🧄🧅🥜🌰🥑🥥🥝🥭🍎🍐🍊🍋🍌🍉🍇🍓🫐🍈🍒🍑🥭🍍🥥🥝🍅🍆🥑🥦🥬🥒🌶️🧄🧅🥕🥜🌰🥑🥥🥝🥭🍎🍐🍊🍋🍌🍉🍇🍓🫐🍈🍒🍑🥭🍍🥥🥝🍅🍆🥑🥦🥬🥒🌶️🧄🧅🥕🥜🌰]/g, '') // 식물 이모지 제거
-        .replace(/[🍔🍟🍕🌭🥪🌮🌯🥙🧆🥚🍳🧈🥞🧇🥓🥩🍗🍖🦴🌭🍔🍟🍕🥪🥙🧆🌮🌯🥗🥘🥫🍝🍜🍲🍛🍣🍱🥟🦪🍤🍙🍚🍘🍥🥠🥮🍢🍡🍧🍨🍦🥧🧁🍰🎂🍮🍭🍬🍫🍿🍩🍪🌰🥜🍯🥛🍼☕🫖🍵🧃🥤🧋🍶🍺🍻🥂🍷🥃🍸🍹🍾🥄🍴🍽️🥡🥢🧂]/g, '') // 음식 이모지 제거
-        .replace(/[⚽🏀🏈⚾🥎🎾🏐🏉🥏🎱🪀🏓🏸🏒🏑🥍🏏🥅⛳🪁🏹🎣🤿🥊🥋🎽🛹🛷⛸️🥌🎿⛷️🏂🪂🏋️‍♀️🏋️‍♂️🤼‍♀️🤼‍♂️🤸‍♀️🤸‍♂️⛹️‍♀️⛹️‍♂️🤺🤾‍♀️🤾‍♂️🏊‍♀️🏊‍♂️🚣‍♀️🚣‍♂️🧗‍♀️🧗‍♂️🚵‍♀️🚵‍♂️🚴‍♀️🚴‍♂️🏆🥇🥈🥉🏅🎖️🏵️🎗️🎫🎟️🎪🤹‍♀️🤹‍♂️🎭🩰🎨🎬🎤🎧🎼🎹🥁🎷🎺🎸🪕🎻🎲♟️🎯🎳🎮🎰🧩🎨📱📲💻⌨️🖥️🖨️🖱️🖲️💽💾💿📀📼📷📸📹📺📻📟📠🔋🔌💡🔦🕯️🪔🧯🛢️💸💵💴💶💷🪙💰💳💎⚖️🪜🪝🔧🔨⚒️🛠️⛏️🪛🔩⚙️🪤🧰🧲🪜🪝🔧🔨⚒️🛠️⛏️🪛🔩⚙️🪤🧰🧲]/g, '') // 스포츠/기타 이모지 제거
-        .replace(/[🚗🚕🚙🚌🚎🏎️🚓🚑🚒🚐🛻🚚🚛🚜🛺🚔🚍🚘🚖🚡🚠🚟🚃🚋🚞🚝🚄🚅🚈🚂🚆🚇🚊🚉✈️🛫🛬🛩️💺🛰️🚀🛸🚁🛶⛵🚤🛥️🛳️⛴️🚢⚓🪝⛽🚧🚨🚥🚦🛑🚏🗺️🗿🗽🗼🏰🏯🏟️🎡🎢🎠⛲⛱️🏖️🏝️🏔️⛰️🌋🗻🏕️⛺🏠🏡🏘️🏚️🏗️🏭🏢🏬🏣🏤🏥🏦🏨🏪🏫🏩💒🏛️⛪🕌🕍🛕🕋⛩️🪔🎇🎆🧨✨🎈🎉🎊🎋🎍🎎🎏🎐🎀🎁🪄🪅🎊🎉🎈✨🧨🎆🎇🪔⛩️🕋🛕🕍🕌⛪🏛️💒🏩🏫🏪🏨🏦🏥🏤🏣🏬🏢🏭🏗️🏚️🏘️🏡🏠⛺🏕️🗻🌋⛰️🏔️🏝️🏖️⛱️⛲🎠🎢🎡🏟️🏯🏰🗼🗽🗿🗺️🚏🛑🚦🚥🚨🚧⛽🪝⚓🚢⛴️🛳️🛥️🚤⛵🛶🚁🛸🚀🛰️💺🛩️🛬🛫✈️🚊🚇🚆🚂🚈🚅🚄🚝🚞🚋🚃🚟🚠🚡🚖🚘🚍🚔🛺🚜🚛🚚🛻🚐🚒🚑🚓🏎️🚎🚌🚙🚕🚗]/g, '') // 교통/건물 이모지 제거
-        .replace(/[🌍🌎🌏🌐🗺️🗾🧭🏔️⛰️🌋🗻🏕️⛺🏠🏡🏘️🏚️🏗️🏭🏢🏬🏣🏤🏥🏦🏨🏪🏫🏩💒🏛️⛪🕌🕍🛕🕋⛩️🪔🎇🎆🧨✨🎈🎉🎊🎋🎍🎎🎏🎐🎀🎁🪄🪅🎊🎉🎈✨🧨🎆🎇🪔⛩️🕋🛕🕍🕌⛪🏛️💒🏩🏫🏪🏨🏦🏥🏤🏣🏬🏢🏭🏗️🏚️🏘️🏡🏠⛺🏕️🗻🌋⛰️🏔️🏝️🏖️⛱️⛲🎠🎢🎡🏟️🏯🏰🗼🗽🗿🗺️🚏🛑🚦🚥🚨🚧⛽🪝⚓🚢⛴️🛳️🛥️🚤⛵🛶🚁🛸🚀🛰️💺🛩️🛬🛫✈️🚊🚇🚆🚂🚈🚅🚄🚝🚞🚋🚃🚟🚠🚡🚖🚘🚍🚔🛺🚜🚛🚚🛻🚐🚒🚑🚓🏎️🚎🚌🚙🚕🚗]/g, '') // 지리/건물 이모지 제거
-        .replace(/[🌍🌎🌏🌐🗺️🗾🧭🏔️⛰️🌋🗻🏕️⛺🏠🏡🏘️🏚️🏗️🏭🏢🏬🏣🏤🏥🏦🏨🏪🏫🏩💒🏛️⛪🕌🕍🛕🕋⛩️🪔🎇🎆🧨✨🎈🎉🎊🎋🎍🎎🎏🎐🎀🎁🪄🪅🎊🎉🎈✨🧨🎆🎇🪔⛩️🕋🛕🕍🕌⛪🏛️💒🏩🏫🏪🏨🏦🏥🏤🏣🏬🏢🏭🏗️🏚️🏘️🏡🏠⛺🏕️🗻🌋⛰️🏔️🏝️🏖️⛱️⛲🎠🎢🎡🏟️🏯🏰🗼🗽🗿🗺️🚏🛑🚦🚥🚨🚧⛽🪝⚓🚢⛴️🛳️🛥️🚤⛵🛶🚁🛸🚀🛰️💺🛩️🛬🛫✈️🚊🚇🚆🚂🚈🚅🚄🚝🚞🚋🚃🚟🚠🚡🚖🚘🚍🚔🛺🚜🚛🚚🛻🚐🚒🚑🚓🏎️🚎🚌🚙🚕🚗]/g, '') // 더 많은 이모지 제거
-        .replace(/[🌍🌎🌏🌐🗺️🗾🧭🏔️⛰️🌋🗻🏕️⛺🏠🏡🏘️🏚️🏗️🏭🏢🏬🏣🏤🏥🏦🏨🏪🏫🏩💒🏛️⛪🕌🕍🛕🕋⛩️🪔🎇🎆🧨✨🎈🎉🎊🎋🎍🎎🎏🎐🎀🎁🪄🪅🎊🎉🎈✨🧨🎆🎇🪔⛩️🕋🛕🕍🕌⛪🏛️💒🏩🏫🏪🏨🏦🏥🏤🏣🏬🏢🏭🏗️🏚️🏘️🏡🏠⛺🏕️🗻🌋⛰️🏔️🏝️🏖️⛱️⛲🎠🎢🎡🏟️🏯🏰🗼🗽🗿🗺️🚏🛑🚦🚥🚨🚧⛽🪝⚓🚢⛴️🛳️🛥️🚤⛵🛶🚁🛸🚀🛰️💺🛩️🛬🛫✈️🚊🚇🚆🚂🚈🚅🚄🚝🚞🚋🚃🚟🚠🚡🚖🚘🚍🚔🛺🚜🚛🚚🛻🚐🚒🚑🚓🏎️🚎🚌🚙🚕🚗]/g, ''); // 최종 이모지 제거
-    
-    // 3. 시스템 메시지나 특수 패턴 제거 (강화된 버전)
-    cleanText = cleanText
-        // 기본 시스템 메시지 제거
-        .replace(/^(시스템|System|ERROR|Error|error|WARNING|Warning|warning|INFO|Info|info|DEBUG|Debug|debug|LOG|Log|log):/g, '')
-        .replace(/^\[.*?\]/g, '') // 대괄호로 둘러싸인 시스템 메시지 제거
-        .replace(/^\{.*?\}/g, '') // 중괄호로 둘러싸인 시스템 메시지 제거
-        .replace(/^<.*?>/g, '') // 꺾쇠괄호로 둘러싸인 시스템 메시지 제거
-        .replace(/^\(.*?\)/g, '') // 괄호로 둘러싸인 시스템 메시지 제거
-        
-        // HTTP/API 관련 시스템 메시지 제거
-        .replace(/^HTTP.*?OK.*?$/gm, '') // HTTP 응답 메시지 제거
-        .replace(/^INFO:httpx:.*?$/gm, '') // httpx 로그 제거
-        .replace(/^✅.*?$/gm, '') // 체크마크 시스템 메시지 제거
-        .replace(/^🤖.*?$/gm, '') // 로봇 이모지 시스템 메시지 제거
-        .replace(/^🔄.*?$/gm, '') // 리프레시 이모지 시스템 메시지 제거
-        .replace(/^🔍.*?$/gm, '') // 돋보기 이모지 시스템 메시지 제거
-        .replace(/^📊.*?$/gm, '') // 차트 이모지 시스템 메시지 제거
-        
-        // AI 응답 관련 시스템 메시지 제거
-        .replace(/^\[AI_RESPONSE\].*?$/gm, '') // AI 응답 로그 제거
-        .replace(/^\[SEND_MESSAGE\].*?$/gm, '') // 메시지 전송 로그 제거
-        .replace(/^\[SAVE_MESSAGE\].*?$/gm, '') // 메시지 저장 로그 제거
-        .replace(/^OpenAI.*?응답.*?$/gm, '') // OpenAI 응답 로그 제거
-        
-        // 랜드마크 관련 시스템 메시지 제거
-        .replace(/^랜드마크.*?프레임.*?$/gm, '') // 랜드마크 배치 로그 제거
-        .replace(/^📊.*?랜드마크.*?$/gm, '') // 랜드마크 차트 로그 제거
-        
-        // URL 및 도메인 제거
-        .replace(/https?:\/\/[^\s]+/g, '') // HTTP/HTTPS URL 제거
-        .replace(/www\.[^\s]+/g, '') // www 도메인 제거
-        .replace(/[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, '') // 일반 도메인 제거
-        .replace(/\/\/[^\s]+/g, '') // //로 시작하는 경로 제거
-        
-        // JSON 객체 및 딕셔너리 제거
-        .replace(/\{[^}]*\}/g, '') // 중괄호로 둘러싸인 JSON 객체 제거
-        .replace(/\[[^\]]*\]/g, '') // 대괄호로 둘러싸인 배열 제거
-        .replace(/"[^"]*":\s*"[^"]*"/g, '') // JSON 키-값 쌍 제거
-        .replace(/"[^"]*":\s*[^,}\]]+/g, '') // JSON 키-값 쌍 제거 (값이 문자열이 아닌 경우)
-        
-        // 기타 시스템 키워드 제거
-        .replace(/^[A-Z_]+:/g, '') // 대문자로 된 시스템 키워드 제거
-        .replace(/^[a-z_]+:/g, '') // 소문자로 된 시스템 키워드 제거
-        .replace(/^[0-9]+\./g, '') // 숫자로 시작하는 번호 제거
-        
-        // 특수 문자 번호 제거
-        .replace(/^[①②③④⑤⑥⑦⑧⑨⑩]/g, '') // 원문자 번호 제거
-        .replace(/^[❶❷❸❹❺❻❼❽❾❿]/g, '') // 원문자 번호 제거
-        .replace(/^[⑴⑵⑶⑷⑸⑹⑺⑻⑼⑽]/g, '') // 괄호 숫자 제거
-        .replace(/^[㈠㈡㈢㈣㈤㈥㈦㈧㈨㈩]/g, '') // 괄호 한자 제거
-        .replace(/^[㉠㉡㉢㉣㉤㉥㉦㉧㉨㉩]/g, '') // 원문자 한자 제거
-        .replace(/^[㊀㊁㊂㊃㊄㊅㊆㊇㊈㊉]/g, '') // 원문자 한자 제거
-        .replace(/^[㊐㊑㊒㊓㊔㊕㊖㊗㊘㊙]/g, '') // 원문자 한자 제거
-        .replace(/^[㊚㊛㊜㊝㊞㊟㊠㊡㊢㊣]/g, '') // 원문자 한자 제거
-        .replace(/^[㊤㊥㊦㊧㊨㊩㊪㊫㊬㊭]/g, '') // 원문자 한자 제거
-        .replace(/^[㊮㊯㊰㊱㊲㊳㊴㊵㊶㊷]/g, '') // 원문자 한자 제거
-        .replace(/^[㊸㊹㊺㊻㊼㊽㊾㊿]/g, ''); // 원문자 한자 제거
-    
-    // 4. 불필요한 공백 정리
-    cleanText = cleanText
-        .replace(/\s+/g, ' ') // 연속된 공백을 하나로
-        .replace(/^\s+|\s+$/g, '') // 앞뒤 공백 제거
-        .replace(/^[,\s]+|[,\s]+$/g, '') // 앞뒤 쉼표와 공백 제거
-        .replace(/^[.\s]+|[.\s]+$/g, ''); // 앞뒤 점과 공백 제거
-    
-    // 5. 빈 텍스트 체크
-    if (!cleanText || cleanText.trim().length === 0) {
-        console.warn('[TTS] 정리 후 텍스트가 비어있음');
-        return null;
-    }
-    
-    // 6. 최종 길이 체크 (너무 긴 텍스트는 자르기)
-    if (cleanText.length > 500) {
-        console.warn('[TTS] 텍스트가 너무 김, 자름:', cleanText.length);
-        cleanText = cleanText.substring(0, 500) + '...';
-    }
-    
-    console.log('[TTS] 정리된 텍스트:', cleanText);
-    return cleanText;
-}
+
 
 // 호감도 업데이트 함수 (개선된)
 function updateLikability(score) {
@@ -2612,7 +1781,7 @@ function updateLikabilityFactors(totalScore) {
 
 // 전역 스코프에 함수들 노출
 window.sendMessage = sendMessage;
-window.cleanTextForTTS = cleanTextForTTS;
+
 window.updateLikability = updateLikability;
 window.updateLikabilityFactors = updateLikabilityFactors;
 
@@ -3382,14 +2551,7 @@ function cleanupGlobalVariables() {
     }
     
     // TTS 관리자 정리
-    if (window.ttsManager) {
-        try {
-            window.ttsManager.cleanup();
-            window.ttsManager = null;
-        } catch (e) {
-            console.warn('[CLEANUP] TTS 정리 실패:', e);
-        }
-    }
+    cleanupTTSManager();
     
     // UI 업데이트 타이머 정리
     if (window.__UI_UPDATE_TIMER__) {
@@ -3772,90 +2934,7 @@ document.addEventListener('click', function(event) {
     }
 });
 
-// --- 개인화된 꿀팁 생성 ---
-function generatePersonalizedTips(metrics) {
-  const tips = [];
-  
-  // 자세 관련 (실제 UI 점수 사용)
-  const postureElement = document.getElementById('posture-score');
-  const postureScore = postureElement ? parseInt(postureElement.textContent) : 60;
-  
-  if (postureScore < 70) {
-    if (postureScore < 50) {
-      tips.push("자세가 많이 나빠졌어요. 목을 곧게 펴고 어깨를 내려보세요.");
-    } else {
-      tips.push("자세를 조금 더 개선해보세요. 목을 곧게 펴고 어깨를 내려보세요.");
-    }
-  }
-  
-  // 어깨 자세 관련
-  if (metrics?.shoulderAnalysis) {
-    const shoulder = metrics.shoulderAnalysis;
-    
-    // details가 있는지 확인 후 접근
-    if (shoulder.details && shoulder.details.heightBalance < 70) {
-      tips.push("어깨 높이를 맞춰 균형잡힌 자세를 유지하세요.");
-    }
-    
-    if (shoulder.details && shoulder.details.slope < 70) {
-      tips.push("어깨를 수평으로 맞춰 삐딱한 자세를 교정하세요.");
-    }
-    
-    if (shoulder.details && shoulder.details.width < 70) {
-      tips.push("어깨를 자연스럽게 펴고 올바른 자세를 취하세요.");
-    }
-    
-    if (shoulder.details && shoulder.details.rotation < 70) {
-      tips.push("한쪽 어깨가 앞으로 나오지 않도록 주의하세요.");
-    }
-    
-    // details가 없으면 전체 점수로 판단
-    if (!shoulder.details && shoulder.shoulderPostureScore < 70) {
-      tips.push("어깨 자세를 개선해보세요.");
-    }
-  }
-  
-  // 시선 관련 (실제 UI 점수 사용)
-  const gazeElement = document.getElementById('gaze-score');
-  const gazeScore = gazeElement ? parseInt(gazeElement.textContent) : 60;
-  
-  if (gazeScore < 60) {
-    tips.push("화면 중앙을 응시하며 집중해보세요.");
-  }
-  
-  // 깜빡임 관련 (실제 UI 점수 사용)
-  const blinkElement = document.getElementById('blinking-score');
-  const blinkScore = blinkElement ? parseInt(blinkElement.textContent) : 80;
-  
-  if (blinkScore < 60) {
-    tips.push("자연스럽게 깜빡여 눈을 보호하세요.");
-  } else if (blinkScore < 80) {
-    tips.push("깜빡임이 조금 부족해요. 편안하게 깜빡여보세요.");
-  }
-  
-  // 미소 관련 (개인별 기준 적용)
-  if (metrics?.smileIntensity !== undefined && metrics?.personalBaseSmile !== undefined) {
-    const smileRatio = metrics.smileIntensity / metrics.personalBaseSmile;
-    
-    if (smileRatio < 0.7) {
-      tips.push("😊 표정이 평소보다 많이 딱딱해 보여요. 입꼬리를 살짝 올려보세요!");
-    } else if (smileRatio < 0.9) {
-      tips.push("😊 표정이 평소보다 조금 딱딱해 보여요. 자연스러운 미소를 연습해보세요!");
-    } else if (smileRatio > 1.3) {
-      tips.push("😊 표정이 평소보다 많이 밝아 보여요. 너무 과하지 않게 자연스럽게 유지해보세요!");
-    }
-  } else if (metrics?.smileIntensity < 30) {
-    // 개인별 기준이 없을 때 기존 방식 사용
-    tips.push("편안한 미소로 대화를 시작해보세요.");
-  }
-  
-  // 기본 꿀팁 (조건에 맞지 않을 때)
-  if (tips.length === 0) {
-    tips.push("훌륭한 자세입니다! 계속 유지해보세요.");
-  }
-  
-  return tips.slice(0, 3); // 최대 3개까지만 표시
-}
+// generatePersonalizedTips 함수 (ui-utils.js로 이동됨)
 
 // --- 랜드마크 배치 처리 (제거됨) ---
 

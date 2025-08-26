@@ -1,0 +1,39 @@
+<!-- 집중도 상세 정보 팝업 -->
+<div id="concentration-details-popup" class="details-popup">
+  <div class="details-popup-content">
+    <div class="details-popup-header">
+      <h3>🎯 집중도 분석 상세</h3>
+      <button class="details-popup-close" onclick="closeConcentrationDetails()">×</button>
+    </div>
+    <div class="details-popup-body">
+      <div class="concentration-summary">
+        <div class="concentration-main">
+          <div class="concentration-label">집중 상태</div>
+          <div id="concentration-main-value" class="concentration-main-value">-</div>
+        </div>
+        <div class="concentration-score">
+          <div class="concentration-label">집중도 점수</div>
+          <div id="concentration-score-value" class="concentration-score-value">-%</div>
+        </div>
+      </div>
+      <div class="concentration-breakdown">
+        <div class="concentration-label">분석 요소</div>
+        <div id="concentration-factors" class="concentration-factors">
+          <!-- 동적으로 생성됨 -->
+        </div>
+      </div>
+      <div class="concentration-criteria">
+        <div class="concentration-label">평가 기준</div>
+        <div id="concentration-criteria-text" class="concentration-criteria-text">
+          집중도 분석 데이터가 없습니다.
+        </div>
+      </div>
+      <div class="concentration-explanation">
+        <div class="concentration-label">점수 계산 근거</div>
+        <div id="concentration-explanation-text" class="concentration-explanation-text">
+          집중도 분석 데이터가 없습니다.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

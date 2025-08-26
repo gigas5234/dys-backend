@@ -1,0 +1,85 @@
+<!-- 대화 주도권 상세 정보 팝업 -->
+<div id="initiative-details-popup" class="details-popup">
+  <div class="details-popup-content">
+    <div class="details-popup-header">
+      <h3>🎭 대화 주도권 분석 상세</h3>
+      <button class="details-popup-close" onclick="closeInitiativeDetails()">×</button>
+    </div>
+    <div class="details-popup-body">
+      <div class="initiative-summary">
+        <div class="initiative-main">
+          <div class="initiative-label">주도권 점수</div>
+          <div id="initiative-main-value" class="initiative-main-value">50%</div>
+        </div>
+        <div class="initiative-status">
+          <div class="initiative-label">상태</div>
+          <div id="initiative-status-text" class="initiative-status-text">균형적</div>
+        </div>
+      </div>
+      <div class="initiative-visual">
+        <div class="initiative-label">주도권 분배</div>
+        <div class="initiative-bar-large">
+          <div id="initiative-user-bar-large" class="user-bar-large" style="width: 50%;">
+            <span class="bar-label">나</span>
+          </div>
+          <div id="initiative-ai-bar-large" class="ai-bar-large" style="width: 50%;">
+            <span class="bar-label">AI</span>
+          </div>
+        </div>
+      </div>
+      <div class="initiative-breakdown">
+        <div class="initiative-label">상세 통계</div>
+        <div class="stats-grid">
+          <div class="stat-item">
+            <div class="stat-label">메시지 수</div>
+            <div class="stat-value">
+              <span id="user-message-count" class="user-stat">0</span> : 
+              <span id="ai-message-count" class="ai-stat">0</span>
+            </div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-label">메시지 길이</div>
+            <div class="stat-value">
+              <span id="user-length" class="user-stat">0</span> : 
+              <span id="ai-length" class="ai-stat">0</span>
+            </div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-label">질문 수</div>
+            <div class="stat-value">
+              <span id="user-questions" class="user-stat">0</span> : 
+              <span id="ai-questions" class="ai-stat">0</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="initiative-criteria">
+        <div class="initiative-label">평가 기준</div>
+        <div class="criteria-list">
+          <div class="criteria-item">
+            <span class="criteria-weight">30%</span>
+            <span class="criteria-text">메시지 수 비율</span>
+          </div>
+          <div class="criteria-item">
+            <span class="criteria-weight">25%</span>
+            <span class="criteria-text">메시지 길이 비율</span>
+          </div>
+          <div class="criteria-item">
+            <span class="criteria-weight">25%</span>
+            <span class="criteria-text">질문 비율</span>
+          </div>
+          <div class="criteria-item">
+            <span class="criteria-weight">20%</span>
+            <span class="criteria-text">대화 시작 패턴</span>
+          </div>
+        </div>
+      </div>
+      <div class="initiative-explanation">
+        <div class="initiative-label">주도권 해석</div>
+        <div id="initiative-explanation-text" class="initiative-explanation-text">
+          대화 주도권은 메시지 수, 길이, 질문 빈도 등을 종합적으로 분석하여 계산됩니다.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

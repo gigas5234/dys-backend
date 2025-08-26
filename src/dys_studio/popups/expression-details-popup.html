@@ -1,0 +1,33 @@
+<!-- 표정 상세 정보 팝업 -->
+<div id="expression-details-popup" class="details-popup">
+  <div class="details-popup-content">
+    <div class="details-popup-header">
+      <h3>😊 표정 분석 상세</h3>
+      <button class="details-popup-close" onclick="closeExpressionDetails()">×</button>
+    </div>
+    <div class="details-popup-body">
+      <div class="expression-summary">
+        <div class="expression-main">
+          <div class="expression-label">주요 표정</div>
+          <div id="expression-main-value" class="expression-main-value">-</div>
+        </div>
+        <div class="expression-confidence">
+          <div class="expression-label">신뢰도</div>
+          <div id="expression-confidence-value" class="expression-confidence-value">-%</div>
+        </div>
+      </div>
+      <div class="expression-breakdown">
+        <div class="expression-label">표정별 확률</div>
+        <div id="expression-probabilities" class="expression-probabilities">
+          <!-- 동적으로 생성됨 -->
+        </div>
+      </div>
+      <div class="expression-explanation">
+        <div class="expression-label">점수 계산 근거</div>
+        <div id="expression-explanation-text" class="expression-explanation-text">
+          표정 분석 데이터가 없습니다.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
