@@ -109,19 +109,33 @@ class ExpressionAnalyzer:
                                         print(f"🔍 모델 딕셔너리 키: {list(model_dict.keys())}")
                                         
                                         # 호환 가능한 ViT 설정으로 모델 생성
-                                        config = ViTConfig(
-                                            image_size=224,
-                                            patch_size=16,
-                                            num_channels=3,
-                                            num_labels=8,  # 8개 감정 카테고리
-                                            hidden_size=768,
-                                            num_hidden_layers=12,
-                                            num_attention_heads=12,
-                                            intermediate_size=3072,
-                                            output_attentions=False,  # 명시적으로 False 설정
-                                            output_hidden_states=False,
-                                            use_return_dict=True
-                                        )
+                                        try:
+                                            # 최신 버전용 설정
+                                            config = ViTConfig(
+                                                image_size=224,
+                                                patch_size=16,
+                                                num_channels=3,
+                                                num_labels=8,  # 8개 감정 카테고리
+                                                hidden_size=768,
+                                                num_hidden_layers=12,
+                                                num_attention_heads=12,
+                                                intermediate_size=3072,
+                                                output_attentions=False,  # 명시적으로 False 설정
+                                                output_hidden_states=False,
+                                                use_return_dict=True
+                                            )
+                                        except TypeError:
+                                            # 구버전 호환 설정 (output_attentions 속성이 없는 경우)
+                                            config = ViTConfig(
+                                                image_size=224,
+                                                patch_size=16,
+                                                num_channels=3,
+                                                num_labels=8,  # 8개 감정 카테고리
+                                                hidden_size=768,
+                                                num_hidden_layers=12,
+                                                num_attention_heads=12,
+                                                intermediate_size=3072
+                                            )
                                         
                                         # 새 모델 생성
                                         self.model = ViTForImageClassification(config)
