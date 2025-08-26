@@ -1,0 +1,130 @@
+    <!-- 종합 점수 상세 정보 팝업 (개선된 버전) -->
+    <div id="comprehensive-score-details-popup" class="details-popup">
+      <div class="details-popup-content">
+        <div class="details-popup-header">
+          <h3>🏆 종합 점수 분석</h3>
+          <button class="details-popup-close" onclick="closeComprehensiveScoreDetails()">×</button>
+        </div>
+        <div class="details-popup-body">
+          <div class="main-metric-container">
+            <div class="main-metric-icon">🏆</div>
+            <div class="main-metric-value" id="comprehensive-main-value">0%</div>
+            <div class="main-metric-label">종합 점수</div>
+            <div class="main-metric-status" id="comprehensive-status-text">분석 대기 중</div>
+          </div>
+          
+          <div class="tabs-container">
+            <div class="tabs">
+              <button class="tab-btn active" onclick="showComprehensiveTab('breakdown')">점수 분석</button>
+              <button class="tab-btn" onclick="showComprehensiveTab('criteria')">평가 기준</button>
+              <button class="tab-btn" onclick="showComprehensiveTab('explanation')">상세 설명</button>
+            </div>
+          </div>
+          
+          <div class="tab-content">
+            <div id="comprehensive-breakdown-tab" class="tab-pane active">
+              <div class="comprehensive-breakdown">
+                <div class="comprehensive-label">카테고리별 점수</div>
+                <div class="category-scores">
+                  <div class="category-item visual">
+                    <div class="category-header">
+                      <span class="category-icon">👁️</span>
+                      <span class="category-name">시각적 요소</span>
+                      <span class="category-weight">55%</span>
+                    </div>
+                    <div class="category-score">
+                      <div id="visual-average" class="category-average">0%</div>
+                      <div class="category-contribution">기여도: <span id="visual-contribution">0%</span></div>
+                    </div>
+                    <div class="category-details">
+                      <div class="detail-item">
+                        <span class="detail-label">표정</span>
+                        <span id="visual-expression" class="detail-value">0%</span>
+                      </div>
+                      <div class="detail-item">
+                        <span class="detail-label">시선 안정성</span>
+                        <span id="visual-gaze" class="detail-value">0%</span>
+                      </div>
+                      <div class="detail-item">
+                        <span class="detail-label">자세</span>
+                        <span id="visual-posture" class="detail-value">0%</span>
+                      </div>
+                      <div class="detail-item">
+                        <span class="detail-label">깜빡임</span>
+                        <span id="visual-blinking" class="detail-value">0%</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="category-item auditory">
+                    <div class="category-header">
+                      <span class="category-icon">🎵</span>
+                      <span class="category-name">청각적 요소</span>
+                      <span class="category-weight">38%</span>
+                    </div>
+                    <div class="category-score">
+                      <div id="auditory-average" class="category-average">0%</div>
+                      <div class="category-contribution">기여도: <span id="auditory-contribution">0%</span></div>
+                    </div>
+                    <div class="category-details">
+                      <div class="detail-item">
+                        <span class="detail-label">음성 톤</span>
+                        <span id="auditory-tone" class="detail-value">0%</span>
+                      </div>
+                      <div class="detail-item">
+                        <span class="detail-label">집중도</span>
+                        <span id="auditory-concentration" class="detail-value">0%</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="category-item conversation">
+                    <div class="category-header">
+                      <span class="category-icon">💬</span>
+                      <span class="category-name">대화 요소</span>
+                      <span class="category-weight">7%</span>
+                    </div>
+                    <div class="category-score">
+                      <div id="conversation-score" class="category-average">0%</div>
+                      <div class="category-contribution">기여도: <span id="conversation-contribution">0%</span></div>
+                    </div>
+                    <div class="category-details">
+                      <div class="detail-item">
+                        <span class="detail-label">대화 주도권</span>
+                        <span id="conversation-initiative" class="detail-value">0%</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div id="comprehensive-criteria-tab" class="tab-pane">
+              <div id="comprehensive-criteria-text">
+                <div class="criteria-section">
+                  <h4>🎯 종합 점수 평가 기준</h4>
+                  <ul>
+                    <li><strong>시각적 요소 (55%)</strong>: 표정, 시선 안정성, 자세, 깜빡임</li>
+                    <li><strong>청각적 요소 (38%)</strong>: 음성 톤, 집중도</li>
+                    <li><strong>대화 요소 (7%)</strong>: 대화 주도권</li>
+                  </ul>
+                  
+                  <h4>📊 점수 기준</h4>
+                  <ul>
+                    <li><strong>90-100점</strong>: 매우 우수한 대화 능력</li>
+                    <li><strong>70-89점</strong>: 우수한 대화 능력</li>
+                    <li><strong>50-69점</strong>: 보통 수준의 대화 능력</li>
+                    <li><strong>30-49점</strong>: 개선이 필요한 대화 능력</li>
+                    <li><strong>0-29점</strong>: 상당한 개선이 필요함</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+            
+            <div id="comprehensive-explanation-tab" class="tab-pane">
+              <div id="comprehensive-explanation-text">
+                종합 점수 상세 설명이 여기에 표시됩니다.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>

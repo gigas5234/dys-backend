@@ -67,7 +67,8 @@ class ExpressionAnalyzer:
                         if os.path.exists(model_path) and os.path.exists(os.path.join(model_path, "MLmodel")):
                             print("🔄 MLflow 모델 로딩 중...")
                             import mlflow.pytorch
-                            self.model = mlflow.pytorch.load_model(model_path)
+                            # CPU 매핑으로 CUDA 호환성 문제 해결
+                            self.model = mlflow.pytorch.load_model(model_path, map_location='cpu')
                             print(f"✅ MLflow 모델 로드 완료: {model_path}")
                             model_loaded = True
                             break
@@ -99,7 +100,7 @@ class ExpressionAnalyzer:
                                     
                                     # Transformers 라이브러리가 있는 경우 실제 모델 로드
                                     try:
-                                        from transformers import AutoImageProcessor, AutoModelForImageClassification
+                                        from transformers import ViTForImageClassification, ViTConfig
                                         print("✅ Transformers 라이브러리 확인됨")
                                         
                                         # 실제 모델 파일에서 로드
@@ -107,20 +108,51 @@ class ExpressionAnalyzer:
                                         model_dict = torch.load(model_file, map_location='cpu')
                                         print(f"🔍 모델 딕셔너리 키: {list(model_dict.keys())}")
                                         
-                                        # 저장된 모델이 state_dict 형태인지 확인
-                                        if 'model_state_dict' in model_dict:
-                                            # state_dict 형태로 저장된 경우
-                                            print("📦 State dict 형태 모델 감지")
-                                            self.model = model_dict['model']  # 전체 모델 객체
-                                        elif hasattr(model_dict, 'state_dict'):
-                                            # 모델 객체가 직접 저장된 경우
-                                            print("📦 모델 객체 직접 저장 감지")
-                                            self.model = model_dict
+                                        # 호환 가능한 ViT 설정으로 모델 생성
+                                        config = ViTConfig(
+                                            image_size=224,
+                                            patch_size=16,
+                                            num_channels=3,
+                                            num_labels=8,  # 8개 감정 카테고리
+                                            hidden_size=768,
+                                            num_hidden_layers=12,
+                                            num_attention_heads=12,
+                                            intermediate_size=3072,
+                                            output_attentions=False,  # 명시적으로 False 설정
+                                            output_hidden_states=False,
+                                            use_return_dict=True
+                                        )
+                                        
+                                        # 새 모델 생성
+                                        self.model = ViTForImageClassification(config)
+                                        
+                                        # 저장된 모델이 state_dict 형태인지 확인하고 로드
+                                        if isinstance(model_dict, dict):
+                                            if 'state_dict' in model_dict:
+                                                state_dict = model_dict['state_dict']
+                                            elif 'model_state_dict' in model_dict:
+                                                state_dict = model_dict['model_state_dict']
+                                            else:
+                                                # 전체가 state_dict인 경우
+                                                state_dict = model_dict
+                                            
+                                            # 키 이름 정리 (모델 프리픽스 제거)
+                                            cleaned_state_dict = {}
+                                            for key, value in state_dict.items():
+                                                new_key = key.replace('model.', '').replace('module.', '')
+                                                cleaned_state_dict[new_key] = value
+                                            
+                                            # strict=False로 호환되지 않는 키 무시
+                                            missing_keys, unexpected_keys = self.model.load_state_dict(cleaned_state_dict, strict=False)
+                                            if missing_keys:
+                                                print(f"⚠️ 누락된 키: {len(missing_keys)}개")
+                                            if unexpected_keys:
+                                                print(f"⚠️ 예상치 못한 키: {len(unexpected_keys)}개")
                                         else:
-                                            print("📦 일반 PyTorch 모델로 재시도")
+                                            # 직접 모델 객체인 경우
                                             self.model = model_dict
                                         
-                                        print(f"✅ Transformers 모델 로드 완료: {model_file}")
+                                        print(f"✅ ViT 모델 로드 완료: {model_file}")
                                         model_loaded = True
                                         break
                                         
@@ -167,14 +199,28 @@ class ExpressionAnalyzer:
                     print(f"   - {os.path.abspath(path)} (존재: {os.path.exists(path)})")
                 return False
             
-            # GPU 설정
-            self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+            # GPU 설정 및 상세 정보 출력
+            cuda_available = torch.cuda.is_available()
+            print(f"🖥️ CUDA 지원 상태: {cuda_available}")
+            
+            if cuda_available:
+                print(f"🎮 GPU 개수: {torch.cuda.device_count()}")
+                print(f"🎮 현재 GPU: {torch.cuda.current_device()}")
+                print(f"🎮 GPU 이름: {torch.cuda.get_device_name(0)}")
+                print(f"🎮 GPU 메모리: {torch.cuda.get_device_properties(0).total_memory / 1024**3:.1f} GB")
+                print(f"🎮 CUDA 버전: {torch.version.cuda}")
+            else:
+                print("⚠️ CUDA가 지원되지 않는 환경입니다. CPU를 사용합니다.")
+                
+            self.device = torch.device('cuda' if cuda_available else 'cpu')
             print(f"🖥️ 사용 디바이스: {self.device}")
             
             # 모델을 GPU로 이동
-            if torch.cuda.is_available():
+            if cuda_available:
                 self.model = self.model.to(self.device)
                 print("✅ 모델을 GPU로 이동 완료")
+            else:
+                print("💻 CPU 모드로 모델 실행")
             
             # 모델을 평가 모드로 설정
             self.model.eval()

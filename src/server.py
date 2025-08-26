@@ -69,6 +69,25 @@ except ImportError as e:
     print(f"⚠️ Edge-TTS 모듈 로드 실패: {e}")
     TTS_AVAILABLE = False
 
+# PyTorch CUDA 지원 상태 확인
+try:
+    import torch
+    cuda_available = torch.cuda.is_available()
+    print(f"🖥️ PyTorch CUDA 지원 상태: {cuda_available}")
+    
+    if cuda_available:
+        print(f"🎮 GPU 개수: {torch.cuda.device_count()}")
+        print(f"🎮 현재 GPU: {torch.cuda.current_device()}")
+        print(f"🎮 GPU 이름: {torch.cuda.get_device_name(0)}")
+        print(f"🎮 GPU 메모리: {torch.cuda.get_device_properties(0).total_memory / 1024**3:.1f} GB")
+        print(f"🎮 CUDA 버전: {torch.version.cuda}")
+        print(f"🎮 PyTorch 버전: {torch.__version__}")
+    else:
+        print("⚠️ CUDA가 지원되지 않는 환경입니다. CPU를 사용합니다.")
+        print(f"🎮 PyTorch 버전: {torch.__version__}")
+except ImportError as e:
+    print(f"⚠️ PyTorch 모듈 로드 실패: {e}")
+
 # OpenAI API 설정
 import openai
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")

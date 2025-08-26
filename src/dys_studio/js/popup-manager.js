@@ -970,4 +970,34 @@ window.closeInitiativeDetails = closeInitiativeDetails;
 window.showComprehensiveScoreDetails = showComprehensiveScoreDetails;
 window.closeComprehensiveScoreDetails = closeComprehensiveScoreDetails;
 
+// ===== 종합 점수 탭 관리 =====
+function showComprehensiveTab(tabName) {
+    // 모든 탭 버튼에서 active 클래스 제거
+    document.querySelectorAll('#comprehensive-score-details-popup .tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    // 모든 탭 패널 숨기기
+    document.querySelectorAll('#comprehensive-score-details-popup .tab-pane').forEach(pane => {
+        pane.classList.remove('active');
+    });
+    
+    // 선택된 탭 버튼 활성화
+    const activeBtn = document.querySelector(`#comprehensive-score-details-popup .tab-btn[onclick="showComprehensiveTab('${tabName}')"]`);
+    if (activeBtn) {
+        activeBtn.classList.add('active');
+    }
+    
+    // 선택된 탭 패널 표시
+    const activePane = document.getElementById(`comprehensive-${tabName}-tab`);
+    if (activePane) {
+        activePane.classList.add('active');
+    }
+    
+    console.log(`[PopupManager] 종합 점수 탭 전환: ${tabName}`);
+}
+
+// 전역 함수로 등록
+window.showComprehensiveTab = showComprehensiveTab;
+
 console.log('[POPUP-MANAGER] 팝업 관리자 모듈 로드 완료');

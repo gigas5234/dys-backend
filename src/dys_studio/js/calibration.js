@@ -355,7 +355,7 @@ function showCalibrationSkipNotification() {
         padding: 12px 16px;
         border-radius: 12px;
         font-size: 14px;
-        z-index: 10000;
+        z-index: 9600;
         box-shadow: 0 4px 20px rgba(0,0,0,0.15);
         animation: slideIn 0.3s ease-out;
     `;

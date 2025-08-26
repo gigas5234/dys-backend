@@ -77,7 +77,7 @@ class VoiceInputManager {
             bottom: 120px !important;
             left: 50% !important;
             transform: translateX(-50%) !important;
-            z-index: 99999 !important;
+            z-index: 1500 !important;
             width: 80px !important;
             height: 80px !important;
             background: #ff4757 !important;
