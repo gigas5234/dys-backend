@@ -39,9 +39,19 @@ function updateExpressionPopupContent() {
     const expression = currentExpressionData.expression;
     const confidence = currentExpressionData.confidence;
     document.getElementById('expression-main-value').textContent = getExpressionKoreanName(expression);
-    // 신뢰도: 0.xxx (xx.x%) 형식으로 표시
-    const decimalText = typeof confidence === 'number' ? confidence.toFixed(3) : '0.000';
-    const percentText = typeof confidence === 'number' ? (confidence * 100).toFixed(1) + '%' : '0.0%';
+    // 신뢰도: 0.xxx (xx.x%) 형식으로 표시 (0-1 범위로 정규화)
+    let normalizedConfidence = confidence;
+    if (typeof confidence === 'number') {
+        // 0-100 범위인 경우 0-1로 정규화
+        if (confidence > 1) {
+            normalizedConfidence = confidence / 100;
+        }
+    } else {
+        normalizedConfidence = 0;
+    }
+    
+    const decimalText = normalizedConfidence.toFixed(3);
+    const percentText = (normalizedConfidence * 100).toFixed(1) + '%';
     document.getElementById('expression-confidence-value').textContent = `${decimalText} (${percentText})`;
     
     // 확률 정보 업데이트
@@ -64,8 +74,13 @@ function updateExpressionProbabilities() {
     
     Object.entries(probabilities).forEach(([expression, probability]) => {
         const koreanName = getExpressionKoreanName(expression);
-        const percentage = (probability * 100).toFixed(1);
-        const isHighest = probability === Math.max(...Object.values(probabilities));
+        // 확률값 정규화 (0-1 범위로)
+        let normalizedProbability = probability;
+        if (typeof probability === 'number' && probability > 1) {
+            normalizedProbability = probability / 100;
+        }
+        const percentage = (normalizedProbability * 100).toFixed(1);
+        const isHighest = normalizedProbability === Math.max(...Object.values(probabilities).map(p => p > 1 ? p / 100 : p));
         
         html += `
             <div class="probability-item ${isHighest ? 'highest' : ''}">
@@ -100,11 +115,17 @@ function generateExpressionExplanation() {
     const { expression, confidence, score } = currentExpressionData;
     const koreanExpression = getExpressionKoreanName(expression);
     
+    // 신뢰도 정규화
+    let normalizedConfidence = confidence;
+    if (typeof confidence === 'number' && confidence > 1) {
+        normalizedConfidence = confidence / 100;
+    }
+    
     let explanation = `<div class="explanation-section">`;
     explanation += `<h4>📈 현재 분석 결과</h4>`;
     explanation += `<ul>`;
     explanation += `<li><strong>감지된 표정</strong>: ${koreanExpression}</li>`;
-    explanation += `<li><strong>신뢰도</strong>: ${(confidence * 100).toFixed(1)}%</li>`;
+    explanation += `<li><strong>신뢰도</strong>: ${(normalizedConfidence * 100).toFixed(1)}%</li>`;
     explanation += `<li><strong>최종 점수</strong>: ${score.score}점</li>`;
     explanation += `<li><strong>평가</strong>: ${score.label}</li>`;
     explanation += `</ul>`;

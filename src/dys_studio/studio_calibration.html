@@ -1411,10 +1411,9 @@ function updateCameraMetrics(metrics) {
       });
     } else if (metrics?.labels?.expression) {
       expressionText = metrics.labels.expression;
-      expressionScore = 60; // 기본값
-      lastExpressionScore = expressionScore;
-      lastExpressionText = expressionText;
-      lastExpressionUpdate = currentTime;
+      // 기본값 제거 - 실제 분석 데이터가 없으면 null 유지
+      expressionScore = null;
+      console.log('[UI] ⚠️ labels.expression만 있음, 점수 미표시:', expressionText);
     } else {
       // 데이터가 없으면 이전 값 유지
       expressionScore = lastExpressionScore;
