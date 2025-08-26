@@ -31,6 +31,54 @@ class ExpressionAnalyzer:
         ]
         self.is_initialized = False
         
+    def _ensure_vit_runtime_compat(self):
+        """Transformers 버전/가중치 불일치로 인한 런타임 오류를 예방하기 위한 호환성 패치.
+        - ViTSelfAttention 모듈에 dropout 속성이 없으면 추가
+        - config에 필요한 필드가 없으면 기본값으로 추가
+        """
+        try:
+            import torch.nn as nn
+        except Exception:
+            return
+        
+        # config 필드 보강
+        if hasattr(self.model, 'config'):
+            cfg = self.model.config
+            if not hasattr(cfg, 'output_attentions'):
+                cfg.output_attentions = False
+            if not hasattr(cfg, 'output_hidden_states'):
+                cfg.output_hidden_states = False
+            if not hasattr(cfg, 'use_return_dict'):
+                cfg.use_return_dict = True
+            if not hasattr(cfg, 'attention_probs_dropout_prob'):
+                cfg.attention_probs_dropout_prob = 0.0
+        
+        def patch_module(m):
+            # ViT Self-Attention 계층에 dropout 속성이 없는 경우 주입
+            class_name = m.__class__.__name__
+            if class_name == 'ViTSelfAttention':
+                if not hasattr(m, 'dropout'):
+                    p = 0.0
+                    try:
+                        if hasattr(self.model, 'config') and hasattr(self.model.config, 'attention_probs_dropout_prob'):
+                            p = float(self.model.config.attention_probs_dropout_prob)
+                    except Exception:
+                        p = 0.0
+                    try:
+                        m.dropout = nn.Dropout(p)
+                        print(f"🔧 ViTSelfAttention.dropout 추가(p={p})")
+                    except Exception:
+                        m.dropout = nn.Identity()
+                        print("🔧 ViTSelfAttention.dropout=Identity()로 대체")
+            return m
+        
+        # 하위 모듈 순회하며 패치 적용
+        try:
+            for name, module in self.model.named_modules():
+                patch_module(module)
+        except Exception as e:
+            print(f"⚠️ ViT 호환성 패치 중 경고: {e}")
+        
     def initialize(self):
         """모델을 초기화합니다."""
         try:
@@ -271,6 +319,8 @@ class ExpressionAnalyzer:
                 print("💻 CPU 모드로 모델 실행")
             
             # 모델을 평가 모드로 설정
+            # 런타임 호환성 패치 적용 후 eval
+            self._ensure_vit_runtime_compat()
             self.model.eval()
             print("✅ 모델을 평가 모드로 설정")
             
@@ -363,6 +413,8 @@ class ExpressionAnalyzer:
             
             # 추론
             with torch.no_grad():
+                # 추론 직전에도 호환성 패치 재확인
+                self._ensure_vit_runtime_compat()
                 output = self.model(image_tensor)
             
             # 결과 처리
