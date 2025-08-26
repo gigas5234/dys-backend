@@ -131,9 +131,9 @@ class ExpressionAnalyzer:
                                     print("🔧 use_return_dict 속성 추가")
                             
                             print(f"✅ MLflow 모델 로드 완료: {model_path}")
-                            model_loaded = True
-                            break
-                    except Exception as e:
+                        model_loaded = True
+                        break
+                except Exception as e:
                         print(f"⚠️ MLflow 모델 경로 실패: {model_path} - {e}")
                         continue
             
@@ -285,7 +285,7 @@ class ExpressionAnalyzer:
                                     
                     except Exception as e:
                         print(f"⚠️ 모델 파일 처리 실패: {model_file} - {e}")
-                        continue
+                    continue
             
             if not model_loaded:
                 print("❌ 모든 모델 경로에서 모델을 찾을 수 없습니다.")

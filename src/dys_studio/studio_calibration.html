@@ -1238,9 +1238,9 @@ function resetAllMetrics() {
       window.PopupManager.currentBlinkingData = null;
   }
   
-  // 표정 분석 데이터 초기화
-  lastExpressionScore = 60;
-  lastExpressionText = '중립적';
+  // 표정 분석 데이터 초기화 (초기에는 점수 미표시)
+  lastExpressionScore = null;
+  lastExpressionText = '-';
   lastExpressionUpdate = 0;
   
   // 종합 점수 계산기 초기화
@@ -1362,8 +1362,8 @@ function updateCameraMetrics(metrics) {
       return;
     }
     
-    // 자세 점수 (통일된 데이터 구조 처리)
-    let postureScore = 60; // 기본값
+    // 자세 점수 (초기에는 점수 미표시)
+    let postureScore = null;
     
     // 통일된 분석 데이터 구조 처리
     if (metrics?.neckAnalysis && metrics?.shoulderAnalysis) {
@@ -1377,8 +1377,8 @@ function updateCameraMetrics(metrics) {
         const shoulderTilt = Math.abs(metrics.shoulderAnalysis.shoulderTilt || 0);
         const forwardHeadRatio = metrics.neckAnalysis.forwardHeadRatio || 0.05;
         
-        // 통일된 자세 점수 계산 로직
-        postureScore = 60; // 기본값
+        // 통일된 자세 점수 계산 로직 (초기 기본값 없음)
+        postureScore = null;
         
         // 어깨 기울기 페널티
         if (shoulderTilt > 20) postureScore -= 8;
@@ -1411,18 +1411,22 @@ function updateCameraMetrics(metrics) {
         postureScore = Math.round((neckScore + shoulderScore) / 2);
         console.log('[UI] 워커 데이터 자세 점수 계산:', { neckScore, shoulderScore, postureScore });
     } else if (metrics?.neckAnalysis) {
-        postureScore = metrics.neckAnalysis.postureScore || 60;
+        postureScore = metrics.neckAnalysis.postureScore ?? null;
         console.log('[UI] 목 분석만 사용:', postureScore);
     } else if (metrics?.scores?.posture != null) {
         postureScore = Math.round(metrics.scores.posture);
         console.log('[UI] scores.posture 사용:', postureScore);
     } else {
-        postureScore = 60;
-        console.log('[UI] 분석 데이터 없음, 기본값 사용:', postureScore);
+        postureScore = null;
+        console.log('[UI] 분석 데이터 없음, 점수 미표시');
     }
     
-    postureScore = Math.min(100, Math.max(0, Math.round(postureScore)));
-    postureElement.textContent = `${postureScore}%`;
+    if (postureScore == null) {
+      postureElement.textContent = '-';
+    } else {
+      postureScore = Math.min(100, Math.max(0, Math.round(postureScore)));
+      postureElement.textContent = `${postureScore}%`;
+    }
     
     // 종합 점수 계산기에 자세 점수 업데이트
     if (window.ComprehensiveScoreCalculator) {

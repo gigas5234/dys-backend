@@ -526,12 +526,16 @@ async def get_messages(
 ):
     """세션의 메시지 목록 조회"""
     if not MONGODB_AVAILABLE:
+        print("⚠️ [GET_MESSAGES] MongoDB not available")
         raise HTTPException(status_code=503, detail="MongoDB not available")
     
     try:
         messages = await get_session_messages(session_id, limit)
         return {"ok": True, "messages": messages}
     except Exception as e:
+        import traceback
+        print(f"❌ [GET_MESSAGES] 오류: {e}")
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/chat/sessions/{session_id}/messages")
@@ -575,22 +579,10 @@ async def send_message(
         print(f"⚠️ [SEND_MESSAGE] 인증 없음, 고유 임시 사용자 ID 생성: {current_user_id}")
         print(f"📋 [SEND_MESSAGE] 클라이언트 정보: IP={client_ip}, UA={user_agent[:50]}...")
     
-    # MongoDB 연결 실패 시 임시 응답 (OpenAI 사용)
+    # MongoDB 사용 불가 시 명시적 에러 반환
     if not MONGODB_AVAILABLE:
-        print("⚠️ [SEND_MESSAGE] MongoDB not available - OpenAI 응답만 생성")
-        import uuid
-        temp_message_id = str(uuid.uuid4())
-        
-        # OpenAI로 AI 응답 생성
-        ai_response = await generate_ai_response(message.content, session_id)
-        
-        print(f"✅ [SEND_MESSAGE] 임시 응답 생성: {ai_response[:50]}...")
-        return {
-            "ok": True,
-            "user_message_id": temp_message_id,
-            "ai_message_id": str(uuid.uuid4()),
-            "ai_response": ai_response
-        }
+        print("⚠️ [SEND_MESSAGE] MongoDB not available")
+        raise HTTPException(status_code=503, detail="MongoDB not available")
     
     try:
         # 사용자 메시지 저장
