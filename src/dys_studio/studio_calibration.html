@@ -1036,12 +1036,16 @@ function updateCameraMetrics(metrics) {
       hideCameraWarningInline();
     }
     
-    // 자세 점수 (초기에는 점수 미표시)
+    // 자세 점수 계산 (통일된 scores 객체 우선 사용)
     let postureScore = null;
     
-    // 통일된 분석 데이터 구조 처리
-    if (metrics?.neckAnalysis && metrics?.shoulderAnalysis) {
-        console.log('[UI] 분석 데이터 발견:', {
+    // 우선순위 1: 통일된 scores 객체 사용 (metrics-utils.js에서 계산된 값)
+    if (metrics?.scores?.posture != null) {
+        postureScore = Math.round(metrics.scores.posture);
+        console.log('[UI] ✅ scores.posture 사용:', postureScore);
+    } else if (metrics?.neckAnalysis && metrics?.shoulderAnalysis) {
+        // 우선순위 2: MediaPipe 직접 분석 데이터 구조 (상세 분석)
+        console.log('[UI] MediaPipe 직접 분석 데이터 발견:', {
             neckAnalysis: metrics.neckAnalysis,
             shoulderAnalysis: metrics.shoulderAnalysis
         });
@@ -1077,22 +1081,20 @@ function updateCameraMetrics(metrics) {
         else if (shoulderTilt <= 12 && forwardHeadRatio <= 0.05) postureScore += 10;
         else if (shoulderTilt <= 15 && forwardHeadRatio <= 0.06) postureScore += 5;
         
-        console.log('[UI] 자세 점수 계산:', { neckScore, shoulderScore, shoulderTilt, forwardHeadRatio, postureScore });
+        console.log('[UI] MediaPipe 직접 분석 자세 점수 계산:', { neckScore, shoulderScore, shoulderTilt, forwardHeadRatio, postureScore });
     } else if (metrics?.neckScore !== undefined && metrics?.shoulderScore !== undefined) {
-        // 워커 데이터 구조 (직접 점수)
+        // 우선순위 3: 워커 데이터 구조 (직접 점수)
         const neckScore = metrics.neckScore || 0;
         const shoulderScore = metrics.shoulderScore || 0;
         postureScore = Math.round((neckScore + shoulderScore) / 2);
         console.log('[UI] 워커 데이터 자세 점수 계산:', { neckScore, shoulderScore, postureScore });
     } else if (metrics?.neckAnalysis) {
+        // 우선순위 4: 목 분석만 사용
         postureScore = metrics.neckAnalysis.postureScore ?? null;
         console.log('[UI] 목 분석만 사용:', postureScore);
-    } else if (metrics?.scores?.posture != null) {
-        postureScore = Math.round(metrics.scores.posture);
-        console.log('[UI] scores.posture 사용:', postureScore);
     } else {
         postureScore = null;
-        console.log('[UI] 분석 데이터 없음, 점수 미표시');
+        console.log('[UI] ⚠️ 자세 분석 데이터 없음, 점수 미표시');
     }
     
     if (postureScore == null) {
@@ -1147,32 +1149,57 @@ function updateCameraMetrics(metrics) {
       timestamp: new Date().toISOString()
     });
     
-    // 시선 안정성 점수: 계산된 값을 그대로 표시
-    const stabilityScore = metrics?.gazeAnalysis?.stabilityScore ?? (metrics?.scores?.gaze ?? null);
-    if (stabilityScore != null) {
-      gazeElement.textContent = `${Math.round(stabilityScore)}%`;
-      if (window.ComprehensiveScoreCalculator) {
-        window.ComprehensiveScoreCalculator.updateVisualScore('gaze_stability', Math.round(stabilityScore));
-      }
+    // 시선 안정성 점수 계산 (통일된 scores 객체 우선 사용)
+    let gazeStabilityScore = null;
+    
+    // 우선순위 1: 통일된 scores 객체 사용 (metrics-utils.js에서 계산된 값)
+    if (metrics?.scores?.gaze != null) {
+        gazeStabilityScore = Math.round(metrics.scores.gaze);
+        console.log('[UI] ✅ scores.gaze 사용:', gazeStabilityScore);
+    } else if (metrics?.gazeAnalysis?.stabilityScore != null) {
+        // 우선순위 2: 기존 gazeAnalysis 구조 사용
+        gazeStabilityScore = Math.round(metrics.gazeAnalysis.stabilityScore);
+        console.log('[UI] gazeAnalysis.stabilityScore 사용:', gazeStabilityScore);
     } else {
-      gazeElement.textContent = '-';
+        gazeStabilityScore = null;
+        console.log('[UI] ⚠️ 시선 분석 데이터 없음, 점수 미표시');
     }
     
-    // 집중도 점수 (통일된 데이터 구조 처리)
-    // 집중도 점수: 계산된 값을 그대로 표시
-    let concentrationScore = metrics?.scores?.concentration ?? null;
+    if (gazeStabilityScore != null) {
+        gazeElement.textContent = `${gazeStabilityScore}%`;
+        updateScoreColor(gazeElement, gazeStabilityScore);
+        
+        // 종합 점수 계산기에 시선 점수 업데이트
+        if (window.ComprehensiveScoreCalculator) {
+            window.ComprehensiveScoreCalculator.updateVisualScore('gaze_stability', gazeStabilityScore);
+        }
+    } else {
+        gazeElement.textContent = '-';
+    }
+    
+    // 집중도 점수 계산 (통일된 scores 객체 우선 사용)
+    let concentrationScore = null;
+    
+    // 우선순위 1: 통일된 scores 객체 사용 (metrics-utils.js에서 계산된 값)
+    if (metrics?.scores?.concentration != null) {
+        concentrationScore = Math.round(metrics.scores.concentration);
+        console.log('[UI] ✅ scores.concentration 사용:', concentrationScore);
+    } else {
+        concentrationScore = null;
+        console.log('[UI] ⚠️ 집중도 분석 데이터 없음, 점수 미표시');
+    }
     
     if (concentrationScore != null) {
-    concentrationScore = Math.min(100, Math.max(0, Math.round(concentrationScore)));
-    concentrationElement.textContent = `${concentrationScore}%`;
-    updateScoreColor(concentrationElement, concentrationScore);
+        concentrationScore = Math.min(100, Math.max(0, Math.round(concentrationScore)));
+        concentrationElement.textContent = `${concentrationScore}%`;
+        updateScoreColor(concentrationElement, concentrationScore);
+        
+        // 종합 점수 계산기에 집중도 점수 업데이트
+        if (window.ComprehensiveScoreCalculator) {
+            window.ComprehensiveScoreCalculator.updateAuditoryScore('concentration', concentrationScore);
+        }
     } else {
-      concentrationElement.textContent = '-';
-    }
-    
-    // 종합 점수 계산기에 집중도 점수 업데이트
-    if (window.ComprehensiveScoreCalculator && concentrationScore != null) {
-      window.ComprehensiveScoreCalculator.updateAuditoryScore('concentration', concentrationScore);
+        concentrationElement.textContent = '-';
     }
     
     // 집중도 분석 데이터 저장 (팝업용)
@@ -1241,21 +1268,29 @@ function updateCameraMetrics(metrics) {
     
     console.log(`[UI] 시선 안정성 점수 업데이트 (${dataSource}):`, gazeScore);
     
-    // 깜빡임 점수 (MediaPipe earResult 기반)
-    // 깜빡임 점수: 계산된 값을 그대로 표시
-    let blinkScore = metrics?.scores?.blink ?? null;
+    // 깜빡임 점수 계산 (통일된 scores 객체 우선 사용)
+    let blinkScore = null;
     
-    if (blinkScore != null) {
-    blinkScore = Math.min(100, Math.max(0, Math.round(blinkScore)));
-    blinkElement.textContent = `${blinkScore}%`;
-    updateScoreColor(blinkElement, blinkScore);
+    // 우선순위 1: 통일된 scores 객체 사용 (metrics-utils.js에서 계산된 값)
+    if (metrics?.scores?.blink != null) {
+        blinkScore = Math.round(metrics.scores.blink);
+        console.log('[UI] ✅ scores.blink 사용:', blinkScore);
     } else {
-      blinkElement.textContent = '-';
+        blinkScore = null;
+        console.log('[UI] ⚠️ 깜빡임 분석 데이터 없음, 점수 미표시');
     }
     
-    // 종합 점수 계산기에 깜빡임 점수 업데이트
-    if (window.ComprehensiveScoreCalculator && blinkScore != null) {
-      window.ComprehensiveScoreCalculator.updateVisualScore('blinking', blinkScore);
+    if (blinkScore != null) {
+        blinkScore = Math.min(100, Math.max(0, Math.round(blinkScore)));
+        blinkElement.textContent = `${blinkScore}%`;
+        updateScoreColor(blinkElement, blinkScore);
+        
+        // 종합 점수 계산기에 깜빡임 점수 업데이트
+        if (window.ComprehensiveScoreCalculator) {
+            window.ComprehensiveScoreCalculator.updateVisualScore('blinking', blinkScore);
+        }
+    } else {
+        blinkElement.textContent = '-';
     }
     
     // 깜빡임 분석 데이터 저장 (팝업용)
