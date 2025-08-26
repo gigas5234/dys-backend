@@ -30,6 +30,16 @@ class CameraAnalyzer {
     this._scoreHoldDuration = 3000; // 3초간 점수 유지
     this._lastScoreTime = 0;
     this._cameraWarningShown = false;
+    
+    // 카메라 자동 종료 대응
+    this._watchdogTimer = null;
+    this._lastFrameTime = Date.now();
+    this._cameraHealthCheck = null;
+    this._restartAttempts = 0;
+    this._maxRestartAttempts = 3;
+    
+    // Page Visibility API 대응
+    this._setupVisibilityHandlers();
   }
 
   /**
@@ -181,6 +191,8 @@ class CameraAnalyzer {
     // MediaPipe 모드만 지원
     if (this._useWorkerOnly) {
       console.log('[ANALYZER] MediaPipe 모드 활성화 - HTTP 분석 루프 비활성화');
+      // 워치독 시작
+      this._startWatchdog();
       return;
     } else {
       throw new Error('MediaPipe 모드가 활성화되지 않았습니다. 페이지를 새로고침해주세요.');
@@ -331,10 +343,174 @@ class CameraAnalyzer {
   }
   
   /**
+   * Page Visibility API 핸들러 설정
+   */
+  _setupVisibilityHandlers() {
+    // 탭 숨김/표시 이벤트 처리
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        console.log('[CAMERA] 🫥 탭이 숨겨짐 - 카메라 일시정지');
+        this._pauseCamera();
+      } else {
+        console.log('[CAMERA] 👁️ 탭이 표시됨 - 카메라 재시작');
+        this._resumeCamera();
+      }
+    });
+    
+    // 브라우저 포커스 이벤트
+    window.addEventListener('blur', () => {
+      console.log('[CAMERA] 🔍 브라우저 포커스 잃음');
+    });
+    
+    window.addEventListener('focus', () => {
+      console.log('[CAMERA] 🎯 브라우저 포커스 복귀');
+      this._checkCameraHealth();
+    });
+  }
+
+  /**
+   * 카메라 일시정지
+   */
+  _pauseCamera() {
+    if (this._watchdogTimer) {
+      clearInterval(this._watchdogTimer);
+      this._watchdogTimer = null;
+    }
+    if (this._cameraHealthCheck) {
+      clearInterval(this._cameraHealthCheck);
+      this._cameraHealthCheck = null;
+    }
+  }
+
+  /**
+   * 카메라 재시작
+   */
+  async _resumeCamera() {
+    try {
+      await this._checkCameraHealth();
+      this._startWatchdog();
+    } catch (error) {
+      console.error('[CAMERA] 재시작 실패:', error);
+      this._attemptRestart();
+    }
+  }
+
+  /**
+   * 카메라 상태 확인
+   */
+  async _checkCameraHealth() {
+    if (!this._stream) {
+      console.log('[CAMERA] ⚠️ 스트림 없음 - 재시작 필요');
+      return this._attemptRestart();
+    }
+    
+    const tracks = this._stream.getVideoTracks();
+    if (tracks.length === 0) {
+      console.log('[CAMERA] ⚠️ 비디오 트랙 없음 - 재시작 필요');
+      return this._attemptRestart();
+    }
+    
+    const track = tracks[0];
+    if (track.readyState === 'ended') {
+      console.log('[CAMERA] ⚠️ 비디오 트랙 종료됨 - 재시작 필요');
+      return this._attemptRestart();
+    }
+    
+    console.log('[CAMERA] ✅ 카메라 상태 양호');
+    return true;
+  }
+
+  /**
+   * 카메라 재시작 시도
+   */
+  async _attemptRestart() {
+    if (this._restartAttempts >= this._maxRestartAttempts) {
+      console.error('[CAMERA] ❌ 최대 재시작 시도 횟수 초과');
+      this._showCameraWarning();
+      return false;
+    }
+    
+    this._restartAttempts++;
+    console.log(`[CAMERA] 🔄 카메라 재시작 시도 ${this._restartAttempts}/${this._maxRestartAttempts}`);
+    
+    try {
+      // 기존 스트림 정리
+      if (this._stream) {
+        this._stream.getTracks().forEach(track => track.stop());
+        this._stream = null;
+      }
+      
+      // 새 스트림 획득
+      await this._ensureMedia();
+      console.log('[CAMERA] ✅ 카메라 재시작 성공');
+      this._restartAttempts = 0; // 성공 시 카운터 리셋
+      this._hideCameraWarning();
+      this._startWatchdog();
+      return true;
+      
+    } catch (error) {
+      console.error(`[CAMERA] ❌ 재시작 실패 (${this._restartAttempts}/${this._maxRestartAttempts}):`, error);
+      
+      // 재시도 대기
+      setTimeout(() => {
+        if (this._restartAttempts < this._maxRestartAttempts) {
+          this._attemptRestart();
+        }
+      }, 2000 * this._restartAttempts); // 지수 백오프
+      
+      return false;
+    }
+  }
+
+  /**
+   * 카메라 감시 타이머 시작
+   */
+  _startWatchdog() {
+    if (this._watchdogTimer) {
+      clearInterval(this._watchdogTimer);
+    }
+    
+    // 10초마다 카메라 상태 확인
+    this._watchdogTimer = setInterval(() => {
+      this._checkCameraHealth();
+    }, 10000);
+    
+    // 5분마다 건강 체크
+    if (this._cameraHealthCheck) {
+      clearInterval(this._cameraHealthCheck);
+    }
+    this._cameraHealthCheck = setInterval(() => {
+      const now = Date.now();
+      if (now - this._lastFrameTime > 30000) { // 30초간 프레임 없음
+        console.warn('[CAMERA] ⚠️ 30초간 프레임 없음 - 재시작 시도');
+        this._attemptRestart();
+      }
+    }, 300000); // 5분마다
+  }
+
+  /**
+   * 프레임 시간 업데이트 (MediaPipe에서 호출)
+   */
+  _updateFrameTime() {
+    this._lastFrameTime = Date.now();
+  }
+
+  /**
    * 정리 메서드
    */
   cleanup() {
     this.stop();
+    
+    // 타이머 정리
+    if (this._watchdogTimer) {
+      clearInterval(this._watchdogTimer);
+      this._watchdogTimer = null;
+    }
+    if (this._cameraHealthCheck) {
+      clearInterval(this._cameraHealthCheck);
+      this._cameraHealthCheck = null;
+    }
+    
     if (this._stream) {
       this._stream.getTracks().forEach(track => track.stop());
       this._stream = null;

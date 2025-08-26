@@ -162,6 +162,11 @@ async function connectMediaPipeToVideo(videoEl, onResults) {
         // 기본 분석 결과 생성
         const analysisResult = analyzeLandmarks(lm);
         
+        // 카메라 분석기에 프레임 시간 업데이트
+        if (window.analyzerClient && window.analyzerClient._updateFrameTime) {
+            window.analyzerClient._updateFrameTime();
+        }
+        
         // 표정 분석 추가 (MediaPipe와 통합)
         if (expressionAnalyzer && videoEl) {
             try {

@@ -81,9 +81,41 @@ class ComprehensiveScoreCalculator {
     }
 
     /**
+     * 모든 점수가 업데이트되었는지 확인
+     */
+    isAllScoresReady() {
+        // 시각적 요소: 모든 4개 항목이 0이 아닌 값을 가져야 함
+        const visualReady = Object.values(this.scores.visual).every(score => score > 0);
+        
+        // 청각적 요소: 모든 2개 항목이 0이 아닌 값을 가져야 함
+        const auditoryReady = Object.values(this.scores.auditory).every(score => score > 0);
+        
+        // 대화 요소: 1개 항목이 0이 아닌 값을 가져야 함
+        const conversationReady = this.scores.conversation.initiative > 0;
+        
+        const allReady = visualReady && auditoryReady && conversationReady;
+        
+        console.log(`[ScoreCalculator] 점수 준비 상태:`, {
+            visual: { ready: visualReady, scores: this.scores.visual },
+            auditory: { ready: auditoryReady, scores: this.scores.auditory },
+            conversation: { ready: conversationReady, score: this.scores.conversation.initiative },
+            allReady
+        });
+        
+        return allReady;
+    }
+
+    /**
      * 종합 점수 계산
      */
     calculateComprehensiveScore() {
+        // 모든 점수가 준비되지 않으면 계산하지 않음
+        if (!this.isAllScoresReady()) {
+            console.log('[ScoreCalculator] ⏳ 모든 점수가 준비되지 않음 - 종합 점수 계산 대기');
+            this.hideComprehensiveScore();
+            return;
+        }
+        
         // 시각적 점수 계산 (4개 항목 평균)
         const visualScores = Object.values(this.scores.visual);
         const visualAverage = visualScores.reduce((sum, score) => sum + score, 0) / visualScores.length;
@@ -104,7 +136,7 @@ class ComprehensiveScoreCalculator {
         
         this.lastUpdateTime = Date.now();
         
-        console.log(`[ScoreCalculator] 종합 점수 계산 완료:`, {
+        console.log(`[ScoreCalculator] ✅ 종합 점수 계산 완료:`, {
             visual: {
                 average: visualAverage,
                 weight: this.weights.visual,
@@ -128,14 +160,55 @@ class ComprehensiveScoreCalculator {
     }
 
     /**
+     * 종합 점수 숨기기
+     */
+    hideComprehensiveScore() {
+        const totalScoreElement = document.getElementById('total-score');
+        if (totalScoreElement) {
+            totalScoreElement.textContent = '-';
+            totalScoreElement.style.opacity = '0.5';
+        }
+        
+        // 종합 점수 행 숨기기
+        const totalScoreRow = document.querySelector('.total-score-row');
+        if (totalScoreRow) {
+            totalScoreRow.style.opacity = '0.5';
+            totalScoreRow.style.pointerEvents = 'none';
+        }
+        
+        console.log('[ScoreCalculator] 종합 점수 숨김 (모든 점수 대기 중)');
+    }
+    
+    /**
+     * 종합 점수 표시
+     */
+    showComprehensiveScore() {
+        const totalScoreElement = document.getElementById('total-score');
+        if (totalScoreElement) {
+            totalScoreElement.style.opacity = '1';
+        }
+        
+        // 종합 점수 행 표시
+        const totalScoreRow = document.querySelector('.total-score-row');
+        if (totalScoreRow) {
+            totalScoreRow.style.opacity = '1';
+            totalScoreRow.style.pointerEvents = 'auto';
+        }
+    }
+
+    /**
      * UI 업데이트
      */
     updateUI() {
         // 종합 점수 표시
+        this.showComprehensiveScore();
+        
         const totalScoreElement = document.getElementById('total-score');
         if (totalScoreElement) {
             totalScoreElement.textContent = `${this.comprehensiveScore}%`;
         }
+        
+        console.log(`[ScoreCalculator] ✅ UI 업데이트 완료: ${this.comprehensiveScore}%`);
         
         // 상세 점수 표시 (옵션)
         this.updateDetailedScores();

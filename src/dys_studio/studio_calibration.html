@@ -130,7 +130,7 @@
 
 <div class="main-content" id="main-content">
   <!-- 카메라 경고 알림 (인라인) -->
-  <div id="camera-warning-inline" class="camera-warning" style="display: none;">
+  <div id="camera-warning-inline" class="camera-warning-inline" style="display: none;">
     <div class="camera-warning-content">
       <div class="camera-warning-icon">📹</div>
       <div class="camera-warning-text">
@@ -148,23 +148,54 @@
           <button id="closeBtn" class="close-btn">&times;</button>
         </header>
         <section class="body">
-          <!-- 호감도 섹션 (메인) -->
-          <div class="likability-section">
-            <div class="likability-container">
-              <div class="likability-circle">
-                <svg>
+          <!-- 호감도 섹션 (개선된 메인) -->
+          <div class="likability-section-enhanced">
+            <div class="likability-header">
+              <h3 class="likability-main-title">💝 호감도</h3>
+              <div class="likability-subtitle">AI가 느끼는 당신의 매력</div>
+            </div>
+            <div class="likability-content">
+              <div class="likability-circle-enhanced">
+                <svg viewBox="0 0 120 120">
                   <defs>
-                    <linearGradient id="likability-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                      <stop offset="0%" stop-color="#a6c1ee" />
-                      <stop offset="100%" stop-color="#fbc2eb" />
+                    <linearGradient id="likability-gradient-enhanced" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stop-color="#667eea" />
+                      <stop offset="50%" stop-color="#764ba2" />
+                      <stop offset="100%" stop-color="#f093fb" />
                     </linearGradient>
+                    <filter id="glow">
+                      <fegaussianblur stdDeviation="3" result="coloredBlur"/>
+                      <femerge> 
+                        <femergenode in="coloredBlur"/>
+                        <femergenode in="SourceGraphic"/>
+                      </femerge>
+                    </filter>
                   </defs>
-                  <circle class="circle-bg" cx="50%" cy="50%" r="54"></circle>
-                  <circle id="likability-progress" class="circle-progress" cx="50%" cy="50%" r="54"></circle>
+                  <circle class="circle-bg-enhanced" cx="60" cy="60" r="50" stroke="rgba(255,255,255,0.1)" stroke-width="8" fill="none"/>
+                  <circle id="likability-progress-enhanced" class="circle-progress-enhanced" cx="60" cy="60" r="50" stroke="url(#likability-gradient-enhanced)" stroke-width="8" fill="none" stroke-linecap="round" filter="url(#glow)" transform="rotate(-90 60 60)"/>
                 </svg>
-                <div id="likability-score" class="likability-score">-<span>%</span></div>
+                <div class="likability-inner">
+                  <div id="likability-score-enhanced" class="likability-score-enhanced">-<span class="score-unit">%</span></div>
+                  <div class="likability-status" id="likability-status">측정 중</div>
+                </div>
               </div>
-              <div class="likability-title">호감도</div>
+              <div class="likability-factors">
+                <div class="factor-item">
+                  <span class="factor-icon">😊</span>
+                  <span class="factor-text">표정</span>
+                  <span class="factor-score" id="factor-expression">-</span>
+                </div>
+                <div class="factor-item">
+                  <span class="factor-icon">🎵</span>
+                  <span class="factor-text">음성</span>
+                  <span class="factor-score" id="factor-voice">-</span>
+                </div>
+                <div class="factor-item">
+                  <span class="factor-icon">💬</span>
+                  <span class="factor-text">대화</span>
+                  <span class="factor-score" id="factor-conversation">-</span>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -411,21 +442,28 @@
     <div id="comprehensive-score-details-popup" class="details-popup">
       <div class="details-popup-content">
         <div class="details-popup-header">
-          <h3>🏆 종합 점수 분석 상세</h3>
+          <h3>🏆 종합 점수 분석</h3>
           <button class="details-popup-close" onclick="closeComprehensiveScoreDetails()">×</button>
         </div>
         <div class="details-popup-body">
-          <div class="comprehensive-summary">
-            <div class="comprehensive-main">
-              <div class="comprehensive-label">종합 점수</div>
-              <div id="comprehensive-main-value" class="comprehensive-main-value">0%</div>
-            </div>
-            <div class="comprehensive-status">
-              <div class="comprehensive-label">상태</div>
-              <div id="comprehensive-status-text" class="comprehensive-status-text">분석 대기 중</div>
+          <div class="main-metric-container">
+            <div class="main-metric-icon">🏆</div>
+            <div class="main-metric-value" id="comprehensive-main-value">0%</div>
+            <div class="main-metric-label">종합 점수</div>
+            <div class="main-metric-status" id="comprehensive-status-text">분석 대기 중</div>
+          </div>
+          
+          <div class="tabs-container">
+            <div class="tabs">
+              <button class="tab-btn active" onclick="showComprehensiveTab('breakdown')">점수 분석</button>
+              <button class="tab-btn" onclick="showComprehensiveTab('criteria')">평가 기준</button>
+              <button class="tab-btn" onclick="showComprehensiveTab('explanation')">상세 설명</button>
             </div>
           </div>
-          <div class="comprehensive-breakdown">
+          
+          <div class="tab-content">
+            <div id="comprehensive-breakdown-tab" class="tab-pane active">
+              <div class="comprehensive-breakdown">
             <div class="comprehensive-label">카테고리별 점수</div>
             <div class="category-scores">
               <div class="category-item visual">
@@ -2586,9 +2624,74 @@ function cleanTextForTTS(text) {
     return cleanText;
 }
 
+// 호감도 업데이트 함수 (개선된)
+function updateLikability(score) {
+    // 기존 호감도 (호환성 유지)
+    const likabilityScore = document.getElementById('likability-score');
+    const likabilityProgress = document.getElementById('likability-progress');
+    
+    if (likabilityScore) {
+        likabilityScore.innerHTML = `${score}<span>%</span>`;
+    }
+    
+    if (likabilityProgress) {
+        const circumference = 2 * Math.PI * 54;
+        const offset = circumference - (score / 100) * circumference;
+        likabilityProgress.style.strokeDasharray = circumference;
+        likabilityProgress.style.strokeDashoffset = offset;
+    }
+    
+    // 새로운 개선된 호감도
+    const likabilityScoreEnhanced = document.getElementById('likability-score-enhanced');
+    const likabilityProgressEnhanced = document.getElementById('likability-progress-enhanced');
+    const likabilityStatus = document.getElementById('likability-status');
+    
+    if (likabilityScoreEnhanced) {
+        likabilityScoreEnhanced.innerHTML = `${score}<span class="score-unit">%</span>`;
+    }
+    
+    if (likabilityProgressEnhanced) {
+        const circumference = 314; // 2 * Math.PI * 50
+        const offset = circumference - (score / 100) * circumference;
+        likabilityProgressEnhanced.style.strokeDashoffset = offset;
+    }
+    
+    if (likabilityStatus) {
+        let status = '';
+        if (score >= 85) status = '매우 높음';
+        else if (score >= 70) status = '높음';
+        else if (score >= 50) status = '보통';
+        else if (score >= 30) status = '낮음';
+        else status = '매우 낮음';
+        
+        likabilityStatus.textContent = status;
+    }
+    
+    // 호감도 요소 업데이트
+    updateLikabilityFactors(score);
+}
+
+// 호감도 구성 요소 업데이트
+function updateLikabilityFactors(totalScore) {
+    // 시뮬레이션된 요소별 점수 (실제로는 개별 메트릭에서 계산)
+    const expressionScore = Math.max(0, totalScore + (Math.random() - 0.5) * 20);
+    const voiceScore = Math.max(0, totalScore + (Math.random() - 0.5) * 15);
+    const conversationScore = Math.max(0, totalScore + (Math.random() - 0.5) * 10);
+    
+    const factorExpression = document.getElementById('factor-expression');
+    const factorVoice = document.getElementById('factor-voice');
+    const factorConversation = document.getElementById('factor-conversation');
+    
+    if (factorExpression) factorExpression.textContent = `${Math.round(expressionScore)}%`;
+    if (factorVoice) factorVoice.textContent = `${Math.round(voiceScore)}%`;
+    if (factorConversation) factorConversation.textContent = `${Math.round(conversationScore)}%`;
+}
+
 // 전역 스코프에 함수들 노출
 window.sendMessage = sendMessage;
 window.cleanTextForTTS = cleanTextForTTS;
+window.updateLikability = updateLikability;
+window.updateLikabilityFactors = updateLikabilityFactors;
 
 // getAiResponse 함수 제거됨 - 서버에서 처리
 
@@ -2858,7 +2961,40 @@ async function createSession() {
 
 // saveMessageToMongoDB 함수 제거됨 - 서버에서 통합 처리
 
-   // --- 카메라 상태 확인 함수 ---
+   // --- 카메라 경고 함수들 ---
+function showCameraWarning() {
+    console.log('[CAMERA] 카메라 경고 표시');
+    const warning = document.getElementById('camera-warning');
+    if (warning) {
+        warning.classList.remove('hidden');
+    }
+}
+
+function hideCameraWarning() {
+    console.log('[CAMERA] 카메라 경고 숨김');
+    const warning = document.getElementById('camera-warning');
+    if (warning) {
+        warning.classList.add('hidden');
+    }
+}
+
+function showCameraToast() {
+    console.log('[CAMERA] 카메라 토스트 경고 표시');
+    const toast = document.getElementById('camera-toast');
+    if (toast) {
+        toast.classList.remove('hidden');
+    }
+}
+
+function hideCameraToast() {
+    console.log('[CAMERA] 카메라 토스트 경고 숨김');
+    const toast = document.getElementById('camera-toast');
+    if (toast) {
+        toast.classList.add('hidden');
+    }
+}
+
+// --- 카메라 상태 확인 함수 ---
   async function checkCameraStatus() {
       try {
           const stream = await navigator.mediaDevices.getUserMedia({ video: true });

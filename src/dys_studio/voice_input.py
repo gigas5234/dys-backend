@@ -115,12 +115,21 @@ def preload_models():
     if torch.cuda.is_available():
         device = "cuda"
         # 최신 GPU에서는 float16을 사용하여 속도 향상
-        asr_compute_type = "float16" if torch.cuda.get_device_capability(0)[0] >= 7 else "int8"
-        logger.info(f"GPU detected. Device: {device}, ASR Compute Type: {asr_compute_type}")
+        gpu_capability = torch.cuda.get_device_capability(0)[0]
+        asr_compute_type = "float16" if gpu_capability >= 7 else "int8"
+        
+        logger.info(f"🎮 GPU 감지됨!")
+        logger.info(f"🎮 GPU 개수: {torch.cuda.device_count()}")
+        logger.info(f"🎮 GPU 이름: {torch.cuda.get_device_name(0)}")
+        logger.info(f"🎮 GPU 메모리: {torch.cuda.get_device_properties(0).total_memory / 1024**3:.1f} GB")
+        logger.info(f"🎮 GPU 성능 등급: {gpu_capability}.x")
+        logger.info(f"🎮 CUDA 버전: {torch.version.cuda}")
+        logger.info(f"🖥️ 사용 디바이스: {device}, ASR 연산 타입: {asr_compute_type}")
     else:
         device = "cpu"
         asr_compute_type = "int8" # CPU에서는 가벼운 타입 사용
-        logger.warning("GPU not available. Falling back to CPU, which will be significantly slower.")
+        logger.warning("⚠️ GPU를 사용할 수 없습니다. CPU로 대체 (속도가 현저히 느려집니다)")
+        logger.info(f"💻 사용 디바이스: {device}, ASR 연산 타입: {asr_compute_type}")
 
     # 1. 음성 인식 모델 (Whisper)
     _asr_model = WhisperModel(ASR_MODEL_NAME, device=device, compute_type=asr_compute_type)
