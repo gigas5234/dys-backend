@@ -4,8 +4,8 @@ FROM python:3.10-slim
 # 작업 디렉토리 설정
 WORKDIR /usr/src/app
 
-# 시스템 패키지 설치 (한 번에 설치하여 레이어 최적화)
-RUN apt-get update && apt-get install -y \
+# 시스템 패키지 설치 (안정적인 저장소 사용)
+RUN apt-get update -o Acquire::http::Pipeline-Depth=0 && apt-get install -y \
     supervisor \
     openssl \
     curl \
@@ -29,9 +29,8 @@ COPY requirements.txt ./
 # 의존성 설치 최적화 (타임아웃 증가, 재시도 로직)
 RUN pip install --no-cache-dir --timeout=300 --retries=3 -r requirements.txt
 
-# ctranslate2 실행 스택 문제 우회 패치 (가능한 경우에만 실행)
-# - 일부 배포판에서는 execstack 패키지가 없으므로 binutils만 설치하고, 실행 시 execstack 유무를 검사하여 선택적 수행
-RUN apt-get update && apt-get install -y binutils && rm -rf /var/lib/apt/lists/* \
+# ctranslate2 실행 스택 문제 우회 패치 (안정적인 저장소 사용)
+RUN apt-get update -o Acquire::http::Pipeline-Depth=0 && apt-get install -y binutils && rm -rf /var/lib/apt/lists/* \
  && python - <<'PY'
 import sys, pathlib, subprocess, shutil
 try:
