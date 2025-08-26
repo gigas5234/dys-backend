@@ -499,6 +499,43 @@ window.PopupManager = {
 // 깜빡임 함수들을 전역 스코프에 직접 노출
 window.showBlinkingDetails = showBlinkingDetails;
 window.closeBlinkingDetails = closeBlinkingDetails;
+
+// 누락된 함수들 추가 (팝업 HTML에서 정의됨)
+function showInitiativeDetails() {
+    const popup = document.getElementById('initiative-details-popup');
+    if (popup) {
+        popup.classList.add('active');
+        if (typeof updateInitiativePopupContent === 'function') {
+            updateInitiativePopupContent();
+        }
+    }
+}
+
+function closeInitiativeDetails() {
+    const popup = document.getElementById('initiative-details-popup');
+    if (popup) {
+        popup.classList.remove('active');
+    }
+}
+
+function showComprehensiveScoreDetails() {
+    const popup = document.getElementById('comprehensive-score-details-popup');
+    if (popup) {
+        popup.classList.add('active');
+        if (typeof updateComprehensiveScorePopupContent === 'function') {
+            updateComprehensiveScorePopupContent();
+        }
+    }
+}
+
+function closeComprehensiveScoreDetails() {
+    const popup = document.getElementById('comprehensive-score-details-popup');
+    if (popup) {
+        popup.classList.remove('active');
+    }
+}
+
+// 전역 스코프에 노출
 window.showInitiativeDetails = showInitiativeDetails;
 window.closeInitiativeDetails = closeInitiativeDetails;
 window.showComprehensiveScoreDetails = showComprehensiveScoreDetails;

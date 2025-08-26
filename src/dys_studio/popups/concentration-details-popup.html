@@ -138,4 +138,9 @@ function updateConcentrationExplanationInfo() {
     
     explanationDiv.innerHTML = explanation;
 }
+
+// 전역 스코프에 함수들 노출
+window.updateConcentrationFactorsInfo = updateConcentrationFactorsInfo;
+window.updateConcentrationCriteriaInfo = updateConcentrationCriteriaInfo;
+window.updateConcentrationExplanationInfo = updateConcentrationExplanationInfo;
 </script>

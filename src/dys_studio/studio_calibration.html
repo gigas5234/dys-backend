@@ -2192,13 +2192,19 @@ function updateGazePopupContent() {
     document.getElementById('gaze-stability-value').textContent = `${currentGazeData.score}%`;
     
     // 랜드마크 정보 업데이트
-    updateGazeLandmarksInfo();
+    if (typeof updateGazeLandmarksInfo === 'function') {
+        updateGazeLandmarksInfo();
+    }
     
     // 평가 기준 업데이트
-    updateGazeCriteriaInfo();
+    if (typeof updateGazeCriteriaInfo === 'function') {
+        updateGazeCriteriaInfo();
+    }
     
     // 점수 계산 근거 업데이트
-    updateGazeExplanationInfo();
+    if (typeof updateGazeExplanationInfo === 'function') {
+        updateGazeExplanationInfo();
+    }
 }
 
 
@@ -2235,13 +2241,19 @@ function updateConcentrationPopupContent() {
     document.getElementById('concentration-score-value').textContent = `${currentConcentrationData.score}%`;
     
     // 분석 요소 업데이트
-    updateConcentrationFactorsInfo();
+    if (typeof updateConcentrationFactorsInfo === 'function') {
+        updateConcentrationFactorsInfo();
+    }
     
     // 평가 기준 업데이트
-    updateConcentrationCriteriaInfo();
+    if (typeof updateConcentrationCriteriaInfo === 'function') {
+        updateConcentrationCriteriaInfo();
+    }
     
     // 점수 계산 근거 업데이트
-    updateConcentrationExplanationInfo();
+    if (typeof updateConcentrationExplanationInfo === 'function') {
+        updateConcentrationExplanationInfo();
+    }
 }
 
 // 팝업 외부 클릭 시 닫기

@@ -109,4 +109,9 @@ function generateExpressionExplanation() {
     
     return explanation;
 }
+
+// 전역 스코프에 함수들 노출
+window.updateExpressionProbabilities = updateExpressionProbabilities;
+window.getExpressionKoreanName = getExpressionKoreanName;
+window.generateExpressionExplanation = generateExpressionExplanation;
 </script>
