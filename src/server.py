@@ -29,6 +29,15 @@ except ImportError as e:
     print(f"⚠️ MongoDB 모듈 로드 실패: {e}")
     MONGODB_AVAILABLE = False
 
+# 모니터링 모듈 import (선택적)
+try:
+    from monitoring import monitoring, get_metrics, start_timer, record_request_metrics
+    MONITORING_AVAILABLE = True
+    print("✅ 모니터링 모듈 로드됨")
+except ImportError as e:
+    print(f"⚠️ 모니터링 모듈 로드 실패: {e}")
+    MONITORING_AVAILABLE = False
+
 
 # analyzers 모듈 제거됨 - 클라이언트 측에서 처리
 
@@ -1988,4 +1997,42 @@ def serve_dys_studio_video(filename: str):
     print(f"❌ [VIDEO] 파일을 찾을 수 없음: {filename}")
     print(f"📋 [VIDEO] 시도한 경로들: {possible_paths}")
     return Response(status_code=404, content=f"Video {filename} not found")
+
+# === 모니터링 엔드포인트 ===
+
+@app.get("/metrics")
+def prometheus_metrics():
+    """Prometheus 메트릭 엔드포인트"""
+    if MONITORING_AVAILABLE:
+        return get_metrics()
+    else:
+        return Response(
+            content="# Monitoring not available\n",
+            media_type="text/plain"
+        )
+
+@app.get("/api/monitoring/health")
+def monitoring_health():
+    """모니터링 헬스체크"""
+    return {
+        "status": "ok",
+        "monitoring_available": MONITORING_AVAILABLE,
+        "timestamp": time.time(),
+        "version": "1.0.0"
+    }
+
+@app.post("/api/monitoring/alerts")
+async def receive_alert(request: Request):
+    """AlertManager 웹훅 수신"""
+    try:
+        alert_data = await request.json()
+        print(f"🚨 [ALERT] 수신: {alert_data}")
+        
+        # 알림 처리 로직 추가 가능
+        # 예: 이메일 발송, Slack 알림 등
+        
+        return {"status": "received"}
+    except Exception as e:
+        print(f"❌ [ALERT] 처리 실패: {e}")
+        return {"status": "error", "message": str(e)}
 

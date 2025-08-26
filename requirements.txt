@@ -54,6 +54,9 @@ dataclasses-json==0.6.1
 # System & Process Management
 psutil==5.9.6
 
+# Monitoring & Metrics
+prometheus-client>=0.16.0  # Prometheus 메트릭 수집
+
 # Logging & Utilities
 python-json-logger==2.0.7
 
