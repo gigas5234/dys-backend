@@ -57,7 +57,7 @@ body {
    display: grid;
    grid-template-columns: 1fr 350px;
    gap: 20px;
-   padding: 20px 20px 20px 320px;
+   padding: 0 20px 20px 320px;
    height: calc(100% - var(--header-height));
    margin-top: var(--header-height);
    opacity: 0; /* 초기에는 숨김 */
