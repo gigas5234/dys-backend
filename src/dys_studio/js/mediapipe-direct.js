@@ -396,7 +396,7 @@ function startFrameProcessing(videoEl) {
     const processFrame = async () => {
         if (!faceMesh || !isInitialized) {
             console.log('[MEDIAPIPE-DIRECT] ⏳ FaceMesh 초기화 대기...');
-            setTimeout(processFrame, 100);
+            setTimeout(processFrame, 500);
             return;
         }
         
@@ -429,8 +429,8 @@ function startFrameProcessing(videoEl) {
             }
         }
         
-        // 10 FPS (100ms 간격) - 더 빠른 응답성으로 안정성 향상
-        setTimeout(processFrame, 100);
+        // 2 FPS (500ms 간격) - 성능 개선을 위해 속도 조절
+        setTimeout(processFrame, 500);
     };
     
     processFrame();
