@@ -6,6 +6,8 @@ Voice API - STT와 연동되는 API 인터페이스
 import logging
 from typing import Dict, Any, Optional
 import numpy as np
+import torch
+import torchaudio
 
 from .voice_processor import VoiceProcessor
 from .voice_scorer import ScoringWeights
@@ -38,7 +40,7 @@ def get_voice_processor() -> VoiceProcessor:
 def process_audio_simple(audio_array: np.ndarray, sr: int = 16000, elapsed_sec: float = 0.0) -> Dict[str, Any]:
     """
     기존 voice_input.py의 process_audio_simple 함수를 대체하는 새로운 함수
-    STT와 연동되는 통합 음성 분석
+    STT와 연동되는 통합 음성 분석 (다중 STT 방법 지원)
     
     Args:
         audio_array: 오디오 데이터 (numpy array)
@@ -66,25 +68,145 @@ def process_audio_simple(audio_array: np.ndarray, sr: int = 16000, elapsed_sec: 
             'word_details': result.get('word_details', {}),
             'weights': result.get('weights', {}),
             'positive_words': result.get('positive_words', []),
-            'negative_words': result.get('negative_words', [])
+            'negative_words': []
         }
         
     except Exception as e:
         logger.error(f"process_audio_simple 오류: {e}", exc_info=True)
-        # 오류 시 기본값 반환
-        return {
-            'transcript': '처리 중 오류 발생',
-            'emotion': '중립',
-            'emotion_score': 1.0,
-            'total_score': 50.0,
-            'voice_tone_score': 50.0,
-            'voice_details': {},
-            'word_choice_score': 50.0,
-            'word_details': {},
-            'weights': {'voice': 0.4, 'word': 0.4, 'emotion': 0.2},
-            'positive_words': [],
-            'negative_words': []
-        }
+        # 대안 STT 방법 시도
+        return fallback_stt_analysis(audio_array, sr, elapsed_sec)
+
+def fallback_stt_analysis(audio_array: np.ndarray, sr: int = 16000, elapsed_sec: float = 0.0) -> Dict[str, Any]:
+    """
+    대안 STT 방법을 사용한 음성 분석 (fallback)
+    """
+    try:
+        # 1. faster-whisper 직접 시도
+        try:
+            from faster_whisper import WhisperModel
+            import tempfile
+            import os
+            import torchaudio
+            
+            # 임시 파일 생성
+            with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as temp_file:
+                temp_path = temp_file.name
+                torchaudio.save(temp_path, torch.tensor(audio_array).unsqueeze(0), sr)
+            
+            try:
+                model = WhisperModel("base", device="cpu", compute_type="int8")
+                segments, _ = model.transcribe(temp_path, language="ko")
+                
+                transcript = ""
+                for segment in segments:
+                    transcript += segment.text
+                
+                if transcript.strip():
+                    logger.info(f"✅ fallback STT 성공: {transcript}")
+                    return create_fallback_result(transcript, "faster-whisper-direct")
+                    
+            finally:
+                os.unlink(temp_path)
+                
+        except Exception as e:
+            logger.warning(f"faster-whisper fallback 실패: {e}")
+        
+        # 2. OpenAI Whisper API 시도
+        try:
+            import openai
+            import tempfile
+            import os
+            import torchaudio
+            
+            if os.getenv('OPENAI_API_KEY'):
+                # 임시 파일 생성
+                with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as temp_file:
+                    temp_path = temp_file.name
+                    torchaudio.save(temp_path, torch.tensor(audio_array).unsqueeze(0), sr)
+                
+                try:
+                    with open(temp_path, 'rb') as audio_file:
+                        response = openai.Audio.transcribe(
+                            model="whisper-1",
+                            file=audio_file,
+                            language="ko"
+                        )
+                    
+                    transcript = response.text.strip()
+                    if transcript:
+                        logger.info(f"✅ OpenAI Whisper fallback 성공: {transcript}")
+                        return create_fallback_result(transcript, "openai-whisper")
+                        
+                finally:
+                    os.unlink(temp_path)
+                    
+        except Exception as e:
+            logger.warning(f"OpenAI Whisper fallback 실패: {e}")
+        
+        # 3. Google Speech-to-Text API 시도
+        try:
+            from google.cloud import speech
+            import tempfile
+            import os
+            import torchaudio
+            
+            # 임시 파일 생성
+            with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as temp_file:
+                temp_path = temp_file.name
+                torchaudio.save(temp_path, torch.tensor(audio_array).unsqueeze(0), sr)
+            
+            try:
+                client = speech.SpeechClient()
+                
+                with open(temp_path, 'rb') as audio_file:
+                    content = audio_file.read()
+                
+                audio = speech.RecognitionAudio(content=content)
+                config = speech.RecognitionConfig(
+                    encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
+                    sample_rate_hertz=sr,
+                    language_code="ko-KR",
+                )
+                
+                response = client.recognize(config=config, audio=audio)
+                
+                transcript = ""
+                for result in response.results:
+                    transcript += result.alternatives[0].transcript
+                
+                if transcript.strip():
+                    logger.info(f"✅ Google Speech-to-Text fallback 성공: {transcript}")
+                    return create_fallback_result(transcript, "google-speech")
+                    
+            finally:
+                os.unlink(temp_path)
+                
+        except Exception as e:
+            logger.warning(f"Google Speech-to-Text fallback 실패: {e}")
+        
+        # 모든 방법 실패 시 기본 응답
+        logger.error("모든 STT 방법 실패")
+        return create_fallback_result("음성 인식에 실패했습니다.", "none")
+        
+    except Exception as e:
+        logger.error(f"fallback_stt_analysis 오류: {e}")
+        return create_fallback_result("처리 중 오류 발생", "error")
+
+def create_fallback_result(transcript: str, method: str) -> Dict[str, Any]:
+    """fallback 결과 생성"""
+    return {
+        'transcript': transcript,
+        'emotion': '중립',
+        'emotion_score': 1.0,
+        'total_score': 60.0,
+        'voice_tone_score': 60.0,
+        'voice_details': {'stt_method': method},
+        'word_choice_score': 60.0,
+        'word_details': {},
+        'weights': {'voice': 0.4, 'word': 0.4, 'emotion': 0.2},
+        'positive_words': [],
+        'negative_words': []
+    }
 
 def analyze_voice_with_context(
     audio_array: np.ndarray, 
@@ -173,7 +295,7 @@ def is_voice_processor_ready() -> bool:
         logger.error(f"VoiceProcessor 상태 확인 오류: {e}")
         return False
 
-def get_voice_model_status() -> Dict[str, bool]:
+def get_voice_model_status() -> Dict[str, Any]:
     """모델 상태 확인"""
     try:
         processor = get_voice_processor()
@@ -181,9 +303,12 @@ def get_voice_model_status() -> Dict[str, bool]:
     except Exception as e:
         logger.error(f"모델 상태 확인 오류: {e}")
         return {
+            'models_loaded': False,
+            'analyzer_ready': False,
+            'stt_available': False,
+            'stt_method': 'none',
             'asr_model': False,
-            'audio_classifier': False,
-            'models_loaded': False
+            'audio_classifier': False
         }
 
 def preload_voice_models():

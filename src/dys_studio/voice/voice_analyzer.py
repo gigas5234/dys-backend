@@ -27,6 +27,28 @@ except ImportError:
     TRANSFORMERS_AVAILABLE = False
     print("⚠️ Transformers 라이브러리 없음 - 키워드 기반 감정 분석 사용")
 
+# OpenAI API 대안 추가
+try:
+    import openai
+    OPENAI_AVAILABLE = True
+except ImportError:
+    OPENAI_AVAILABLE = False
+
+# 기존 faster-whisper 시도
+try:
+    from faster_whisper import WhisperModel
+    FASTER_WHISPER_AVAILABLE = True
+except ImportError as e:
+    print(f"⚠️ faster-whisper 로드 실패: {e}")
+    FASTER_WHISPER_AVAILABLE = False
+
+# transformers 라이브러리 확인
+try:
+    from transformers import pipeline
+    TRANSFORMERS_AVAILABLE = True
+except ImportError:
+    TRANSFORMERS_AVAILABLE = False
+
 # 로깅 설정
 logging.basicConfig(
     level=logging.INFO,
@@ -231,34 +253,64 @@ class VoiceAnalyzer:
             }
     
     def load_models(self):
-        """모든 AI 모델을 메모리에 로드 (개선된 버전)"""
+        """모든 AI 모델을 메모리에 로드 (첫 번째 성공 모델 채택)"""
         if self._models_loaded:
             logger.info("모델이 이미 로드되어 있습니다.")
             return
         
-        logger.info("모델 로딩 시작... (GKE 환경 최적화)")
+        logger.info("모델 로딩 시작... (첫 번째 성공 모델 채택)")
         
         # GKE 환경에서는 CPU 사용을 우선
         device = "cpu"  # GKE 환경에서는 CPU 사용
         logger.info(f"🎯 사용 디바이스: {device}")
         logger.info("🌐 GKE 환경에서 CPU 기반 음성 분석 준비")
         
-        # 1. ASR 모델 (Whisper) - GKE 환경 최적화
-        try:
-            # GKE 환경에서는 base 모델 사용
-            self._asr_model = WhisperModel("base", device="cpu", compute_type="int8")
-            logger.info("✅ ASR 모델 로드 성공 (GKE CPU)")
-            logger.info("🎤 GKE 환경에서 faster-whisper base 모델 사용")
-        except Exception as e:
-            logger.error(f"❌ ASR 모델 로드 실패: {e}")
-            # 더 작은 모델로 재시도
+        # 1. ASR 모델 (첫 번째 성공 모델 채택)
+        self._asr_model = None
+        self._stt_method = "none"
+        
+        # 방법 1: faster-whisper 시도 (base 모델)
+        if FASTER_WHISPER_AVAILABLE:
             try:
-                self._asr_model = WhisperModel("tiny", device="cpu", compute_type="int8")
-                logger.info("✅ ASR 모델 (tiny) 로드 성공")
-                logger.info("🎤 GKE 환경에서 faster-whisper tiny 모델 사용")
-            except Exception as e2:
-                logger.error(f"❌ ASR 모델 (tiny) 로드도 실패: {e2}")
-                self._asr_model = None
+                self._asr_model = WhisperModel("base", device="cpu", compute_type="int8")
+                self._stt_method = "faster-whisper"
+                logger.info("✅ ASR 모델 로드 성공 (faster-whisper base)")
+                logger.info("🎤 faster-whisper base 모델 채택")
+            except Exception as e:
+                logger.warning(f"⚠️ faster-whisper base 로드 실패: {e}")
+                # tiny 모델로 재시도
+                try:
+                    self._asr_model = WhisperModel("tiny", device="cpu", compute_type="int8")
+                    self._stt_method = "faster-whisper-tiny"
+                    logger.info("✅ ASR 모델 로드 성공 (faster-whisper tiny)")
+                    logger.info("🎤 faster-whisper tiny 모델 채택")
+                except Exception as e2:
+                    logger.warning(f"⚠️ faster-whisper tiny도 실패: {e2}")
+        
+        # 방법 2: OpenAI Whisper API 시도 (faster-whisper 실패 시)
+        if self._asr_model is None and OPENAI_AVAILABLE:
+            try:
+                # OpenAI API 키 확인
+                if os.getenv('OPENAI_API_KEY'):
+                    self._stt_method = "openai-whisper"
+                    logger.info("✅ OpenAI Whisper API 준비 완료")
+                    logger.info("🎤 OpenAI Whisper API 채택")
+                else:
+                    logger.warning("⚠️ OpenAI API 키가 설정되지 않음")
+            except Exception as e:
+                logger.warning(f"⚠️ OpenAI Whisper API 설정 실패: {e}")
+        
+        # 방법 3: Google Speech-to-Text API 시도 (이전 방법들 실패 시)
+        if self._asr_model is None and self._stt_method == "none":
+            try:
+                from google.cloud import speech
+                self._stt_method = "google-speech"
+                logger.info("✅ Google Speech-to-Text API 준비 완료")
+                logger.info("🎤 Google Speech-to-Text API 채택")
+            except ImportError:
+                logger.info("ℹ️ Google Speech-to-Text API 미설치")
+            except Exception as e:
+                logger.warning(f"⚠️ Google Speech-to-Text API 설정 실패: {e}")
         
         # 2. 텍스트 감정 분석 모델 (키워드 기반으로 단순화)
         logger.info("키워드 기반 감정 분석 사용 (GKE 환경 최적화)")
@@ -271,14 +323,15 @@ class VoiceAnalyzer:
         self._audio_clf = None
         logger.info("🎵 GKE 환경에서 키워드 기반 감정 분석으로 대체")
         
-        # 최소한 STT 모델이 로드되었는지 확인
-        if self._asr_model is None:
-            logger.error("❌ STT 모델 로드 실패 - 음성 인식 불가능")
-            raise Exception("STT 모델 로드 실패")
+        # STT 모델 상태 확인
+        if self._stt_method != "none":
+            logger.info(f"✅ STT 모델 채택 완료: {self._stt_method}")
+        else:
+            logger.warning("⚠️ 모든 STT 모델 로드 실패 - 음성 인식 제한됨")
         
         self._models_loaded = True
-        logger.info("🎯 모델 로딩 완료 (GKE 최적화)")
-        logger.info(f"📊 로드된 모델: ASR={self._asr_model is not None}, 감정분석={self._audio_clf is not None}")
+        logger.info("🎯 모델 로딩 완료 (첫 번째 성공 모델 채택)")
+        logger.info(f"📊 채택된 모델: STT={self._stt_method}, 감정분석=키워드기반")
         logger.info("🚀 GKE 환경에서 STT 기능 준비 완료")
         logger.info("🎉 음성 입력 기능이 활성화되었습니다!")
     
@@ -430,11 +483,34 @@ class VoiceAnalyzer:
         )
     
     def transcribe_korean(self, audio_array: np.ndarray) -> str:
-        """한국어 음성을 텍스트로 변환 (개선된 버전)"""
-        if self._asr_model is None:
-            logger.warning("ASR 모델이 로드되지 않았습니다.")
+        """한국어 음성을 텍스트로 변환 (다중 STT 방법 지원)"""
+        if self._stt_method == "none":
+            logger.warning("STT 모델이 로드되지 않았습니다.")
             return ""
         
+        try:
+            # 방법 1: faster-whisper 사용
+            if self._stt_method in ["faster-whisper", "faster-whisper-tiny"] and self._asr_model is not None:
+                return self._transcribe_with_faster_whisper(audio_array)
+            
+            # 방법 2: OpenAI Whisper API 사용
+            elif self._stt_method == "openai-whisper":
+                return self._transcribe_with_openai(audio_array)
+            
+            # 방법 3: Google Speech-to-Text API 사용
+            elif self._stt_method == "google-speech":
+                return self._transcribe_with_google(audio_array)
+            
+            else:
+                logger.warning(f"지원되지 않는 STT 방법: {self._stt_method}")
+                return ""
+                
+        except Exception as e:
+            logger.error(f"전사 실패: {e}")
+            return ""
+    
+    def _transcribe_with_faster_whisper(self, audio_array: np.ndarray) -> str:
+        """faster-whisper를 사용한 전사"""
         try:
             # 오디오 전처리
             processed_audio = self._preprocess_audio(audio_array)
@@ -465,14 +541,98 @@ class VoiceAnalyzer:
             transcript = " ".join(tp.strip() for tp in text_parts).strip()
             
             if transcript:
-                logger.info(f"✅ 전사 성공: '{transcript}'")
+                logger.info(f"✅ faster-whisper 전사 성공: '{transcript}'")
                 return transcript
             else:
-                logger.warning("전사 결과가 비어있습니다.")
+                logger.warning("faster-whisper 전사 결과가 비어있습니다.")
                 return ""
                 
         except Exception as e:
-            logger.error(f"전사 실패: {e}")
+            logger.error(f"faster-whisper 전사 실패: {e}")
+            return ""
+    
+    def _transcribe_with_openai(self, audio_array: np.ndarray) -> str:
+        """OpenAI Whisper API를 사용한 전사"""
+        try:
+            import tempfile
+            import os
+            
+            # 오디오를 임시 파일로 저장
+            with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as temp_file:
+                temp_path = temp_file.name
+                torchaudio.save(temp_path, torch.tensor(audio_array).unsqueeze(0), 16000)
+            
+            try:
+                # OpenAI API 호출
+                with open(temp_path, 'rb') as audio_file:
+                    response = openai.Audio.transcribe(
+                        model="whisper-1",
+                        file=audio_file,
+                        language="ko"
+                    )
+                
+                transcript = response.text.strip()
+                if transcript:
+                    logger.info(f"✅ OpenAI Whisper 전사 성공: '{transcript}'")
+                    return transcript
+                else:
+                    logger.warning("OpenAI Whisper 전사 결과가 비어있습니다.")
+                    return ""
+                    
+            finally:
+                # 임시 파일 정리
+                os.unlink(temp_path)
+                
+        except Exception as e:
+            logger.error(f"OpenAI Whisper 전사 실패: {e}")
+            return ""
+    
+    def _transcribe_with_google(self, audio_array: np.ndarray) -> str:
+        """Google Speech-to-Text API를 사용한 전사"""
+        try:
+            from google.cloud import speech
+            import tempfile
+            import os
+            
+            # 오디오를 임시 파일로 저장
+            with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as temp_file:
+                temp_path = temp_file.name
+                torchaudio.save(temp_path, torch.tensor(audio_array).unsqueeze(0), 16000)
+            
+            try:
+                # Google Speech-to-Text API 호출
+                client = speech.SpeechClient()
+                
+                with open(temp_path, 'rb') as audio_file:
+                    content = audio_file.read()
+                
+                audio = speech.RecognitionAudio(content=content)
+                config = speech.RecognitionConfig(
+                    encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
+                    sample_rate_hertz=16000,
+                    language_code="ko-KR",
+                )
+                
+                response = client.recognize(config=config, audio=audio)
+                
+                transcript = ""
+                for result in response.results:
+                    transcript += result.alternatives[0].transcript
+                
+                transcript = transcript.strip()
+                if transcript:
+                    logger.info(f"✅ Google Speech-to-Text 전사 성공: '{transcript}'")
+                    return transcript
+                else:
+                    logger.warning("Google Speech-to-Text 전사 결과가 비어있습니다.")
+                    return ""
+                    
+            finally:
+                # 임시 파일 정리
+                os.unlink(temp_path)
+                
+        except Exception as e:
+            logger.error(f"Google Speech-to-Text 전사 실패: {e}")
             return ""
     
     def classify_emotion_audio(self, audio_array: np.ndarray) -> List[Tuple[str, float]]:

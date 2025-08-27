@@ -38,7 +38,7 @@ class VoiceProcessor:
     ) -> Dict[str, Any]:
         """
         오디오 배열을 입력받아 모든 분석을 수행하고 결과를 딕셔너리로 반환
-        STT와 연동되는 메인 함수
+        STT와 연동되는 메인 함수 (감정 단어 선택까지 완전 연결)
         
         Args:
             audio_array: 오디오 데이터 (numpy array)
@@ -67,30 +67,47 @@ class VoiceProcessor:
                 logger.warning(f"오디오 품질 문제: {quality['error_message']}")
                 return self._create_fallback_result(quality['error_message'])
             
-            # 1. 음성 인식 (STT)
+            # 1. 음성 인식 (STT) - 첫 번째 성공 모델 사용
             transcript = self.analyzer.transcribe_korean(audio_array)
             if not transcript:
                 logger.warning("전사 결과가 없습니다. 기본값 사용")
                 transcript = "음성 인식 실패"
             
-            # 2. 감정 분석
+            logger.info(f"✅ STT 전사 완료: '{transcript}'")
+            
+            # 2. 감정 분석 (키워드 기반)
             emotion_scores = self._analyze_emotion(audio_array, transcript)
             top_emotion, top_score = emotion_scores[0] if emotion_scores else ("중립", 1.0)
+            
+            logger.info(f"✅ 감정 분석 완료: {top_emotion} ({top_score:.2f})")
             
             # 3. 음성 톤 분석
             voice_tone = self.analyzer.analyze_voice_tone(audio_array, sr)
             
-            # 4. 단어 선택 분석 (전사 결과 기반)
+            logger.info(f"✅ 음성 톤 분석 완료: 따뜻함={voice_tone.warmth_score:.2f}, "
+                       f"열정={voice_tone.enthusiasm_level:.2f}, "
+                       f"자신감={voice_tone.confidence_level:.2f}")
+            
+            # 4. 단어 선택 분석 (전사 결과 기반) - 감정 단어 선택 포함
             word_choice = self.analyzer.analyze_word_choice(
                 transcript, 
                 elapsed_sec=elapsed_sec, 
                 voice=voice_tone
             )
             
+            logger.info(f"✅ 단어 선택 분석 완료: 긍정단어={len(word_choice.positive_words)}, "
+                       f"부정단어={len(word_choice.negative_words)}, "
+                       f"공손함={word_choice.politeness_score:.2f}, "
+                       f"공감={word_choice.empathy_score:.2f}")
+            
             # 5. 점수 계산
             detailed_scores = self.scorer.calculate_detailed_scores(
                 voice_tone, word_choice, emotion_scores
             )
+            
+            logger.info(f"✅ 점수 계산 완료: 총점={detailed_scores['total_score']:.1f}, "
+                       f"음성톤={detailed_scores['voice_tone_score']:.1f}, "
+                       f"단어선택={detailed_scores['word_choice_score']:.1f}")
             
             # 6. 전체 분위기 판단
             overall_mood = self.scorer.determine_overall_mood(detailed_scores['total_score'])
@@ -261,10 +278,13 @@ class VoiceProcessor:
         """모델 로드 상태 확인"""
         return self.models_loaded and self.analyzer._models_loaded
     
-    def get_model_status(self) -> Dict[str, bool]:
-        """모델 상태 확인"""
+    def get_model_status(self) -> Dict[str, Any]:
+        """모델 상태 상세 확인"""
         return {
+            'models_loaded': self.models_loaded,
+            'analyzer_ready': self.analyzer._models_loaded,
+            'stt_available': self.analyzer._stt_method != "none",
+            'stt_method': self.analyzer._stt_method,
             'asr_model': self.analyzer._asr_model is not None,
-            'audio_classifier': self.analyzer._audio_clf is not None,
-            'models_loaded': self.models_loaded
+            'audio_classifier': self.analyzer._audio_clf is not None
         }

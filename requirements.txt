@@ -28,6 +28,9 @@ torchaudio==2.1.1+cpu
 faster-whisper==0.9.0
 edge-tts>=7.2.1
 
+# Alternative STT APIs
+google-cloud-speech>=2.21.0  # Google Speech-to-Text API
+
 # NLP & Vision (compatible versions)
 transformers>=4.30.0,<=4.33.0
 
