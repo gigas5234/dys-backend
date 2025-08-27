@@ -51,7 +51,10 @@ spec:
           failureThreshold: 5
         env:
         - name: MONGODB_URI
-          value: "mongodb+srv://dys-chatbot:epdusth@cluster0.drwwbhn.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+          valueFrom:
+            secretKeyRef:
+              name: dys-secrets
+              key: mongodb-uri
         - name: DATABASE_NAME
           value: "dys-chatbot"
         - name: ALLOWED_ORIGINS
