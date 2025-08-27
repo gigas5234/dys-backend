@@ -22,7 +22,7 @@ from typing import List, Optional, Dict, Any
 
 # 데이터베이스 및 인증 모듈 import (선택적)
 try:
-    from database import init_database, create_chat_session, create_chat_session_with_persona, get_user_sessions, save_message, get_session_messages, get_session_info, get_user_by_email, users_collection, chat_sessions_collection
+    from database import init_database, create_chat_session, create_chat_session_with_persona, get_user_sessions, save_message, get_session_messages, get_session_info, get_user_by_email, users_collection, chat_sessions_collection, diagnose_database
     from auth import get_current_user, get_current_user_id
     MONGODB_AVAILABLE = True
 except ImportError as e:
@@ -626,17 +626,24 @@ async def send_message(
         
         # 클라이언트에서 전송한 user_id가 있으면 사용, 없으면 생성된 ID 사용
         final_user_id = message.user_id if message.user_id else current_user_id
+        print(f"📋 [SEND_MESSAGE] 최종 user_id: {final_user_id}")
         
-        message_id = await save_message(
-            final_user_id, 
-            session_id, 
-            message.role, 
-            message.content
-        )
-        
-        if not message_id:
-            print("❌ [SEND_MESSAGE] 사용자 메시지 저장 실패")
-            raise HTTPException(status_code=500, detail="Failed to save message")
+        try:
+            message_id = await save_message(
+                final_user_id, 
+                session_id, 
+                message.role, 
+                message.content
+            )
+            
+            if not message_id:
+                print("❌ [SEND_MESSAGE] 사용자 메시지 저장 실패 - message_id가 None")
+                raise HTTPException(status_code=500, detail="Failed to save message")
+        except Exception as save_error:
+            print(f"❌ [SEND_MESSAGE] 메시지 저장 중 예외 발생: {save_error}")
+            import traceback
+            traceback.print_exc()
+            raise HTTPException(status_code=500, detail=f"Message save error: {str(save_error)}")
         
         print(f"✅ [SEND_MESSAGE] 사용자 메시지 저장 성공: {message_id}")
         
@@ -1176,7 +1183,7 @@ class UserCalibrationUpdateRequest(BaseModel):
 
 @app.post("/api/user/check")
 async def check_user_calibration(request: UserCheckRequest):
-    """사용자 캘리브레이션 상태 확인 (Supabase users 테이블의 cam_calibration 필드 확인)"""
+    """사용자 캘리브레이션 상태 확인 (사용자가 없으면 자동 생성)"""
     try:
         print(f"🔍 [USER_CHECK] 요청 받음 - email: {request.email}")
         
@@ -1193,10 +1200,41 @@ async def check_user_calibration(request: UserCheckRequest):
                         "user_id": str(user.get('_id')),
                         "message": "사용자 캘리브레이션 상태 확인 완료"
                     }
+                else:
+                    # 사용자가 없으면 자동 생성
+                    print(f"⚠️ [USER_CHECK] 사용자 없음 - 자동 생성 시작")
+                    from database import create_user
+                    from datetime import datetime
+                    
+                    new_user_data = {
+                        "email": request.email,
+                        "created_at": datetime.utcnow(),
+                        "updated_at": datetime.utcnow(),
+                        "cam_calibration": False,
+                        "is_active": True
+                    }
+                    
+                    try:
+                        user_id = await create_user(new_user_data)
+                        if user_id:
+                            print(f"✅ [USER_CHECK] 새 사용자 생성 완료: {user_id}")
+                            return {
+                                "has_calibration": False,
+                                "cam_calibration": False,
+                                "user_id": user_id,
+                                "message": "새 사용자가 생성되었습니다"
+                            }
+                        else:
+                            print(f"❌ [USER_CHECK] 사용자 생성 실패 - user_id가 None")
+                    except Exception as create_error:
+                        print(f"❌ [USER_CHECK] 사용자 생성 중 예외 발생: {create_error}")
+                        import traceback
+                        traceback.print_exc()
+                        
             except Exception as db_error:
                 print(f"⚠️ [USER_CHECK] 데이터베이스 조회 실패: {db_error}")
         
-        # MongoDB가 없거나 사용자를 찾을 수 없는 경우
+        # MongoDB가 없거나 사용자 생성에 실패한 경우
         print(f"⚠️ [USER_CHECK] 사용자 정보 없음 - MongoDB: {MONGODB_AVAILABLE}")
         return {
             "has_calibration": False,
@@ -2212,4 +2250,78 @@ async def receive_alert(request: Request):
     except Exception as e:
         print(f"❌ [ALERT] 처리 실패: {e}")
         return {"status": "error", "message": str(e)}
+
+# === 진단 엔드포인트 ===
+
+@app.get("/api/diagnose/database")
+async def diagnose_mongodb():
+    """MongoDB 데이터베이스 상태 진단"""
+    try:
+        print("🔍 [DIAGNOSE_API] MongoDB 진단 요청")
+        
+        if not MONGODB_AVAILABLE:
+            return {
+                "status": "error",
+                "message": "MongoDB 모듈이 로드되지 않음",
+                "mongodb_available": False
+            }
+        
+        result = await diagnose_database()
+        return {
+            "status": "success",
+            "mongodb_available": True,
+            "diagnosis": result
+        }
+        
+    except Exception as e:
+        print(f"❌ [DIAGNOSE_API] 진단 실패: {e}")
+        return {
+            "status": "error",
+            "message": str(e),
+            "mongodb_available": MONGODB_AVAILABLE
+        }
+
+@app.get("/api/diagnose/user/{email}")
+async def diagnose_user(email: str):
+    """특정 사용자 상태 진단"""
+    try:
+        print(f"🔍 [DIAGNOSE_USER] 사용자 진단 요청: {email}")
+        
+        if not MONGODB_AVAILABLE:
+            return {
+                "status": "error",
+                "message": "MongoDB 모듈이 로드되지 않음"
+            }
+        
+        # 사용자 조회
+        user = await get_user_by_email(email)
+        
+        if user:
+            # 사용자의 세션 조회
+            user_sessions = await get_user_sessions(str(user.get('_id')))
+            
+            return {
+                "status": "success",
+                "user_found": True,
+                "user_id": str(user.get('_id')),
+                "email": user.get('email'),
+                "created_at": user.get('created_at'),
+                "cam_calibration": user.get('cam_calibration', False),
+                "sessions_count": len(user_sessions),
+                "sessions": user_sessions[:5]  # 최근 5개 세션만
+            }
+        else:
+            return {
+                "status": "success",
+                "user_found": False,
+                "email": email,
+                "message": "사용자를 찾을 수 없음"
+            }
+            
+    except Exception as e:
+        print(f"❌ [DIAGNOSE_USER] 사용자 진단 실패: {e}")
+        return {
+            "status": "error",
+            "message": str(e)
+        }
 

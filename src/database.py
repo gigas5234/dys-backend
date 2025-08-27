@@ -79,6 +79,67 @@ async def test_connection():
         logger.error(f"❌ MongoDB 연결 실패: {e}")
         return False
 
+async def diagnose_database():
+    """MongoDB 데이터베이스 상태 진단"""
+    try:
+        print("🔍 [DIAGNOSE] MongoDB 데이터베이스 상태 진단 시작...")
+        
+        # 1. 연결 테스트
+        connection_ok = await test_connection()
+        print(f"📊 [DIAGNOSE] 연결 상태: {'✅ 성공' if connection_ok else '❌ 실패'}")
+        
+        if not connection_ok:
+            return {"status": "connection_failed", "error": "MongoDB 연결 실패"}
+        
+        # 2. 데이터베이스 목록 확인
+        try:
+            db_list = await async_client.list_database_names()
+            print(f"📊 [DIAGNOSE] 사용 가능한 데이터베이스: {db_list}")
+        except Exception as e:
+            print(f"❌ [DIAGNOSE] 데이터베이스 목록 조회 실패: {e}")
+        
+        # 3. 현재 데이터베이스 컬렉션 확인
+        try:
+            collections = await database.list_collection_names()
+            print(f"📊 [DIAGNOSE] 현재 DB 컬렉션: {collections}")
+        except Exception as e:
+            print(f"❌ [DIAGNOSE] 컬렉션 목록 조회 실패: {e}")
+        
+        # 4. 사용자 컬렉션 상태 확인
+        try:
+            user_count = await users_collection.count_documents({})
+            print(f"📊 [DIAGNOSE] 사용자 수: {user_count}")
+            
+            if user_count > 0:
+                # 최근 사용자 3명 조회
+                recent_users = await users_collection.find().sort("created_at", -1).limit(3).to_list(3)
+                print(f"📊 [DIAGNOSE] 최근 사용자:")
+                for user in recent_users:
+                    print(f"  - ID: {user.get('_id')}, Email: {user.get('email')}, Created: {user.get('created_at')}")
+        except Exception as e:
+            print(f"❌ [DIAGNOSE] 사용자 컬렉션 조회 실패: {e}")
+        
+        # 5. 채팅 세션 컬렉션 상태 확인
+        try:
+            session_count = await chat_sessions_collection.count_documents({})
+            print(f"📊 [DIAGNOSE] 채팅 세션 수: {session_count}")
+        except Exception as e:
+            print(f"❌ [DIAGNOSE] 채팅 세션 컬렉션 조회 실패: {e}")
+        
+        # 6. 채팅 메시지 컬렉션 상태 확인
+        try:
+            message_count = await chat_messages_collection.count_documents({})
+            print(f"📊 [DIAGNOSE] 채팅 메시지 수: {message_count}")
+        except Exception as e:
+            print(f"❌ [DIAGNOSE] 채팅 메시지 컬렉션 조회 실패: {e}")
+        
+        print("✅ [DIAGNOSE] MongoDB 진단 완료")
+        return {"status": "success", "connection": connection_ok}
+        
+    except Exception as e:
+        print(f"❌ [DIAGNOSE] 진단 중 오류 발생: {e}")
+        return {"status": "error", "error": str(e)}
+
 # 사용자 관련 함수
 async def create_user(user_data: Dict[str, Any]) -> Optional[str]:
     """새 사용자 생성"""
@@ -237,6 +298,16 @@ async def save_message(user_id: str, session_id: str, role: str, content: str) -
         if not session_id or session_id == "null":
             print(f"❌ [SAVE_MESSAGE] 유효하지 않은 session_id: {session_id}")
             return None
+        
+        # user_id 유효성 검사 및 기본값 생성
+        if not user_id or user_id == "null" or len(user_id) < 12:
+            print(f"⚠️ [SAVE_MESSAGE] 유효하지 않은 user_id: {user_id}")
+            import hashlib
+            import time
+            # 타임스탬프 기반 고유 ID 생성
+            unique_string = f"default_user_{int(time.time())}"
+            user_id = hashlib.md5(unique_string.encode()).hexdigest()[:24]
+            print(f"✅ [SAVE_MESSAGE] 기본 사용자 ID 생성: {user_id}")
         
         # Supabase UUID를 MongoDB ObjectId로 변환
         if len(user_id) == 36 and '-' in user_id:  # UUID 형식인지 확인
