@@ -49,14 +49,7 @@ try:
     print("✅ 새로운 음성 분석 모듈 로드 성공")
 except ImportError as e:
     print(f"⚠️ 새로운 음성 분석 모듈 로드 실패: {e}")
-    VOICE_ANALYSIS_AVAILABLE = False
-except Exception as e:
-    print(f"⚠️ 새로운 음성 분석 모듈 초기화 실패: {e}")
-    VOICE_ANALYSIS_AVAILABLE = False
-
-# 음성 분석 모듈 강제 활성화 (개발용)
-if not VOICE_ANALYSIS_AVAILABLE:
-    print("🔄 새로운 음성 분석 모듈 강제 활성화 시도...")
+    # 강제 활성화 시도
     try:
         import sys
         import os
@@ -64,8 +57,26 @@ if not VOICE_ANALYSIS_AVAILABLE:
         from voice.voice_api import preload_voice_models, process_audio_simple
         VOICE_ANALYSIS_AVAILABLE = True
         print("✅ 새로운 음성 분석 모듈 강제 활성화 성공")
+    except Exception as e2:
+        print(f"❌ 새로운 음성 분석 모듈 강제 활성화 실패: {e2}")
+        VOICE_ANALYSIS_AVAILABLE = False
+except Exception as e:
+    print(f"⚠️ 새로운 음성 분석 모듈 초기화 실패: {e}")
+    VOICE_ANALYSIS_AVAILABLE = False
+
+# GKE 환경에서 음성 분석 모듈 강제 활성화
+if not VOICE_ANALYSIS_AVAILABLE:
+    print("🔄 GKE 환경에서 음성 분석 모듈 강제 활성화 시도...")
+    try:
+        import sys
+        import os
+        sys.path.append(os.path.join(os.path.dirname(__file__), 'dys_studio'))
+        from voice.voice_api import preload_voice_models, process_audio_simple
+        VOICE_ANALYSIS_AVAILABLE = True
+        print("✅ GKE 환경에서 음성 분석 모듈 강제 활성화 성공")
     except Exception as e:
-        print(f"❌ 새로운 음성 분석 모듈 강제 활성화 실패: {e}")
+        print(f"❌ GKE 환경에서 음성 분석 모듈 강제 활성화 실패: {e}")
+        # 최종 fallback: 기본 STT 기능만 제공
         VOICE_ANALYSIS_AVAILABLE = False
 
 # TTS 모듈 import
@@ -752,11 +763,19 @@ async def startup_event():
             print("✅ 음성 분석 모델 로딩 완료 - faster-whisper 사용")
         except Exception as e:
             print(f"⚠️ 음성 분석 모델 로딩 실패: {e}")
-            print("⚠️ 음성 분석 기능이 제한됩니다")
-            # 음성 분석 모듈 비활성화
+            print("⚠️ 기본 STT 기능으로 fallback")
+            # 음성 분석 모듈은 비활성화하되 기본 STT는 사용 가능
             VOICE_ANALYSIS_AVAILABLE = False
     else:
-        print("⚠️ 음성 분석 모듈 비활성화됨")
+        print("⚠️ 음성 분석 모듈 비활성화됨 - 기본 STT 사용")
+        
+    # 기본 STT 기능 확인
+    try:
+        from faster_whisper import WhisperModel
+        print("✅ faster-whisper 모듈 확인됨 - 기본 STT 사용 가능")
+    except ImportError as e:
+        print(f"❌ faster-whisper 모듈 없음: {e}")
+        print("⚠️ 음성 인식 기능이 제한됩니다")
 
 # WebSocket 연결 관리
 _active_websockets = set()
@@ -1489,30 +1508,89 @@ async def analyze_voice(audio: UploadFile = File(...)):
     print(f"🎤 [VOICE_ANALYZE] 음성 분석 요청 받음 - 파일명: {audio.filename}")
     
     if not VOICE_ANALYSIS_AVAILABLE:
-        print("❌ [VOICE_ANALYZE] 음성 분석 모듈 비활성화됨")
-        # 음성 분석이 불가능한 경우에도 기본 응답 제공
-        return {
-            "success": True,
-            "analysis": {
-                "transcript": "음성 분석 기능이 일시적으로 비활성화되었습니다.",
-                "emotion": "중립",
-                "emotion_score": 0.5,
-                "total_score": 50.0,
-                "voice_tone_score": 50.0,
-                "word_choice_score": 50.0,
-                "voice_details": {},
-                "word_details": {},
-                "weights": {"voice": 0.4, "word": 0.4, "emotion": 0.2},
-                "positive_words": [],
-                "negative_words": []
-            },
-            "message": "음성 분석 기능이 일시적으로 비활성화되어 기본 응답을 제공합니다.",
-            "details": {
-                "issue": "faster-whisper 모듈 로드 실패",
-                "status": "fallback",
-                "message": "기본 응답 모드로 동작 중입니다."
+        print("❌ [VOICE_ANALYZE] 음성 분석 모듈 비활성화됨 - 기본 STT 시도")
+        # 기본 STT 기능 시도
+        try:
+            # 오디오 파일 읽기
+            audio_data = await audio.read()
+            print(f"📊 [VOICE_ANALYZE] 오디오 데이터 크기: {len(audio_data)} bytes")
+            
+            # 기본 STT 처리 (faster-whisper 직접 사용)
+            import tempfile
+            import os
+            from faster_whisper import WhisperModel
+            
+            # 임시 파일 생성
+            with tempfile.NamedTemporaryFile(suffix='.webm', delete=False) as temp_webm:
+                temp_webm.write(audio_data)
+                temp_webm_path = temp_webm.name
+            
+            try:
+                # faster-whisper 모델 로드 및 STT 실행
+                model = WhisperModel("base", device="cpu", compute_type="int8")
+                segments, info = model.transcribe(temp_webm_path, language="ko")
+                
+                # 전사 결과 수집
+                transcript = ""
+                for segment in segments:
+                    transcript += segment.text
+                
+                if not transcript.strip():
+                    transcript = "음성을 인식하지 못했습니다."
+                
+                print(f"✅ [VOICE_ANALYZE] 기본 STT 성공: {transcript}")
+                
+                return {
+                    "success": True,
+                    "analysis": {
+                        "transcript": transcript,
+                        "emotion": "중립",
+                        "emotion_score": 0.5,
+                        "total_score": 60.0,
+                        "voice_tone_score": 60.0,
+                        "word_choice_score": 60.0,
+                        "voice_details": {"stt_method": "faster-whisper-direct"},
+                        "word_details": {},
+                        "weights": {"voice": 0.4, "word": 0.4, "emotion": 0.2},
+                        "positive_words": [],
+                        "negative_words": []
+                    },
+                    "message": "기본 STT 기능으로 음성 인식 완료",
+                    "details": {
+                        "stt_method": "faster-whisper-direct",
+                        "status": "basic_stt",
+                        "message": "기본 음성 인식 모드로 동작 중입니다."
+                    }
+                }
+                
+            finally:
+                # 임시 파일 정리
+                os.unlink(temp_webm_path)
+                
+        except Exception as e:
+            print(f"❌ [VOICE_ANALYZE] 기본 STT도 실패: {e}")
+            return {
+                "success": True,
+                "analysis": {
+                    "transcript": "음성 분석 기능이 일시적으로 비활성화되었습니다.",
+                    "emotion": "중립",
+                    "emotion_score": 0.5,
+                    "total_score": 50.0,
+                    "voice_tone_score": 50.0,
+                    "word_choice_score": 50.0,
+                    "voice_details": {},
+                    "word_details": {},
+                    "weights": {"voice": 0.4, "word": 0.4, "emotion": 0.2},
+                    "positive_words": [],
+                    "negative_words": []
+                },
+                "message": "음성 분석 기능이 일시적으로 비활성화되어 기본 응답을 제공합니다.",
+                "details": {
+                    "issue": "모든 STT 방법 실패",
+                    "status": "fallback",
+                    "message": "기본 응답 모드로 동작 중입니다."
+                }
             }
-        }
     
     try:
         # 오디오 파일 읽기
@@ -1534,22 +1612,64 @@ async def analyze_voice(audio: UploadFile = File(...)):
             temp_wav_path = temp_wav.name
         
         try:
-            # ffmpeg로 WebM → WAV 변환
+            # ffmpeg로 WebM → WAV 변환 (오류 처리 개선)
             import subprocess
-            subprocess.run([
-                'ffmpeg', '-i', temp_webm_path, 
-                '-ar', '16000',  # 16kHz 샘플링
-                '-ac', '1',      # 모노
-                '-y',            # 덮어쓰기
-                temp_wav_path
-            ], check=True, capture_output=True)
-            
-            # 변환된 WAV 파일 로드
-            waveform, sample_rate = torchaudio.load(temp_wav_path)
-            
-            # numpy 배열로 변환
-            audio_array = waveform.squeeze().numpy()
-            print(f"🔄 [VOICE_ANALYZE] WebM→WAV 변환 및 전처리 완료 - 길이: {len(audio_array)}, 샘플레이트: {sample_rate}Hz")
+            try:
+                subprocess.run([
+                    'ffmpeg', '-i', temp_webm_path, 
+                    '-ar', '16000',  # 16kHz 샘플링
+                    '-ac', '1',      # 모노
+                    '-y',            # 덮어쓰기
+                    temp_wav_path
+                ], check=True, capture_output=True)
+                
+                # 변환된 WAV 파일 로드
+                waveform, sample_rate = torchaudio.load(temp_wav_path)
+                
+                # numpy 배열로 변환
+                audio_array = waveform.squeeze().numpy()
+                print(f"🔄 [VOICE_ANALYZE] WebM→WAV 변환 및 전처리 완료 - 길이: {len(audio_array)}, 샘플레이트: {sample_rate}Hz")
+                
+            except (subprocess.CalledProcessError, FileNotFoundError) as e:
+                print(f"⚠️ [VOICE_ANALYZE] ffmpeg 변환 실패: {e}")
+                # WebM 파일을 직접 faster-whisper로 처리
+                print("🔄 [VOICE_ANALYZE] WebM 파일 직접 처리 시도...")
+                from faster_whisper import WhisperModel
+                model = WhisperModel("base", device="cpu", compute_type="int8")
+                segments, info = model.transcribe(temp_webm_path, language="ko")
+                
+                # 전사 결과 수집
+                transcript = ""
+                for segment in segments:
+                    transcript += segment.text
+                
+                if not transcript.strip():
+                    transcript = "음성을 인식하지 못했습니다."
+                
+                print(f"✅ [VOICE_ANALYZE] WebM 직접 STT 성공: {transcript}")
+                
+                return {
+                    "success": True,
+                    "analysis": {
+                        "transcript": transcript,
+                        "emotion": "중립",
+                        "emotion_score": 0.5,
+                        "total_score": 60.0,
+                        "voice_tone_score": 60.0,
+                        "word_choice_score": 60.0,
+                        "voice_details": {"stt_method": "faster-whisper-webm-direct"},
+                        "word_details": {},
+                        "weights": {"voice": 0.4, "word": 0.4, "emotion": 0.2},
+                        "positive_words": [],
+                        "negative_words": []
+                    },
+                    "message": "WebM 직접 STT로 음성 인식 완료",
+                    "details": {
+                        "stt_method": "faster-whisper-webm-direct",
+                        "status": "webm_direct_stt",
+                        "message": "WebM 파일 직접 처리 모드로 동작 중입니다."
+                    }
+                }
             
             # faster-whisper로 음성 분석 수행
             print("🔄 [VOICE_ANALYZE] faster-whisper로 음성 분석 시작...")

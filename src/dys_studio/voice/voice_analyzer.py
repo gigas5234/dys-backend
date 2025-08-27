@@ -231,51 +231,56 @@ class VoiceAnalyzer:
             }
     
     def load_models(self):
-        """모든 AI 모델을 메모리에 로드"""
+        """모든 AI 모델을 메모리에 로드 (개선된 버전)"""
         if self._models_loaded:
             logger.info("모델이 이미 로드되어 있습니다.")
             return
         
-        logger.info("모델 로딩 시작...")
+        logger.info("모델 로딩 시작... (GKE 환경 최적화)")
         
-        device = "cuda" if torch.cuda.is_available() else "cpu"
+        # GKE 환경에서는 CPU 사용을 우선
+        device = "cpu"  # GKE 환경에서는 CPU 사용
+        logger.info(f"🎯 사용 디바이스: {device}")
+        logger.info("🌐 GKE 환경에서 CPU 기반 음성 분석 준비")
         
-        # 1. ASR 모델 (Whisper)
+        # 1. ASR 모델 (Whisper) - GKE 환경 최적화
         try:
-            self._asr_model = WhisperModel(
-                self.gpu_config["asr_model_size"],
-                device=device,
-                compute_type=self.gpu_config["asr_compute_type"]
-            )
-            logger.info("✅ ASR 모델 로드 성공")
+            # GKE 환경에서는 base 모델 사용
+            self._asr_model = WhisperModel("base", device="cpu", compute_type="int8")
+            logger.info("✅ ASR 모델 로드 성공 (GKE CPU)")
+            logger.info("🎤 GKE 환경에서 faster-whisper base 모델 사용")
         except Exception as e:
             logger.error(f"❌ ASR 모델 로드 실패: {e}")
-            self._asr_model = None
+            # 더 작은 모델로 재시도
+            try:
+                self._asr_model = WhisperModel("tiny", device="cpu", compute_type="int8")
+                logger.info("✅ ASR 모델 (tiny) 로드 성공")
+                logger.info("🎤 GKE 환경에서 faster-whisper tiny 모델 사용")
+            except Exception as e2:
+                logger.error(f"❌ ASR 모델 (tiny) 로드도 실패: {e2}")
+                self._asr_model = None
         
         # 2. 텍스트 감정 분석 모델 (키워드 기반으로 단순화)
-        logger.info("키워드 기반 감정 분석 사용")
+        logger.info("키워드 기반 감정 분석 사용 (GKE 환경 최적화)")
         self._nli_tokenizer = None
         self._nli_model = None
+        logger.info("💡 GKE 환경에서 가벼운 키워드 기반 감정 분석 사용")
         
-        # 3. 음성 감정 분석 모델 (wav2vec2)
-        if TRANSFORMERS_AVAILABLE:
-            try:
-                device_id = 0 if device == "cuda" else -1
-                self._audio_clf = pipeline(
-                    "audio-classification", 
-                    model="superb/wav2vec2-base-superb-er", 
-                    device=device_id
-                )
-                logger.info("✅ 음성 감정 분석 모델 로드 성공")
-            except Exception as e:
-                logger.warning(f"⚠️ 음성 감정 분석 모델 로드 실패 (키워드 기반으로 대체): {e}")
-                self._audio_clf = None
-        else:
-            logger.info("Transformers 라이브러리 없음 - 음성 감정 분석 비활성화")
-            self._audio_clf = None
+        # 3. 음성 감정 분석 모델 (GKE 환경에서는 비활성화)
+        logger.info("음성 감정 분석 모델 비활성화 (키워드 기반 사용 - GKE 최적화)")
+        self._audio_clf = None
+        logger.info("🎵 GKE 환경에서 키워드 기반 감정 분석으로 대체")
+        
+        # 최소한 STT 모델이 로드되었는지 확인
+        if self._asr_model is None:
+            logger.error("❌ STT 모델 로드 실패 - 음성 인식 불가능")
+            raise Exception("STT 모델 로드 실패")
         
         self._models_loaded = True
-        logger.info("🎯 모델 로딩 완료")
+        logger.info("🎯 모델 로딩 완료 (GKE 최적화)")
+        logger.info(f"📊 로드된 모델: ASR={self._asr_model is not None}, 감정분석={self._audio_clf is not None}")
+        logger.info("🚀 GKE 환경에서 STT 기능 준비 완료")
+        logger.info("🎉 음성 입력 기능이 활성화되었습니다!")
     
     def analyze_voice_tone(self, audio_array: np.ndarray, sr: int) -> VoiceToneAnalysis:
         """음성 톤의 다양한 특성을 분석"""
@@ -425,7 +430,7 @@ class VoiceAnalyzer:
         )
     
     def transcribe_korean(self, audio_array: np.ndarray) -> str:
-        """한국어 음성을 텍스트로 변환"""
+        """한국어 음성을 텍스트로 변환 (개선된 버전)"""
         if self._asr_model is None:
             logger.warning("ASR 모델이 로드되지 않았습니다.")
             return ""
@@ -434,15 +439,27 @@ class VoiceAnalyzer:
             # 오디오 전처리
             processed_audio = self._preprocess_audio(audio_array)
             
-            segments, _ = self._asr_model.transcribe(
-                processed_audio,
-                language="ko",
-                beam_size=5,
-                vad_filter=True,
-                vad_parameters=dict(min_silence_duration_ms=500),
-                condition_on_previous_text=False,
-                initial_prompt="이것은 한국어 음성입니다."
-            )
+            # 첫 번째 시도: 기본 설정
+            try:
+                segments, _ = self._asr_model.transcribe(
+                    processed_audio,
+                    language="ko",
+                    beam_size=5,
+                    vad_filter=True,
+                    vad_parameters=dict(min_silence_duration_ms=500),
+                    condition_on_previous_text=False,
+                    initial_prompt="이것은 한국어 음성입니다."
+                )
+            except Exception as e:
+                logger.warning(f"기본 전사 실패: {e}")
+                # 두 번째 시도: 단순화된 설정
+                segments, _ = self._asr_model.transcribe(
+                    processed_audio,
+                    language="ko",
+                    beam_size=1,
+                    vad_filter=False,
+                    condition_on_previous_text=False
+                )
             
             text_parts = [seg.text for seg in segments]
             transcript = " ".join(tp.strip() for tp in text_parts).strip()
@@ -548,20 +565,20 @@ class VoiceAnalyzer:
         silent_samples = np.sum(np.abs(audio_array) < silence_threshold)
         silence_ratio = silent_samples / sample_count if sample_count > 0 else 1.0
         
-        # 유효성 판단
+        # 유효성 판단 (완화된 기준)
         is_valid = True
         error_message = ""
         
-        if rms_level < 0.005:
+        if rms_level < 0.001:  # RMS 기준 완화
             is_valid = False
             error_message = f"오디오가 너무 조용함 (RMS: {rms_level:.6f})"
-        elif peak_level < 0.01:
+        elif peak_level < 0.005:  # 피크 기준 완화
             is_valid = False
             error_message = f"오디오 피크가 너무 낮음 (Peak: {peak_level:.6f})"
-        elif silence_ratio > 0.95:
+        elif silence_ratio > 0.98:  # 무음 비율 기준 완화
             is_valid = False
             error_message = f"무음이 너무 많음 ({silence_ratio:.1%})"
-        elif duration < 0.5:
+        elif duration < 0.3:  # 최소 길이 기준 완화
             is_valid = False
             error_message = f"오디오가 너무 짧음 ({duration:.2f}s)"
         

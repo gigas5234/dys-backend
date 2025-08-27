@@ -54,20 +54,22 @@ body {
   position: relative;
 }
  .main-content {
+   position: fixed;
+   top: var(--header-height);
+   left: 0;
+   right: 0;
+   bottom: 0;
    display: grid;
    grid-template-columns: 1fr 350px;
    gap: 20px;
    padding: 0 20px 20px 320px;
-   height: calc(100% - var(--header-height));
-   margin-top: var(--header-height);
    opacity: 0; /* 초기에는 숨김 */
    transition: opacity 0.5s ease-in-out;
    visibility: hidden;
  }
  
  .main-content.with-warning {
-   margin-top: calc(var(--header-height) + 60px);
-   height: calc(100% - var(--header-height) - 60px);
+   top: calc(var(--header-height) + 28px); /* 마진 더 줄임: 32px → 28px */
  }
 .main-content.visible {
     opacity: 1;
@@ -497,15 +499,15 @@ section.body {
     background: linear-gradient(135deg, #fef3c7, #fde68a);
     border-bottom: 2px solid #f59e0b;
     color: #92400e;
-    padding: 8px 24px;
-    font-size: 13px;
+    padding: 3px 24px; /* 패딩 더 줄임: 4px → 3px */
+    font-size: 11px; /* 폰트 크기 더 줄임: 12px → 11px */
     font-weight: 600;
     text-align: center;
     z-index: 9500;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
+    gap: 5px; /* 간격 더 줄임: 6px → 5px */
     animation: slideDown 0.3s ease-out;
     box-shadow: 0 2px 8px rgba(245, 158, 11, 0.2);
     opacity: 1;
@@ -514,7 +516,7 @@ section.body {
   }
   
   .camera-warning .warning-icon {
-    font-size: 14px;
+    font-size: 11px; /* 아이콘 크기 더 줄임: 12px → 11px */
     animation: pulse 2s infinite;
   }
   
@@ -652,19 +654,19 @@ section.body {
 }
 .feedback-panel .card {
   flex: 1;
-  padding: 20px;
+  padding: 12px; /* 패딩 더 줄임: 16px → 12px */
   overflow-y: auto;
   box-sizing: border-box;
   max-height: calc(100vh - var(--header-height));
 }
 
 .feedback-panel .card .metric-item {
-  margin-bottom: 15px;
-  padding: 12px;
+  margin-bottom: 10px; /* 마진 더 줄임: 12px → 10px */
+  padding: 8px; /* 패딩 더 줄임: 10px → 8px */
   border-radius: var(--radius);
   background: var(--surface);
   border: 1px solid var(--stroke);
-  min-height: 60px;
+  min-height: 50px; /* 높이 더 줄임: 55px → 50px */
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -675,19 +677,19 @@ section.body {
 }
 
 .feedback-panel .card .metric-score {
-  font-size: 24px;
+  font-size: 20px; /* 폰트 크기 더 줄임: 22px → 20px */
   font-weight: 700;
-  margin-bottom: 4px;
+  margin-bottom: 2px; /* 마진 더 줄임: 3px → 2px */
 }
 
 .feedback-panel .card .metric-label {
-  font-size: 12px;
+  font-size: 10px; /* 폰트 크기 더 줄임: 11px → 10px */
   color: var(--muted);
-  margin-bottom: 2px;
+  margin-bottom: 1px; /* 마진 더 줄임: 2px → 1px */
 }
 
 .feedback-panel .card .metric-status {
-  font-size: 11px;
+  font-size: 9px; /* 폰트 크기 더 줄임: 10px → 9px */
   font-weight: 500;
 }
 .close-btn {
