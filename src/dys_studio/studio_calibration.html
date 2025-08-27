@@ -116,11 +116,48 @@ function checkAndLoadMediaPipeDirect() {
 
 // DOM 로드 완료 후 MediaPipe 직접 모듈 로드
 document.addEventListener('DOMContentLoaded', () => {
-    setTimeout(checkAndLoadMediaPipeDirect, 8000); // 8초 후 확인 (MediaPipe 라이브러리 로딩 완료 대기)
+    console.log('[STUDIO] 🚀 MediaPipe 직접 모듈 로딩 프로세스 시작...');
+    setTimeout(checkAndLoadMediaPipeDirect, 5000); // 5초 후 확인 (MediaPipe 라이브러리 로딩 완료 대기)
 });
 </script>
-<!-- 카메라 분석기 모듈 -->
-<script src="js/camera-analyzer.js?v=20241222-2"></script>
+<!-- MediaPipe 직접 모듈이 먼저 로드된 후 카메라 분석기 로드 -->
+<script>
+// MediaPipe 직접 모듈 로드 완료 후 카메라 분석기 로드
+function loadCameraAnalyzer() {
+    const script = document.createElement('script');
+    script.src = 'js/camera-analyzer.js?v=20241222-2';
+    script.onload = () => {
+        console.log('[STUDIO] ✅ 카메라 분석기 모듈 로드 완료');
+    };
+    script.onerror = () => {
+        console.error('[STUDIO] ❌ 카메라 분석기 모듈 로드 실패');
+    };
+    document.head.appendChild(script);
+}
+
+// MediaPipe 직접 모듈 로드 완료 확인 후 카메라 분석기 로드
+function checkAndLoadCameraAnalyzer() {
+    if (typeof window.MediaPipeDirect !== 'undefined' && 
+        typeof window.MediaPipeDirect.connectMediaPipeToVideo === 'function') {
+        console.log('[STUDIO] ✅ MediaPipe 직접 모듈 확인됨, 카메라 분석기 로드 시작');
+        loadCameraAnalyzer();
+    } else {
+        console.log('[STUDIO] ⏳ MediaPipe 직접 모듈 대기 중...');
+        setTimeout(checkAndLoadCameraAnalyzer, 500);
+    }
+}
+
+// MediaPipe 직접 모듈 로드 완료 이벤트 감지
+window.addEventListener('MediaPipeDirectLoaded', (event) => {
+    console.log('[STUDIO] 🎉 MediaPipe 직접 모듈 로드 완료 이벤트 수신:', event.detail);
+    loadCameraAnalyzer();
+});
+
+// 백업: MediaPipe 직접 모듈 로드 완료 후 카메라 분석기 로드
+document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(checkAndLoadCameraAnalyzer, 15000); // 15초 후 백업 확인
+});
+</script>
     <!-- 음성 입력 모듈 -->
     <script src="js/voice-input.js?v=20241222-2"></script>
     <!-- TTS 관리 모듈 -->
