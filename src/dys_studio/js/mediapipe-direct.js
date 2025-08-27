@@ -5,6 +5,14 @@
 
 console.log('[MEDIAPIPE-DIRECT] 🚀 MediaPipe 직접 모듈 로드 시작');
 
+// MediaPipe 라이브러리 로드 상태 확인
+console.log('[MEDIAPIPE-DIRECT] 📦 MediaPipe 라이브러리 상태:', {
+  FaceMesh: typeof FaceMesh,
+  Camera: typeof Camera,
+  ControlUtils: typeof ControlUtils,
+  DrawingUtils: typeof DrawingUtils
+});
+
 // 전역 변수
 let faceMesh = null;
 let isProcessing = false;
@@ -23,9 +31,20 @@ let expressionStabilityThreshold = 1; // 안정성 판단을 위한 연속 프�
 async function initializeMediaPipe() {
     console.log('[MEDIAPIPE-DIRECT] 🔧 MediaPipe 초기화 시작...');
     
+    // MediaPipe 라이브러리 상태 상세 확인
+    console.log('[MEDIAPIPE-DIRECT] 📦 MediaPipe 라이브러리 상세 상태:', {
+        FaceMesh: typeof FaceMesh,
+        Camera: typeof Camera,
+        ControlUtils: typeof ControlUtils,
+        DrawingUtils: typeof DrawingUtils,
+        window: typeof window,
+        document: typeof document
+    });
+    
     // MediaPipe 라이브러리 확인
     if (typeof FaceMesh === 'undefined') {
         console.error('[MEDIAPIPE-DIRECT] ❌ FaceMesh 라이브러리가 로드되지 않음');
+        console.error('[MEDIAPIPE-DIRECT] 📋 CDN 로드 상태 확인 필요');
         throw new Error('MediaPipe FaceMesh 라이브러리가 로드되지 않았습니다');
     }
     
