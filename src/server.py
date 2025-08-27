@@ -76,8 +76,33 @@ if not VOICE_ANALYSIS_AVAILABLE:
         print("✅ GKE 환경에서 음성 분석 모듈 강제 활성화 성공")
     except Exception as e:
         print(f"❌ GKE 환경에서 음성 분석 모듈 강제 활성화 실패: {e}")
-        # 최종 fallback: 기본 STT 기능만 제공
-        VOICE_ANALYSIS_AVAILABLE = False
+        # 대안 STT 방법 확인
+        print("🔄 대안 STT 방법 확인 중...")
+        
+        # OpenAI Whisper API 확인
+        try:
+            import openai
+            if os.getenv('OPENAI_API_KEY'):
+                print("✅ OpenAI Whisper API 사용 가능")
+                VOICE_ANALYSIS_AVAILABLE = True
+            else:
+                print("⚠️ OpenAI API 키가 설정되지 않음")
+        except ImportError:
+            print("⚠️ OpenAI 라이브러리 미설치")
+        
+        # Google Speech-to-Text API 확인
+        if not VOICE_ANALYSIS_AVAILABLE:
+            try:
+                from google.cloud import speech
+                print("✅ Google Speech-to-Text API 사용 가능")
+                VOICE_ANALYSIS_AVAILABLE = True
+            except ImportError:
+                print("⚠️ Google Speech-to-Text API 미설치")
+            except Exception as e:
+                print(f"⚠️ Google Speech-to-Text API 설정 실패: {e}")
+        
+        if not VOICE_ANALYSIS_AVAILABLE:
+            print("❌ 모든 STT 방법 실패 - 음성 인식 기능 제한됨")
 
 # TTS 모듈 import
 try:
@@ -754,28 +779,63 @@ async def startup_event():
     else:
         print("⚠️ MongoDB 모듈 없음 - 채팅 기능이 제한됩니다")
     
-    # 음성 분석 모델 로드 (백그라운드에서) - faster-whisper 사용
+    # 음성 분석 모델 로드 (백그라운드에서) - 첫 번째 성공 모델 채택
     global VOICE_ANALYSIS_AVAILABLE
     if VOICE_ANALYSIS_AVAILABLE:
         try:
             print("🔄 음성 분석 모델 로딩 시작...")
             await asyncio.to_thread(preload_models)
-            print("✅ 음성 분석 모델 로딩 완료 - faster-whisper 사용")
+            print("✅ 음성 분석 모델 로딩 완료 - 첫 번째 성공 모델 채택")
         except Exception as e:
             print(f"⚠️ 음성 분석 모델 로딩 실패: {e}")
-            print("⚠️ 기본 STT 기능으로 fallback")
-            # 음성 분석 모듈은 비활성화하되 기본 STT는 사용 가능
+            print("⚠️ 대안 STT 방법으로 fallback")
+            # 음성 분석 모듈은 비활성화하되 대안 STT는 사용 가능
             VOICE_ANALYSIS_AVAILABLE = False
     else:
-        print("⚠️ 음성 분석 모듈 비활성화됨 - 기본 STT 사용")
+        print("⚠️ 음성 분석 모듈 비활성화됨 - 대안 STT 사용")
         
-    # 기본 STT 기능 확인
+    # 대안 STT 기능 확인 (첫 번째 성공 모델 채택)
+    stt_available = False
+    stt_method = "none"
+    
+    # 1. faster-whisper 확인 (우선 시도)
     try:
         from faster_whisper import WhisperModel
-        print("✅ faster-whisper 모듈 확인됨 - 기본 STT 사용 가능")
+        print("✅ faster-whisper 모듈 확인됨")
+        stt_available = True
+        stt_method = "faster-whisper"
     except ImportError as e:
         print(f"❌ faster-whisper 모듈 없음: {e}")
-        print("⚠️ 음성 인식 기능이 제한됩니다")
+    
+    # 2. OpenAI Whisper API 확인 (faster-whisper 실패 시)
+    if not stt_available:
+        try:
+            import openai
+            if os.getenv('OPENAI_API_KEY'):
+                print("✅ OpenAI Whisper API 사용 가능")
+                stt_available = True
+                stt_method = "openai-whisper"
+            else:
+                print("⚠️ OpenAI API 키가 설정되지 않음")
+        except ImportError:
+            print("⚠️ OpenAI 라이브러리 미설치")
+    
+    # 3. Google Speech-to-Text API 확인 (이전 방법들 실패 시)
+    if not stt_available:
+        try:
+            from google.cloud import speech
+            print("✅ Google Speech-to-Text API 사용 가능")
+            stt_available = True
+            stt_method = "google-speech"
+        except ImportError:
+            print("⚠️ Google Speech-to-Text API 미설치")
+        except Exception as e:
+            print(f"⚠️ Google Speech-to-Text API 설정 실패: {e}")
+    
+    if stt_available:
+        print(f"✅ STT 기능 사용 가능: {stt_method}")
+    else:
+        print("❌ 모든 STT 방법 실패 - 음성 인식 기능이 제한됩니다")
 
 # WebSocket 연결 관리
 _active_websockets = set()
