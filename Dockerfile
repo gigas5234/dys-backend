@@ -52,5 +52,5 @@ RUN chmod +x ./start.py && \
 # 컨테이너가 8000번 포트와 8001번 포트를 외부에 노출
 EXPOSE 8000 8001
 
-# 컨테이너가 시작될 때 통합 서버 실행
-CMD ["python", "start.py"]
+# 컨테이너가 시작될 때 메인 서버 실행
+CMD ["python", "-m", "uvicorn", "src.backend.core.main_server:app", "--host", "0.0.0.0", "--port", "8000"]
