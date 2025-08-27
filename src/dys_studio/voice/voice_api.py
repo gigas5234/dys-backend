@@ -81,7 +81,7 @@ def fallback_stt_analysis(audio_array: np.ndarray, sr: int = 16000, elapsed_sec:
     대안 STT 방법을 사용한 음성 분석 (fallback)
     """
     try:
-        # 1. faster-whisper 직접 시도
+        # 1. faster-whisper 직접 시도 (libctranslate2 오류 방지)
         try:
             from faster_whisper import WhisperModel
             import tempfile
@@ -109,7 +109,10 @@ def fallback_stt_analysis(audio_array: np.ndarray, sr: int = 16000, elapsed_sec:
                 os.unlink(temp_path)
                 
         except Exception as e:
-            logger.warning(f"faster-whisper fallback 실패: {e}")
+            if "libctranslate2" in str(e).lower():
+                logger.warning("⚠️ libctranslate2 오류로 faster-whisper fallback 건너뜀")
+            else:
+                logger.warning(f"faster-whisper fallback 실패: {e}")
         
         # 2. OpenAI Whisper API 시도
         try:
