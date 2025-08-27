@@ -1,0 +1,87 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dys-backend
+  labels:
+    app: dys-backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dys-backend
+  template:
+    metadata:
+      labels:
+        app: dys-backend
+    spec:
+      containers:
+      - name: dys-backend
+        image: your-registry/dys-backend:latest
+        ports:
+        - containerPort: 8000
+        env:
+        # MediaPipe 관련 환경 변수
+        - name: TF_CPP_MIN_LOG_LEVEL
+          value: "2"
+        - name: TF_ENABLE_ONEDNN_OPTS
+          value: "0"
+        - name: MEDIAPIPE_DISABLE_GPU
+          value: "1"
+        - name: MEDIAPIPE_DISABLE_CUDA
+          value: "1"
+        - name: PYTHONUNBUFFERED
+          value: "1"
+        # 리소스 제한 (MediaPipe를 위한 충분한 리소스)
+        resources:
+          requests:
+            memory: "2Gi"
+            cpu: "1000m"
+          limits:
+            memory: "4Gi"
+            cpu: "2000m"
+        # 헬스체크
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 15
+          periodSeconds: 5
+        # 볼륨 마운트 (필요한 경우)
+        volumeMounts:
+        - name: model-storage
+          mountPath: /app/models
+          readOnly: true
+      volumes:
+      - name: model-storage
+        persistentVolumeClaim:
+          claimName: model-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dys-backend-service
+spec:
+  selector:
+    app: dys-backend
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 8000
+  type: LoadBalancer
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: model-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
