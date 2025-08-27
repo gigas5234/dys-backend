@@ -89,8 +89,7 @@ async function initializeMediaPipe() {
         if (typeof FaceMesh === 'undefined') {
             throw new Error('MediaPipe FaceMesh 라이브러리가 로드되지 않았습니다');
         }
-    
-    try {
+        
         // FaceMesh 객체 생성
         console.log('[MEDIAPIPE-DIRECT] 📦 FaceMesh 객체 생성...');
         faceMesh = new FaceMesh({
@@ -116,11 +115,6 @@ async function initializeMediaPipe() {
         isInitialized = true;
         console.log('[MEDIAPIPE-DIRECT] ✅ MediaPipe 초기화 완료');
         return true;
-        
-    } catch (error) {
-        console.error('[MEDIAPIPE-DIRECT] ❌ MediaPipe 초기화 실패:', error);
-        throw error;
-    }
 }
 
 /**
