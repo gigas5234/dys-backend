@@ -23,7 +23,7 @@ from typing import List, Optional, Dict, Any
 # 데이터베이스 및 인증 모듈 import (선택적)
 try:
     from ..database.database import init_database, create_chat_session, create_chat_session_with_persona, get_user_sessions, save_message, get_session_messages, get_session_info, get_user_by_email, users_collection, chat_sessions_collection, diagnose_database, supabase_uuid_to_objectid
-    from auth import get_current_user, get_current_user_id
+    from ..auth.auth import get_current_user, get_current_user_id
     MONGODB_AVAILABLE = True
 except ImportError as e:
     print(f"⚠️ MongoDB 모듈 로드 실패: {e}")
@@ -317,7 +317,7 @@ def get_supabase_config():
     """Supabase 설정 정보 반환 (클라이언트 초기화용)"""
     try:
         # 지연 import로 순환참조 회피
-        from auth import SUPABASE_URL, SUPABASE_ANON_KEY
+        from ..auth.auth import SUPABASE_URL, SUPABASE_ANON_KEY
     except Exception:
         # 환경변수로 폴백
         SUPABASE_URL = os.getenv("SUPABASE_URL", "")
@@ -433,7 +433,7 @@ async def create_session(
         auth_header = request.headers.get("Authorization")
         if auth_header and auth_header.startswith("Bearer "):
             token = auth_header.split(" ")[1]
-            from auth import get_current_user
+            from ..auth.auth import get_current_user
             user_data = await get_current_user(HTTPAuthorizationCredentials(scheme="Bearer", credentials=token))
             current_user_id = user_data.get("id")
             print(f"✅ [CREATE_SESSION] 인증 성공 - user_id: {current_user_id}")
@@ -563,7 +563,7 @@ async def send_message(
         auth_header = request.headers.get("Authorization")
         if auth_header and auth_header.startswith("Bearer "):
             token = auth_header.split(" ")[1]
-            from auth import get_current_user
+            from ..auth.auth import get_current_user
             user_data = await get_current_user(HTTPAuthorizationCredentials(scheme="Bearer", credentials=token))
             current_user_id = user_data.get("id")
             print(f"✅ [SEND_MESSAGE] 인증 성공 - user_id: {current_user_id}")
