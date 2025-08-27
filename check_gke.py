@@ -128,7 +128,7 @@ def check_docker_files():
     """Docker 관련 파일 확인 (GKE 환경용)"""
     print("\n🐳 Docker 파일 확인...")
     docker_files = [
-        "deployment/docker/Dockerfile",
+        "Dockerfile",
         "deployment/k8s/deployment.yaml",
         "deployment/k8s/service.yaml"
     ]
@@ -183,7 +183,7 @@ def main():
     if all_passed:
         print("🎉 모든 체크 통과! GKE 배포 준비 완료")
         print("💡 다음 단계:")
-        print("   1. GKE 환경에서: docker build -f deployment/docker/Dockerfile -t dys-backend .")
+        print("   1. GKE 환경에서: docker build -t dys-backend .")
         print("   2. docker push <your-registry>/dys-backend")
         print("   3. kubectl apply -f deployment/k8s/")
     else:
