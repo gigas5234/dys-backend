@@ -685,3 +685,11 @@ console.log('[MEDIAPIPE-DIRECT] 📊 전역 함수 노출:', {
     analyzeLandmarks: typeof window.MediaPipeDirect.analyzeLandmarks,
     cleanupMediaPipe: typeof window.MediaPipeDirect.cleanupMediaPipe
 });
+
+// 로딩 완료 이벤트 발생
+window.dispatchEvent(new CustomEvent('MediaPipeDirectLoaded', {
+    detail: { 
+        MediaPipeDirect: window.MediaPipeDirect,
+        timestamp: Date.now()
+    }
+}));
