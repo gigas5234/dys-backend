@@ -301,75 +301,8 @@ const apiEndpoints = {
   frame: `${serverUrl}/api/frame`,          // 프레임 업로드
   landmarks: `${serverUrl}/api/landmarks`,
 };
-// 개발 환경에서는 항상 WS 프로토콜 사용 (HTTP 기반)
-const wsProto = "ws";
-
-// WebSocket 설정 - 서버에서 동적으로 가져오기
-let wsEndpoints = {};
-
-async function initializeWebSocketConfig() {
-  try {
-    console.log('[WEBSOCKET] 서버에서 WebSocket 설정 가져오는 중...');
-    const wsConfigResponse = await fetch(`${serverUrl}/api/websocket/config`);
-    
-    if (wsConfigResponse.ok) {
-      const wsConfig = await wsConfigResponse.json();
-      const wsProtocol = wsConfig.protocol || 'wss';
-      const wsHost = `${wsConfig.host}:${wsConfig.port}`;
-  
-  wsEndpoints = {
-        landmarks: `${wsProtocol}://${wsHost}/ws/landmarks`,
-      };
-      
-      console.log('[WEBSOCKET] ✅ 서버에서 WebSocket 설정 로드 완료:', wsConfig);
-      console.log('[WEBSOCKET] 사용할 WebSocket URL:', wsEndpoints.landmarks);
-      return true;
-    } else {
-      throw new Error(`WebSocket config fetch failed: ${wsConfigResponse.status}`);
-    }
-} catch (error) {
-    console.warn('[WEBSOCKET] ⚠️ 서버 WebSocket 설정 로드 실패, fallback 사용:', error);
-    
-    // Fallback 로직
-    const isGKE = location.hostname.includes('vercel.app') || location.hostname.includes('dys-phi');
-    const isDev = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-    
-    let wsHost, wsProtocol;
-    
-    if (isGKE) {
-      // 프로덕션 환경 - 환경변수나 동적 설정 사용
-      wsHost = window.__WS_HOST__ || '34.64.136.237'; // 환경변수로 설정 가능
-      wsProtocol = 'wss';
-    } else if (isDev) {
-      // 개발 환경
-      wsHost = location.hostname;
-      wsProtocol = 'ws';
-    } else {
-      // 기타 환경
-      wsHost = location.hostname;
-      wsProtocol = location.protocol === 'https:' ? 'wss' : 'ws';
-    }
-    
-  wsEndpoints = {
-      landmarks: `${wsProtocol}://${wsHost}:8001/ws/landmarks`,
-    };
-    
-    console.log('[WEBSOCKET] Fallback WebSocket 서버 사용:', `${wsProtocol}://${wsHost}:8001`);
-    console.log('[WEBSOCKET] 환경 감지:', { isGKE, isDev, wsHost, wsProtocol });
-    return false;
-  }
-}
-
-// WebSocket 설정 초기화를 즉시 실행
-initializeWebSocketConfig().then(success => {
-  console.log('[WEBSOCKET] WebSocket 설정 초기화 완료:', success ? '서버 설정 사용' : 'Fallback 설정 사용');
-}).catch(error => {
-  console.error('[WEBSOCKET] WebSocket 설정 초기화 실패:', error);
-});
-
-// 전역 스코프에 노출하여 모듈에서 접근 가능하도록 설정
+// 전역 스코프에 노출하여 모듈에서 접근 가능하도록 설정 (UI 전용)
 window.serverUrl = serverUrl;
-window.wsEndpoints = wsEndpoints;
 window.apiEndpoints = apiEndpoints;
 
 // 이미지 경로 동적 설정
@@ -386,8 +319,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// --- 랜드마크 관련 전역 변수 ---
-let suggestedHz = 10; // 워커에서 사용할 FPS
+// 분석 파이프라인 제거됨 (UI 전용)
 
 // --- 보안 강화: URL 파라미터를 세션 스토리지에 저장하고 URL 정리 ---
 function secureUserData() {
@@ -2026,33 +1958,7 @@ async function checkPermissionStatus() {
           // 초기 안내 팝업 표시
       showInitialGuidePopup();
      
-     // WebSocket 연결
-     const userData = getUserData();
-     if (userData?.token && typeof connectWS === 'function') {
-         connectWS(userData.token);
-         
-         // WebSocket 연결 후 워커 초기화
-         setTimeout(() => {
-             if (typeof setupLandmarkWorker === 'function') {
-                 console.log('[WORKER] 랜드마크 워커 초기화 시작');
-                 
-                 // 비디오 엘리먼트 가져오기
-                 const videoElement = document.getElementById('video');
-                 if (videoElement) {
-                     setupLandmarkWorker(
-                         videoElement,
-                         onLandmarkFrame,
-                         () => window.suggestedHz || 10
-                     );
-                     console.log('[WORKER] 랜드마크 워커 초기화 완료');
-                 } else {
-                     console.error('[WORKER] 비디오 엘리먼트를 찾을 수 없습니다');
-                 }
-             } else {
-                 console.warn('[WORKER] setupLandmarkWorker 함수를 찾을 수 없습니다');
-             }
-         }, 1000); // 1초 후 워커 초기화
-     }
+     // 분석용 WebSocket/워커 연결 제거됨 (UI 전용)
     
          // 액션 버튼 이벤트 리스너 추가
      const recalibrateBtn = document.getElementById('recalibrate-btn');
@@ -2206,7 +2112,7 @@ function cleanupGlobalVariables() {
         cleanupWorker();
     }
     
-
+    
     
     // 분석기 정리
     if (window.analyzerClient) {
