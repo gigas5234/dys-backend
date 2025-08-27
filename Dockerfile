@@ -29,25 +29,8 @@ COPY requirements.txt ./
 # 의존성 설치 최적화 (타임아웃 증가, 재시도 로직)
 RUN pip install --no-cache-dir --timeout=300 --retries=3 -r requirements.txt
 
-# ctranslate2 실행 스택 문제 우회 패치 (안정적인 저장소 사용)
-RUN apt-get update -o Acquire::http::Pipeline-Depth=0 && apt-get install -y binutils && rm -rf /var/lib/apt/lists/* \
- && python - <<'PY'
-import sys, pathlib, subprocess, shutil
-try:
-    import ctranslate2
-except Exception as e:
-    print("ctranslate2 import 실패:", e); sys.exit(0)
-root = pathlib.Path(ctranslate2.__file__).parent
-libs = list(root.rglob("libctranslate2*.so*"))
-print("패치 대상:", libs)
-execstack_path = shutil.which("execstack")
-if not execstack_path:
-    print("execstack 미존재 - 패치 스킵")
-    sys.exit(0)
-for p in libs:
-    subprocess.run([execstack_path, "-q", str(p)], check=False)
-    subprocess.run([execstack_path, "-c", str(p)], check=False)
-PY
+# libctranslate2 관련 패치 제거 (오류 방지)
+# ctranslate2는 requirements.txt에서 비활성화되어 있음
 
 # 나머지 프로젝트 파일들을 복사
 COPY . .

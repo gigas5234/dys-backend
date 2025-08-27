@@ -798,7 +798,7 @@ async def startup_event():
     stt_available = False
     stt_method = "none"
     
-    # 1. faster-whisper 확인 (우선 시도)
+    # 1. faster-whisper 확인 (libctranslate2 오류 방지)
     try:
         from faster_whisper import WhisperModel
         print("✅ faster-whisper 모듈 확인됨")
@@ -806,6 +806,11 @@ async def startup_event():
         stt_method = "faster-whisper"
     except ImportError as e:
         print(f"❌ faster-whisper 모듈 없음: {e}")
+    except Exception as e:
+        if "libctranslate2" in str(e).lower():
+            print("⚠️ libctranslate2 오류로 faster-whisper 비활성화")
+        else:
+            print(f"❌ faster-whisper 모듈 오류: {e}")
     
     # 2. OpenAI Whisper API 확인 (faster-whisper 실패 시)
     if not stt_available:
