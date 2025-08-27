@@ -2009,9 +2009,11 @@ async def initialize_expression_analyzer_api():
         print("🔄 [EXPRESSION] ExpressionAnalyzer 인스턴스 생성 중...")
         _expression_analyzer = ExpressionAnalyzer()
         print("🔄 [EXPRESSION] ExpressionAnalyzer 초기화 시작...")
+        print("🔄 [EXPRESSION] MLflow 모델 로딩 시도 중...")
         success = _expression_analyzer.initialize()
         print(f"🔄 [EXPRESSION] ExpressionAnalyzer 초기화 완료: {success}")
         print(f"🔄 [EXPRESSION] is_initialized 상태: {_expression_analyzer.is_initialized}")
+        print(f"🔄 [EXPRESSION] 모델 타입: {type(_expression_analyzer.model) if _expression_analyzer.model else 'None'}")
         
         print(f"✅ [EXPRESSION] 표정 분석기 초기화 결과: {success}")
         
