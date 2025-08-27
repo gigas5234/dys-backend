@@ -129,20 +129,33 @@ def fallback_stt_analysis(audio_array: np.ndarray, sr: int = 16000, elapsed_sec:
                 try:
                     # OpenAI API 호출 (새로운 클라이언트 방식)
                     from openai import OpenAI
-                    client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
                     
-                    with open(temp_path, 'rb') as audio_file:
-                        response = client.audio.transcriptions.create(
-                            model="whisper-1",
-                            file=audio_file,
-                            language="ko"
-                        )
+                    # 환경 변수에서 proxies 제거 (OpenAI 클라이언트 오류 방지)
+                    original_proxies = os.environ.pop('HTTP_PROXY', None)
+                    original_https_proxies = os.environ.pop('HTTPS_PROXY', None)
                     
-                    transcript = response.text.strip()
-                    if transcript:
-                        logger.info(f"✅ OpenAI Whisper fallback 성공: {transcript}")
-                        return create_fallback_result(transcript, "openai-whisper")
+                    try:
+                        client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
                         
+                        with open(temp_path, 'rb') as audio_file:
+                            response = client.audio.transcriptions.create(
+                                model="whisper-1",
+                                file=audio_file,
+                                language="ko"
+                            )
+                        
+                        transcript = response.text.strip()
+                        if transcript:
+                            logger.info(f"✅ OpenAI Whisper fallback 성공: {transcript}")
+                            return create_fallback_result(transcript, "openai-whisper")
+                            
+                    finally:
+                        # 환경 변수 복원
+                        if original_proxies:
+                            os.environ['HTTP_PROXY'] = original_proxies
+                        if original_https_proxies:
+                            os.environ['HTTPS_PROXY'] = original_https_proxies
+                            
                 finally:
                     os.unlink(temp_path)
                     

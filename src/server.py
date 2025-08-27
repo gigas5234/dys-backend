@@ -1529,7 +1529,20 @@ async def generate_ai_response(user_message: str, session_id: str) -> str:
         
         # OpenAI API 호출
         from openai import OpenAI
-        client = OpenAI(api_key=OPENAI_API_KEY)
+        import os
+        
+        # 환경 변수에서 proxies 제거 (OpenAI 클라이언트 오류 방지)
+        original_proxies = os.environ.pop('HTTP_PROXY', None)
+        original_https_proxies = os.environ.pop('HTTPS_PROXY', None)
+        
+        try:
+            client = OpenAI(api_key=OPENAI_API_KEY)
+        finally:
+            # 환경 변수 복원
+            if original_proxies:
+                os.environ['HTTP_PROXY'] = original_proxies
+            if original_https_proxies:
+                os.environ['HTTPS_PROXY'] = original_https_proxies
         
         response = await asyncio.to_thread(
             client.chat.completions.create,

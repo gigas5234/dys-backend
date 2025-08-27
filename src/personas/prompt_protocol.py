@@ -9,7 +9,7 @@ import json
 import os
 import re
 
-BASE = os.path.dirname(__file__) if "__file__" in globals() else "/mnt/data"
+BASE = os.path.dirname(os.path.abspath(__file__))
 
 def load_protocol(path=os.path.join(BASE, "message_protocol.json")):
     """메시지 프로토콜 로드"""
