@@ -39,6 +39,16 @@ except ImportError as e:
     MONITORING_AVAILABLE = False
 
 
+# MediaPipe 모듈 import (얼굴 랜드마크 감지)
+MEDIAPIPE_AVAILABLE = False
+try:
+    import mediapipe as mp
+    MEDIAPIPE_AVAILABLE = True
+    print("✅ MediaPipe 모듈 로드 성공")
+except ImportError as e:
+    print(f"⚠️ MediaPipe 모듈 로드 실패: {e}")
+    MEDIAPIPE_AVAILABLE = False
+
 # analyzers 모듈 제거됨 - 클라이언트 측에서 처리
 
 # 음성 분석 모듈 import (새로운 voice 모듈 사용)
@@ -860,6 +870,37 @@ async def startup_event():
         print(f"✅ STT 기능 사용 가능: {stt_method}")
     else:
         print("❌ 모든 STT 방법 실패 - 음성 인식 기능이 제한됩니다")
+    
+    # MediaPipe 초기화 (얼굴 랜드마크 감지)
+    global MEDIAPIPE_AVAILABLE
+    if MEDIAPIPE_AVAILABLE:
+        try:
+            print("🔄 MediaPipe 초기화 시작...")
+            # MediaPipe FaceMesh 초기화
+            mp_face_mesh = mp.solutions.face_mesh.FaceMesh(
+                static_image_mode=False,
+                max_num_faces=1,
+                refine_landmarks=True,
+                min_detection_confidence=0.5,
+                min_tracking_confidence=0.5
+            )
+            print("✅ MediaPipe FaceMesh 초기화 완료")
+            
+            # MediaPipe Drawing 초기화
+            mp_drawing = mp.solutions.drawing_utils
+            mp_drawing_styles = mp.solutions.drawing_styles
+            print("✅ MediaPipe Drawing 초기화 완료")
+            
+            # 전역 변수로 저장
+            globals()['mp_face_mesh'] = mp_face_mesh
+            globals()['mp_drawing'] = mp_drawing
+            globals()['mp_drawing_styles'] = mp_drawing_styles
+            print("✅ MediaPipe 모듈 초기화 완료")
+        except Exception as e:
+            print(f"⚠️ MediaPipe 초기화 실패: {e}")
+            MEDIAPIPE_AVAILABLE = False
+    else:
+        print("⚠️ MediaPipe 모듈 비활성화됨 - 얼굴 랜드마크 감지 기능 제한")
 
 # WebSocket 연결 관리
 _active_websockets = set()
