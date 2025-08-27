@@ -96,46 +96,56 @@ class ExpressionAnalyzer:
                 "/usr/src/app/dys_studio/models/data/model.pth"
             ]
             
-            # MLflow 모델 경로들 (만약 있다면)
+            # MLflow 모델 경로들 (우선순위 순서)
             mlflow_paths = [
+                # 현재 스크립트 기준 상대 경로 (가장 우선)
                 os.path.join(os.path.dirname(__file__), "models"),
+                # 서버 실행 디렉토리 기준
                 os.path.join(os.getcwd(), "src", "dys_studio", "models"),
                 os.path.join(os.getcwd(), "dys_studio", "models"),
+                # GKE 환경 절대 경로
                 "/workspace/app/dys_studio/models",
-                "/usr/src/app/dys_studio/models"
+                "/usr/src/app/dys_studio/models",
+                # 추가 가능한 경로들
+                "/app/dys_studio/models",
+                "/opt/app/dys_studio/models"
             ]
             
             model_loaded = False
             
             # 1. MLflow 모델 로드 시도 (우선)
             if MLFLOW_AVAILABLE:
+                print("🔄 MLflow 모델 로딩 시도 중...")
                 for model_path in mlflow_paths:
                     try:
                         print(f"📁 MLflow 모델 경로 시도: {os.path.abspath(model_path)}")
                         if os.path.exists(model_path) and os.path.exists(os.path.join(model_path, "MLmodel")):
                             print("🔄 MLflow 모델 로딩 중...")
                             import mlflow.pytorch
-                            # CPU 매핑으로 CUDA 호환성 문제 해결
+                            
+                            # MLflow 모델 로드 (CPU 매핑으로 CUDA 호환성 문제 해결)
                             self.model = mlflow.pytorch.load_model(model_path, map_location='cpu')
                             
-                            # ViT 모델인 경우 config 속성 확인 및 추가
-                            if hasattr(self.model, 'config'):
-                                if not hasattr(self.model.config, 'output_attentions'):
-                                    self.model.config.output_attentions = False
-                                    print("🔧 output_attentions 속성 추가")
-                                if not hasattr(self.model.config, 'output_hidden_states'):
-                                    self.model.config.output_hidden_states = False
-                                    print("🔧 output_hidden_states 속성 추가")
-                                if not hasattr(self.model.config, 'use_return_dict'):
-                                    self.model.config.use_return_dict = True
-                                    print("🔧 use_return_dict 속성 추가")
+                            # ViT 모델 호환성 패치 적용
+                            self._ensure_vit_runtime_compat()
                             
                             print(f"✅ MLflow 모델 로드 완료: {model_path}")
+                            print(f"📊 모델 정보: {type(self.model)}")
                             model_loaded = True
+                            self.is_initialized = True
                             break
+                        else:
+                            print(f"⚠️ MLflow 모델 파일 없음: {model_path}")
+                            print(f"   - 디렉토리 존재: {os.path.exists(model_path)}")
+                            print(f"   - MLmodel 파일 존재: {os.path.exists(os.path.join(model_path, 'MLmodel'))}")
                     except Exception as e:
-                        print(f"⚠️ MLflow 모델 경로 실패: {model_path} - {e}")
+                        print(f"⚠️ MLflow 모델 경로 실패: {model_path}")
+                        print(f"   - 오류: {e}")
+                        import traceback
+                        traceback.print_exc()
                         continue
+            else:
+                print("⚠️ MLflow가 사용 불가능 - PyTorch 직접 로드로 진행")
             
             # 2. PyTorch 직접 로드 시도 (.pth 파일)
             if not model_loaded:
@@ -250,6 +260,7 @@ class ExpressionAnalyzer:
                                         
                                         print(f"✅ ViT 모델 로드 완료: {model_file}")
                                         model_loaded = True
+                                        self.is_initialized = True
                                         break
                                         
                                     except ImportError:
@@ -277,6 +288,7 @@ class ExpressionAnalyzer:
                                         self.model = DummyExpressionModel()
                                         print(f"⚠️ 더미 표정 분석 모델 생성 (개발용): {model_file}")
                                         model_loaded = True
+                                        self.is_initialized = True
                                         break
                                     
                                 except Exception as transformers_error:

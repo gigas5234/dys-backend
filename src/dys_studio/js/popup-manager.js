@@ -188,17 +188,27 @@ function updateGazePopupContent() {
     document.getElementById('gaze-main-value').textContent = isFocused ? '집중 중' : '분산됨';
     document.getElementById('gaze-stability-value').textContent = `${currentGazeData.score}%`;
     
-    // 랜드마크 정보 업데이트
-    updateGazeLandmarksInfo();
-    
-    // 평가 기준 업데이트
-    updateGazeCriteriaInfo();
-    
-    // 점수 계산 근거 업데이트
-    updateGazeExplanationInfo();
+    // HTML 팝업 파일의 함수들 사용
+    if (typeof window.updateGazeLandmarksInfo === 'function') {
+        window.updateGazeLandmarksInfo();
+    }
+    if (typeof window.updateGazeCriteriaInfo === 'function') {
+        window.updateGazeCriteriaInfo();
+    }
+    if (typeof window.updateGazeExplanationInfo === 'function') {
+        window.updateGazeExplanationInfo();
+    }
 }
 
 // 시선 안정성 관련 함수들은 gaze-details-popup.html에서 관리
+
+// 시선 분석 요소 정보 업데이트 (HTML 팝업 파일의 함수 사용)
+function updateGazeFactorsInfo() {
+    // gaze-details-popup.html에 정의된 함수 사용
+    if (typeof window.updateGazeLandmarksInfo === 'function') {
+        window.updateGazeLandmarksInfo();
+    }
+}
 
 // ===== 집중도 상세 정보 팝업 =====
 function showConcentrationDetails() {
@@ -231,15 +241,19 @@ function updateConcentrationPopupContent() {
     document.getElementById('concentration-main-value').textContent = isFocused ? '집중 중' : '분산됨';
     document.getElementById('concentration-score-value').textContent = `${currentConcentrationData.score}%`;
     
-    // 분석 요소 업데이트
-    updateConcentrationFactorsInfo();
-    
-    // 평가 기준 업데이트
-    updateConcentrationCriteriaInfo();
-    
-    // 점수 계산 근거 업데이트
-    updateConcentrationExplanationInfo();
+    // HTML 팝업 파일의 함수들 사용
+    if (typeof window.updateConcentrationFactorsInfo === 'function') {
+        window.updateConcentrationFactorsInfo();
+    }
+    if (typeof window.updateConcentrationCriteriaInfo === 'function') {
+        window.updateConcentrationCriteriaInfo();
+    }
+    if (typeof window.updateConcentrationExplanationInfo === 'function') {
+        window.updateConcentrationExplanationInfo();
+    }
 }
+
+// 집중도 관련 함수들은 concentration-details-popup.html에서 관리
 
 // 집중도 관련 함수들은 concentration-details-popup.html에서 관리
 
@@ -394,14 +408,16 @@ function updateBlinkingPopupContent() {
     document.getElementById('blinking-main-value').textContent = getBlinkStatusKorean(blinkStatus);
     document.getElementById('blinking-rate-value').textContent = `${blinkRatePerMinute}회/분`;
     
-    // 분석 요소 업데이트
-    updateBlinkingFactorsInfo();
-    
-    // 평가 기준 업데이트
-    updateBlinkingCriteriaInfo();
-    
-    // 점수 계산 근거 업데이트
-    updateBlinkingExplanationInfo();
+    // HTML 팝업 파일의 함수들 사용
+    if (typeof window.updateBlinkingFactorsInfo === 'function') {
+        window.updateBlinkingFactorsInfo();
+    }
+    if (typeof window.updateBlinkingCriteriaInfo === 'function') {
+        window.updateBlinkingCriteriaInfo();
+    }
+    if (typeof window.updateBlinkingExplanationInfo === 'function') {
+        window.updateBlinkingExplanationInfo();
+    }
 }
 
 function getBlinkStatusKorean(status) {
@@ -412,6 +428,8 @@ function getBlinkStatusKorean(status) {
     };
     return statusMap[status] || status;
 }
+
+// 깜빡임 관련 함수들은 blinking-details-popup.html에서 관리
 
 // 깜빡임 관련 함수들은 blinking-details-popup.html에서 관리
 
@@ -451,15 +469,19 @@ function updatePosturePopupContent() {
     document.getElementById('posture-main-value').textContent = postureStatus;
     document.getElementById('posture-score-value').textContent = `${score}%`;
     
-    // 분석 요소 업데이트
-    updatePostureFactorsInfo();
-    
-    // 평가 기준 업데이트
-    updatePostureCriteriaInfo();
-    
-    // 점수 계산 근거 업데이트
-    updatePostureExplanationInfo();
+    // HTML 팝업 파일의 함수들 사용
+    if (typeof window.updatePostureFactorsInfo === 'function') {
+        window.updatePostureFactorsInfo();
+    }
+    if (typeof window.updatePostureCriteriaInfo === 'function') {
+        window.updatePostureCriteriaInfo();
+    }
+    if (typeof window.updatePostureExplanationInfo === 'function') {
+        window.updatePostureExplanationInfo();
+    }
 }
+
+// 자세 관련 함수들은 posture-details-popup.html에서 관리
 
 // 자세 관련 함수들은 posture-details-popup.html에서 관리
 
