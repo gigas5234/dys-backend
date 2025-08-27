@@ -8,8 +8,8 @@ spec:
   strategy:
     type: RollingUpdate
     rollingUpdate:
-      maxSurge: 1
-      maxUnavailable: 0
+      maxSurge: 0
+      maxUnavailable: 1
   selector:
     matchLabels:
       app: dys-backend
@@ -37,18 +37,18 @@ spec:
           httpGet:
             path: /health
             port: 8000
-          initialDelaySeconds: 60
-          periodSeconds: 15
-          timeoutSeconds: 10
-          failureThreshold: 5
+          initialDelaySeconds: 120
+          periodSeconds: 20
+          timeoutSeconds: 15
+          failureThreshold: 6
         readinessProbe:
           httpGet:
             path: /health
             port: 8000
-          initialDelaySeconds: 30
-          periodSeconds: 10
-          timeoutSeconds: 5
-          failureThreshold: 3
+          initialDelaySeconds: 90
+          periodSeconds: 15
+          timeoutSeconds: 10
+          failureThreshold: 5
         env:
         - name: MONGODB_URI
           value: "mongodb+srv://dys-chatbot:epdusth@cluster0.drwwbhn.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
