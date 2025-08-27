@@ -410,8 +410,9 @@ class VoiceInputManager {
             const formData = new FormData();
             formData.append('audio', audioBlob, 'voice_input.webm');
             
-            // 서버로 전송
-            const response = await fetch(`${window.serverUrl || 'https://dys-phi.vercel.app/api/gke'}/api/voice/analyze`, {
+            // 서버로 전송 - GKE 환경에 맞는 URL 사용
+            const serverUrl = window.serverUrl || window.location.origin;
+            const response = await fetch(`${serverUrl}/api/voice/analyze`, {
                 method: 'POST',
                 body: formData
             });

@@ -55,14 +55,15 @@ class VoiceProcessor:
             if not self.models_loaded:
                 self.load_models()
             
-            # 오디오 품질 검사
+            # 오디오 품질 검사 (완화된 기준)
             quality = self.analyzer.check_audio_quality(audio_array, sr)
             logger.info(f"오디오 품질: RMS={quality['rms_level']:.6f}, "
                        f"Peak={quality['peak_level']:.6f}, "
                        f"Silence={quality['silence_ratio']:.1%}, "
                        f"Duration={quality['duration']:.2f}s")
             
-            if not quality['is_valid']:
+            # 오디오 품질이 매우 나쁜 경우에만 거부 (기준 완화)
+            if not quality['is_valid'] and quality['duration'] < 0.5:  # 0.5초 미만만 거부
                 logger.warning(f"오디오 품질 문제: {quality['error_message']}")
                 return self._create_fallback_result(quality['error_message'])
             
@@ -163,16 +164,24 @@ class VoiceProcessor:
             return [("중립", 1.0)]
     
     def _create_fallback_result(self, error_message: str) -> Dict[str, Any]:
-        """오류 시 기본 결과 생성"""
+        """오류 시 기본 결과 생성 (개선된 버전)"""
+        # 오류 메시지에 따라 적절한 전사 텍스트 설정
+        if "너무 조용함" in error_message or "너무 짧음" in error_message:
+            transcript = "음성이 너무 작거나 짧습니다. 조금 더 크고 명확하게 말씀해주세요."
+        elif "무음이 너무 많음" in error_message:
+            transcript = "음성이 인식되지 않았습니다. 마이크에 더 가깝게 말씀해주세요."
+        else:
+            transcript = "음성 인식에 문제가 있었습니다. 다시 시도해주세요."
+        
         return {
-            'transcript': error_message,
+            'transcript': transcript,
             'emotion': '중립',
             'emotion_score': 1.0,
-            'total_score': 50.0,
+            'total_score': 55.0,  # 기본 점수 상향 조정
             'overall_mood': '보통',
-            'voice_tone_score': 50.0,
-            'word_choice_score': 50.0,
-            'emotion_score': 50.0,
+            'voice_tone_score': 55.0,
+            'word_choice_score': 55.0,
+            'emotion_score': 55.0,
             'voice_details': {
                 'warmth': 0.5, 'politeness': 0.5, 'consistency': 0.5,
                 'enthusiasm': 0.5, 'confidence': 0.5, 'volume_strength': 0.5
@@ -184,7 +193,7 @@ class VoiceProcessor:
             'positive_words': [],
             'negative_words': [],
             'evidence': {'오류': error_message},
-            'recommendations': ['음성 분석을 다시 시도해보세요'],
+            'recommendations': ['음성을 더 크고 명확하게 말씀해주세요', '마이크에 더 가깝게 말씀해주세요'],
             'processing_time': 0.0,
             'audio_quality': {
                 'rms_level': 0.0, 'peak_level': 0.0, 'silence_ratio': 1.0,
