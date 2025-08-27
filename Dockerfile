@@ -47,7 +47,7 @@ RUN mkdir -p /usr/src/app/logs && \
 # 실행 권한 부여
 RUN chmod +x ./start.py && \
     chmod +x ./start.sh && \
-    chmod +x ./start_integrated.py
+    chmod +x ./deployment/scripts/start_integrated.py
 
 # 컨테이너가 8000번 포트와 8001번 포트를 외부에 노출
 EXPOSE 8000 8001
