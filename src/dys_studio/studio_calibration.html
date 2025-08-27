@@ -6,10 +6,32 @@
 <title>데연소 · Love Glass UI (피드백 고도화)</title>
     <link rel="stylesheet" href="styles/studio_calibration.css?v=20241223-24">
 <!-- MediaPipe 라이브러리 (CDN) -->
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
+
+<!-- MediaPipe 라이브러리 대체 CDN (fallback) -->
+<script>
+// MediaPipe 라이브러리 로딩 실패 시 대체 CDN 시도
+function loadMediaPipeFallback() {
+    const libraries = ['camera_utils', 'control_utils', 'drawing_utils', 'face_mesh'];
+    const cdnUrls = [
+        'https://cdn.jsdelivr.net/npm/@mediapipe/',
+        'https://unpkg.com/@mediapipe/',
+        'https://cdnjs.cloudflare.com/ajax/libs/mediapipe/'
+    ];
+    
+    libraries.forEach(lib => {
+        if (typeof window[lib.replace('_', '').replace(/([A-Z])/g, '$1')] === 'undefined') {
+            console.warn(`[MEDIAPIPE-FALLBACK] ⚠️ ${lib} 라이브러리 로딩 실패, 대체 CDN 시도...`);
+        }
+    });
+}
+
+// 3초 후 대체 CDN 확인
+setTimeout(loadMediaPipeFallback, 3000);
+</script>
 <!-- 기본 캘리브레이션 설정 모듈 -->
 <script src="js/default-calibration.js?v=20241223"></script>
 <!-- 캘리브레이션 모듈 -->
@@ -18,6 +40,38 @@
 <script src="js/performance-monitor.js?v=20241222"></script>
 <!-- 공통 메트릭 유틸리티 -->
 <script src="js/metrics/metrics-utils.js?v=20241226-1"></script>
+<!-- MediaPipe 라이브러리 로딩 상태 확인 -->
+<script>
+// MediaPipe 라이브러리 로딩 상태 확인
+function checkMediaPipeLibraries() {
+    const libraries = {
+        'Camera': typeof Camera,
+        'ControlUtils': typeof ControlUtils,
+        'DrawingUtils': typeof DrawingUtils,
+        'FaceMesh': typeof FaceMesh
+    };
+    
+    console.log('[MEDIAPIPE-CHECK] 📦 MediaPipe 라이브러리 로딩 상태:', libraries);
+    
+    const missingLibraries = Object.entries(libraries)
+        .filter(([name, type]) => type === 'undefined')
+        .map(([name]) => name);
+    
+    if (missingLibraries.length > 0) {
+        console.error('[MEDIAPIPE-CHECK] ❌ 누락된 MediaPipe 라이브러리:', missingLibraries);
+        return false;
+    } else {
+        console.log('[MEDIAPIPE-CHECK] ✅ 모든 MediaPipe 라이브러리 로드 완료');
+        return true;
+    }
+}
+
+// DOM 로드 완료 후 MediaPipe 라이브러리 상태 확인
+document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(checkMediaPipeLibraries, 1000); // 1초 후 확인
+});
+</script>
+
 <!-- MediaPipe 직접 모듈 -->
 <script src="js/mediapipe-direct.js?v=20241223"></script>
 <!-- 카메라 분석기 모듈 -->
@@ -1137,6 +1191,8 @@ function updateCameraMetrics(metrics) {
         score: postureScore,
         timestamp: Date.now()
       };
+      // 전역 변수로도 노출 (팝업에서 접근용)
+      window.currentPostureData = currentPostureData;
       console.log('[UI] 자세 데이터 저장:', currentPostureData);
     } else {
       console.warn('[UI] ⚠️ 자세 분석 데이터 없음:', { 
@@ -1237,6 +1293,8 @@ function updateCameraMetrics(metrics) {
         score: concentrationScore,
         timestamp: Date.now()
       };
+      // 전역 변수로도 노출 (팝업에서 접근용)
+      window.currentConcentrationData = currentConcentrationData;
       console.log('[UI] 집중도 데이터 저장:', currentConcentrationData);
     } else {
       console.warn('[UI] ⚠️ 집중도 분석 데이터(gazeAnalysis) 없음:', metrics);
@@ -1274,15 +1332,15 @@ function updateCameraMetrics(metrics) {
     console.log(`[UI] 집중도 점수 업데이트 (${dataSource}):`, concentrationScore);
     
     // 시선 안정성 점수 (워커 데이터와 HTTP 분석 데이터 모두 지원)
-    // 시선 안정성 점수 별도 재계산 제거 (위 stabilityScore와 동일 사용)
-    let gazeScore = stabilityScore != null ? Math.round(stabilityScore) : null;
+    // 이미 위에서 계산된 gazeStabilityScore 사용
+    let gazeScore = gazeStabilityScore;
     
     if (gazeScore != null) {
-    gazeScore = Math.min(100, Math.max(0, Math.round(gazeScore)));
-    gazeElement.textContent = `${gazeScore}%`;
-    updateScoreColor(gazeElement, gazeScore);
+        gazeScore = Math.min(100, Math.max(0, Math.round(gazeScore)));
+        gazeElement.textContent = `${gazeScore}%`;
+        updateScoreColor(gazeElement, gazeScore);
     } else {
-      gazeElement.textContent = '-';
+        gazeElement.textContent = '-';
     }
     
     // 시선 분석 데이터 저장 (팝업용)
@@ -1292,6 +1350,8 @@ function updateCameraMetrics(metrics) {
         score: gazeScore,
         timestamp: Date.now()
       };
+      // 전역 변수로도 노출 (팝업에서 접근용)
+      window.currentGazeData = currentGazeData;
       console.log('[UI] 시선 안정성 데이터 저장:', currentGazeData);
     } else {
       console.warn('[UI] ⚠️ 시선 안정성 데이터(gazeAnalysis) 없음:', metrics);
@@ -1362,6 +1422,8 @@ function updateCameraMetrics(metrics) {
         blinkStatus: metrics.earResult.blinkStatus,
         timestamp: Date.now()
       };
+      // 전역 변수로도 노출 (팝업에서 접근용)
+      window.currentBlinkingData = currentBlinkingData;
       console.log('[UI] 깜빡임 데이터 저장:', currentBlinkingData);
     } else {
       console.warn('[UI] ⚠️ 깜빡임 분석 데이터(earResult) 없음:', metrics);
@@ -1433,6 +1495,8 @@ function updateCameraMetrics(metrics) {
           probabilities: metrics.probabilities || {}, // 서버에서 직접 반환하는 probabilities 사용
           timestamp: Date.now()
         };
+        // 전역 변수로도 노출 (팝업 매니저에서 접근용)
+        window.currentExpressionData = currentExpressionData;
         console.log('[UI] 표정 데이터 저장:', currentExpressionData);
         
         console.log('[UI] 🎭 서버 표정 분석 결과:', {
@@ -1470,6 +1534,8 @@ function updateCameraMetrics(metrics) {
           score: scoreResult,
           timestamp: Date.now()
         };
+        // 전역 변수로도 노출 (팝업 매니저에서 접근용)
+        window.currentExpressionData = currentExpressionData;
         console.log('[UI] 표정 데이터 저장:', currentExpressionData);
         
         console.log('[UI] 🎭 PyTorch 표정 분석 결과:', {

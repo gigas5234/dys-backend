@@ -1977,7 +1977,7 @@ try:
         print("⚠️ MLflow 없음 - PyTorch 직접 로드 방식 사용")
         MLFLOW_AVAILABLE = False
     
-    from expression_analyzer import ExpressionAnalyzer
+    from dys_studio.expression_analyzer import ExpressionAnalyzer
     EXPRESSION_ANALYZER_AVAILABLE = True
     print("✅ 표정 분석기 모듈 로드 성공")
 except ImportError as e:
@@ -2006,8 +2006,12 @@ async def initialize_expression_analyzer_api():
             }
         
         # 새 인스턴스 생성 및 초기화
+        print("🔄 [EXPRESSION] ExpressionAnalyzer 인스턴스 생성 중...")
         _expression_analyzer = ExpressionAnalyzer()
+        print("🔄 [EXPRESSION] ExpressionAnalyzer 초기화 시작...")
         success = _expression_analyzer.initialize()
+        print(f"🔄 [EXPRESSION] ExpressionAnalyzer 초기화 완료: {success}")
+        print(f"🔄 [EXPRESSION] is_initialized 상태: {_expression_analyzer.is_initialized}")
         
         print(f"✅ [EXPRESSION] 표정 분석기 초기화 결과: {success}")
         

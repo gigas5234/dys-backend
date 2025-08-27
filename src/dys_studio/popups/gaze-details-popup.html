@@ -104,12 +104,15 @@ function updateGazeCriteriaInfo() {
 function updateGazeExplanationInfo() {
     const explanationDiv = document.getElementById('gaze-explanation-text');
     
-    if (!currentGazeData) {
+    // 전역 변수에서 시선 데이터 가져오기
+    const gazeData = window.currentGazeData || currentGazeData;
+    
+    if (!gazeData) {
         explanationDiv.innerHTML = '시선 분석 데이터가 없습니다.';
         return;
     }
     
-    const { jumpDistance, velocity, isFocused, score } = currentGazeData;
+    const { jumpDistance, velocity, isFocused, score } = gazeData;
     
     let explanation = `<div class="explanation-section">`;
     explanation += `<h4>📈 현재 분석 결과</h4>`;
