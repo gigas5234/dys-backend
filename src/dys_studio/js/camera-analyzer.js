@@ -185,17 +185,48 @@ class CameraAnalyzer {
    * 분석 시작 (MediaPipe 전용)
    */
   async start() {
-    await this._ensureMedia();
-    if (this._loopTimer) return;
-    
-    // MediaPipe 모드만 지원
-    if (this._useWorkerOnly) {
-      console.log('[ANALYZER] MediaPipe 모드 활성화 - HTTP 분석 루프 비활성화');
-      // 워치독 시작
-      this._startWatchdog();
-      return;
-    } else {
-      throw new Error('MediaPipe 모드가 활성화되지 않았습니다. 페이지를 새로고침해주세요.');
+    try {
+      console.log('[ANALYZER] 🚀 분석기 시작 시도...');
+      await this._ensureMedia();
+      
+      if (this._loopTimer) {
+        console.log('[ANALYZER] ⚠️ 이미 실행 중');
+        return;
+      }
+      
+      // MediaPipe 모드만 지원
+      if (this._useWorkerOnly) {
+        console.log('[ANALYZER] ✅ MediaPipe 모드 활성화 - HTTP 분석 루프 비활성화');
+        // 워치독 시작
+        this._startWatchdog();
+        
+        // 시작 후 상태 확인
+        setTimeout(() => {
+          console.log('[ANALYZER] 📊 시작 후 상태 확인:', {
+            stream: !!this._stream,
+            videoEl: !!this._videoEl,
+            MediaPipeDirect: typeof window.MediaPipeDirect,
+            isInitialized: window.MediaPipeDirect?.isInitialized?.()
+          });
+        }, 2000);
+        
+        return;
+      } else {
+        throw new Error('MediaPipe 모드가 활성화되지 않았습니다. 페이지를 새로고침해주세요.');
+      }
+    } catch (e) {
+      console.error('[ANALYZER] ❌ 시작 실패:', e);
+      console.error('[ANALYZER] 📋 상세 오류:', e.stack);
+      
+      // 에러 발생 시 재시도 로직
+      if (this._restartAttempts < this._maxRestartAttempts) {
+        console.log(`[ANALYZER] 🔄 재시도 시도 ${this._restartAttempts + 1}/${this._maxRestartAttempts}`);
+        this._restartAttempts++;
+        setTimeout(() => this.start(), 3000);
+      } else {
+        console.error('[ANALYZER] ❌ 최대 재시도 횟수 초과');
+        throw e;
+      }
     }
   }
 
@@ -541,7 +572,13 @@ class CameraAnalyzer {
  * 분석기 시작 스케줄링
  */
 function scheduleAnalyzerStart() {
-  if (analyzerStarted) return;
+  console.log('[ANALYZER] 🚀 분석기 시작 스케줄링 시작...');
+  
+  if (analyzerStarted) {
+    console.log('[ANALYZER] ⚠️ 이미 시작됨');
+    return;
+  }
+  
   analyzerStarted = true;
   
   const centralVideo = document.getElementById('video'); // 데이트 영상
@@ -550,29 +587,46 @@ function scheduleAnalyzerStart() {
   let started = false;
 
   const tryStart = async () => {
-    if (started) return;
+    if (started) {
+      console.log('[ANALYZER] ⚠️ 이미 시작 시도됨');
+      return;
+    }
     started = true;
+    
+    console.log('[ANALYZER] 🔧 CameraAnalyzer 인스턴스 생성...');
     analyzerClient = new CameraAnalyzer({ onMetrics: updateCameraMetrics });
     window.analyzerClient = analyzerClient; // 전역으로 설정
+    
     try {
       // 초기 10프레임 매핑 디버그 로깅 활성화
       window.__ANALYZER_DEBUG__ = 1;
+      console.log('[ANALYZER] 🚀 분석기 시작...');
       await analyzerClient.start();
       
-      console.log('[ANALYZER] started (MediaPipe mode)');
+      console.log('[ANALYZER] ✅ MediaPipe 모드로 시작 완료');
     } catch (e) {
-      console.error('[ANALYZER] MediaPipe 시작 실패:', e);
+      console.error('[ANALYZER] ❌ MediaPipe 시작 실패:', e);
+      console.error('[ANALYZER] 📋 상세 오류:', e.stack);
       throw e; // MediaPipe 연결 실패는 치명적 오류
     }
   };
 
-  const startTimer = setTimeout(tryStart, maxDelayMs);
+  console.log('[ANALYZER] ⏰ 타이머 설정:', { maxDelayMs, extraDelayMs });
+  const startTimer = setTimeout(() => {
+    console.log('[ANALYZER] ⏰ 최대 지연 시간 도달 - 강제 시작');
+    tryStart();
+  }, maxDelayMs);
+  
   if (centralVideo) {
+    console.log('[ANALYZER] 📹 중앙 비디오 요소 발견:', centralVideo);
     const onReady = () => {
+      console.log('[ANALYZER] 📹 비디오 준비됨 - 추가 지연 후 시작');
       setTimeout(tryStart, extraDelayMs);
       centralVideo.removeEventListener('canplay', onReady);
     };
     centralVideo.addEventListener('canplay', onReady);
+  } else {
+    console.log('[ANALYZER] ⚠️ 중앙 비디오 요소를 찾을 수 없음');
   }
 }
 

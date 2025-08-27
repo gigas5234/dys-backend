@@ -1877,11 +1877,28 @@ async function checkPermissionStatus() {
      initializeVideo();
      
      // 카메라 분석기 시작
+     console.log('[ANALYZER] 🔍 카메라 분석기 시작 준비...');
+     console.log('[ANALYZER] 📦 함수 확인:', {
+         scheduleAnalyzerStart: typeof scheduleAnalyzerStart,
+         CameraAnalyzer: typeof CameraAnalyzer,
+         MediaPipeDirect: typeof window.MediaPipeDirect
+     });
+     
      if (typeof scheduleAnalyzerStart === 'function') {
-         console.log('[ANALYZER] 카메라 분석기 시작');
+         console.log('[ANALYZER] ✅ 카메라 분석기 시작');
          scheduleAnalyzerStart();
      } else {
-         console.warn('[ANALYZER] scheduleAnalyzerStart 함수를 찾을 수 없습니다');
+         console.warn('[ANALYZER] ⚠️ scheduleAnalyzerStart 함수를 찾을 수 없습니다');
+         
+         // 대체 시작 방법
+         setTimeout(() => {
+             if (typeof scheduleAnalyzerStart === 'function') {
+                 console.log('[ANALYZER] 🔄 지연 후 카메라 분석기 시작');
+                 scheduleAnalyzerStart();
+             } else {
+                 console.error('[ANALYZER] ❌ 카메라 분석기 시작 실패');
+             }
+         }, 2000);
      }
      
      // Persona 정보 카드 추가 (ChatManager 사용)

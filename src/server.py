@@ -791,6 +791,7 @@ async def startup_event():
     if VOICE_ANALYSIS_AVAILABLE:
         try:
             print("🔄 음성 분석 모델 로딩 시작...")
+            from dys_studio.voice.voice_api import preload_models
             await asyncio.to_thread(preload_models)
             print("✅ 음성 분석 모델 로딩 완료 - 첫 번째 성공 모델 채택")
         except Exception as e:
@@ -1481,7 +1482,7 @@ async def load_persona_context(session_id: str) -> str:
                 print(f" [PERSONA] 세션 정보 가져오기 실패: {e}")
         
         # JSON 파일에서 상세 페르소나 정보 로드
-        persona_file = f"personas/{persona_name}.json"
+        persona_file = f"src/personas/{persona_name}.json"
         
         if os.path.exists(persona_file):
             print(f" [PERSONA] JSON 파일에서 페르소나 로드: {persona_file}")
@@ -1575,7 +1576,9 @@ async def generate_ai_response(user_message: str, session_id: str) -> str:
 
 상황: 지금은 카페에서의 첫 데이트 중이며, 상대방을 편안하게 만들고 즐거운 대화를 나누는 것이 목표입니다."""
 
-        print(f" [AI_RESPONSE] OpenAI API 호출 시작...")
+        print(f"🤖 [AI_RESPONSE] OpenAI API 호출 시작...")
+        print(f"📝 [AI_RESPONSE] 사용자 메시지: {user_message}")
+        print(f"👤 [AI_RESPONSE] 세션 ID: {session_id}")
         
         # OpenAI API 호출
         from openai import OpenAI
@@ -1595,7 +1598,8 @@ async def generate_ai_response(user_message: str, session_id: str) -> str:
         )
         
         ai_response = response.choices[0].message.content.strip()
-        print(f" [AI_RESPONSE] OpenAI 응답 생성 완료: {len(ai_response)}자")
+        print(f"✅ [AI_RESPONSE] OpenAI 응답 생성 완료: {len(ai_response)}자")
+        print(f"💬 [AI_RESPONSE] AI 응답: {ai_response}")
         
         return ai_response
         
