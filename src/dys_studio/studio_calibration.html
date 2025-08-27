@@ -845,13 +845,9 @@ function resetAllMetrics() {
     }
   });
   
-  // 전역 데이터 초기화 (now managed by popup-manager.js)
+  // 전역 데이터 초기화 (UI-only mode)
   if (window.PopupManager) {
       window.PopupManager.currentExpressionData = null;
-      window.PopupManager.currentGazeData = null;
-      window.PopupManager.currentConcentrationData = null;
-      window.PopupManager.currentPostureData = null;
-      window.PopupManager.currentBlinkingData = null;
   }
   
   // 표정 분석 데이터 초기화 (초기에는 점수 미표시)
@@ -957,10 +953,8 @@ function updateCameraMetrics(metrics) {
         concentrationStatusElement.style.color = '#6b7280';
       }
       
-      // 전역 데이터도 초기화
+      // 전역 데이터도 초기화 (UI-only mode)
       currentExpressionData = null;
-      currentGazeData = null;
-      currentConcentrationData = null;
       
       // 표정 분석 데이터 초기화
       lastExpressionScore = null;
@@ -1112,19 +1106,8 @@ function updateCameraMetrics(metrics) {
         concentrationElement.textContent = '-';
     }
     
-    // 집중도 분석 데이터 저장 (팝업용)
-    if (metrics?.gazeAnalysis) {
-      currentConcentrationData = {
-        ...metrics.gazeAnalysis,
-        score: concentrationScore,
-        timestamp: Date.now()
-      };
-      // 전역 변수로도 노출 (팝업에서 접근용)
-      window.currentConcentrationData = currentConcentrationData;
-      console.log('[UI] 집중도 데이터 저장:', currentConcentrationData);
-    } else {
-      console.warn('[UI] ⚠️ 집중도 분석 데이터(gazeAnalysis) 없음:', metrics);
-    }
+    // 집중도 분석 데이터 저장 (UI-only mode)
+    console.log('[UI] (noop) 집중도 분석 데이터 저장 비활성화됨');
     
     // 집중도 분석 상태 업데이트
     const concentrationStatusElement = document.getElementById('concentration-status');
@@ -1169,19 +1152,8 @@ function updateCameraMetrics(metrics) {
         gazeElement.textContent = '-';
     }
     
-    // 시선 분석 데이터 저장 (팝업용)
-    if (metrics?.gazeAnalysis) {
-      currentGazeData = {
-        ...metrics.gazeAnalysis,
-        score: gazeScore,
-        timestamp: Date.now()
-      };
-      // 전역 변수로도 노출 (팝업에서 접근용)
-      window.currentGazeData = currentGazeData;
-      console.log('[UI] 시선 안정성 데이터 저장:', currentGazeData);
-    } else {
-      console.warn('[UI] ⚠️ 시선 안정성 데이터(gazeAnalysis) 없음:', metrics);
-    }
+    // 시선 분석 데이터 저장 (UI-only mode)
+    console.log('[UI] (noop) 시선 분석 데이터 저장 비활성화됨');
     
     // 시선 분석 상태 업데이트
     const gazeStatusElement = document.getElementById('gaze-status');
@@ -1850,22 +1822,8 @@ async function checkPermissionStatus() {
          CameraAnalyzer: typeof CameraAnalyzer
      });
      
-     if (typeof scheduleAnalyzerStart === 'function') {
-         console.log('[ANALYZER] ✅ 카메라 분석기 시작');
-         scheduleAnalyzerStart();
-     } else {
-         console.warn('[ANALYZER] ⚠️ scheduleAnalyzerStart 함수를 찾을 수 없습니다');
-         
-         // 대체 시작 방법
-         setTimeout(() => {
-             if (typeof scheduleAnalyzerStart === 'function') {
-                 console.log('[ANALYZER] 🔄 지연 후 카메라 분석기 시작');
-                 scheduleAnalyzerStart();
-             } else {
-                 console.error('[ANALYZER] ❌ 카메라 분석기 시작 실패');
-             }
-         }, 2000);
-     }
+     // UI-only mode: 카메라 분석기 비활성화
+     console.log('[ANALYZER] (noop) 카메라 분석기 비활성화됨 - UI-only mode');
      
      // Persona 정보 카드 추가 (ChatManager 사용)
      if (window.chatManager) {
@@ -2109,19 +2067,12 @@ function closeGazeDetails() {
 }
 
 function updateGazePopupContent() {
-    if (!currentGazeData) {
-        document.getElementById('gaze-main-value').textContent = '데이터 없음';
-        document.getElementById('gaze-stability-value').textContent = '0%';
-        document.getElementById('gaze-landmarks').innerHTML = '<div class="no-data">시선 분석 데이터가 없습니다.</div>';
-        document.getElementById('gaze-criteria-text').innerHTML = '시선 분석 데이터가 없습니다.';
-        document.getElementById('gaze-explanation-text').innerHTML = '시선 분석 데이터가 없습니다.';
-        return;
-    }
-    
-    // 주요 정보 업데이트
-    const isFocused = currentGazeData.isFocused;
-    document.getElementById('gaze-main-value').textContent = isFocused ? '집중 중' : '분산됨';
-    document.getElementById('gaze-stability-value').textContent = `${currentGazeData.score}%`;
+    // UI-only mode: 기본 데이터 표시
+    document.getElementById('gaze-main-value').textContent = 'UI 모드';
+    document.getElementById('gaze-stability-value').textContent = '0%';
+    document.getElementById('gaze-landmarks').innerHTML = '<div class="no-data">시선 분석 기능이 비활성화되어 있습니다.</div>';
+    document.getElementById('gaze-criteria-text').innerHTML = '시선 분석 기능이 비활성화되어 있습니다.';
+    document.getElementById('gaze-explanation-text').innerHTML = '시선 분석 기능이 비활성화되어 있습니다.';
     
     // 랜드마크 정보 업데이트
     if (typeof updateGazeLandmarksInfo === 'function') {
@@ -2158,19 +2109,12 @@ function closeConcentrationDetails() {
 }
 
 function updateConcentrationPopupContent() {
-    if (!currentConcentrationData) {
-        document.getElementById('concentration-main-value').textContent = '데이터 없음';
-        document.getElementById('concentration-score-value').textContent = '0%';
-        document.getElementById('concentration-factors').innerHTML = '<div class="no-data">집중도 분석 데이터가 없습니다.</div>';
-        document.getElementById('concentration-criteria-text').innerHTML = '집중도 분석 데이터가 없습니다.';
-        document.getElementById('concentration-explanation-text').innerHTML = '집중도 분석 데이터가 없습니다.';
-        return;
-    }
-    
-    // 주요 정보 업데이트
-    const isFocused = currentConcentrationData.isFocused;
-    document.getElementById('concentration-main-value').textContent = isFocused ? '집중 중' : '분산됨';
-    document.getElementById('concentration-score-value').textContent = `${currentConcentrationData.score}%`;
+    // UI-only mode: 기본 데이터 표시
+    document.getElementById('concentration-main-value').textContent = 'UI 모드';
+    document.getElementById('concentration-score-value').textContent = '0%';
+    document.getElementById('concentration-factors').innerHTML = '<div class="no-data">집중도 분석 기능이 비활성화되어 있습니다.</div>';
+    document.getElementById('concentration-criteria-text').innerHTML = '집중도 분석 기능이 비활성화되어 있습니다.';
+    document.getElementById('concentration-explanation-text').innerHTML = '집중도 분석 기능이 비활성화되어 있습니다.';
     
     // 분석 요소 업데이트
     if (typeof updateConcentrationFactorsInfo === 'function') {
