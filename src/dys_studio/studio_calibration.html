@@ -889,21 +889,10 @@ function updateCameraMetrics(metrics) {
     return;
   }
   
-  // metrics: {scores:{attention, stability, blink, posture}, labels:{expression}}
-      const isWorkerMode = metrics?._isWorkerMode || false;
-    const isMediaPipeDirect = metrics?._source === 'mediapipe-direct';
-    const dataSource = isMediaPipeDirect ? 'MEDIAPIPE' : (isWorkerMode ? 'WORKER' : 'HTTP');
-  console.log(`[UI] 🖥️ updateCameraMetrics 호출됨 (${dataSource}):`, {
-    hasNeckAnalysis: !!metrics?.neckAnalysis,
-    hasShoulderAnalysis: !!metrics?.shoulderAnalysis,
-    hasGazeAnalysis: !!metrics?.gazeAnalysis,
-    ear: metrics?.ear,
-    smileIntensity: metrics?.smileIntensity,
-    neckScore: metrics?.neckAnalysis?.postureScore,
-    shoulderScore: metrics?.shoulderAnalysis?.shoulderPostureScore,
-    gazeScore: metrics?.gazeAnalysis?.stabilityScore,
-    timestamp: new Date().toISOString()
-  });
+      // metrics: {scores:{attention, stability, blink, posture}, labels:{expression}}
+    console.log(`[UI] 🖥️ updateCameraMetrics 호출됨 (UI-only mode):`, {
+      timestamp: new Date().toISOString()
+    });
   
       try {
       // DOM 요소 존재 확인
@@ -987,49 +976,13 @@ function updateCameraMetrics(metrics) {
     // 자세 점수 계산 (통일된 scores 객체 우선 사용)
     let postureScore = null;
     
-    // 우선순위 1: 통일된 scores 객체 사용 (metrics-utils.js에서 계산된 값)
+    // 우선순위 1: 통일된 scores 객체 사용
     if (metrics?.scores?.posture != null) {
         postureScore = Math.round(metrics.scores.posture);
         console.log('[UI] ✅ scores.posture 사용:', postureScore);
     } else if (metrics?.neckAnalysis && metrics?.shoulderAnalysis) {
-        // 우선순위 2: MediaPipe 직접 분석 데이터 구조 (상세 분석)
-        console.log('[UI] MediaPipe 직접 분석 데이터 발견:', {
-            neckAnalysis: metrics.neckAnalysis,
-            shoulderAnalysis: metrics.shoulderAnalysis
-        });
-        
-        const neckScore = metrics.neckAnalysis.postureScore || 0;
-        const shoulderScore = metrics.shoulderAnalysis.shoulderPostureScore || 0;
-        const shoulderTilt = Math.abs(metrics.shoulderAnalysis.shoulderTilt || 0);
-        const forwardHeadRatio = metrics.neckAnalysis.forwardHeadRatio || 0.05;
-        
-        // 통일된 자세 점수 계산 로직 (기본 점수 70점부터 시작)
-        postureScore = 70; // 기본 점수 설정
-        
-        // 어깨 기울기 페널티
-        if (shoulderTilt > 20) postureScore -= 8;
-        else if (shoulderTilt > 8) postureScore -= 4;
-        else postureScore += 8;
-        
-        // 거북목 페널티
-        if (forwardHeadRatio > 0.08) postureScore -= 8;
-        else if (forwardHeadRatio > 0.035) postureScore -= 4;
-        else postureScore += 8;
-        
-        // 목자세 보너스/페널티
-        if (neckScore > 70) postureScore += 5;
-        else if (neckScore < 40) postureScore -= 3;
-        
-        // 어깨자세 보너스/페널티
-        if (shoulderScore > 70) postureScore += 3;
-        else if (shoulderScore < 40) postureScore -= 2;
-        
-        // 정면 자세 보너스
-        if (shoulderTilt <= 8 && forwardHeadRatio <= 0.035) postureScore += 15;
-        else if (shoulderTilt <= 12 && forwardHeadRatio <= 0.05) postureScore += 10;
-        else if (shoulderTilt <= 15 && forwardHeadRatio <= 0.06) postureScore += 5;
-        
-        console.log('[UI] MediaPipe 직접 분석 자세 점수 계산:', { neckScore, shoulderScore, shoulderTilt, forwardHeadRatio, postureScore });
+            // UI-only mode: MediaPipe 직접 분석 데이터 처리 비활성화
+    console.log('[UI] (noop) MediaPipe 직접 분석 데이터 처리 비활성화됨');
     } else if (metrics?.neckScore !== undefined && metrics?.shoulderScore !== undefined) {
         // 우선순위 3: 워커 데이터 구조 (직접 점수)
         const neckScore = metrics.neckScore || 0;
@@ -1101,16 +1054,15 @@ function updateCameraMetrics(metrics) {
       }
     }
     
-    console.log(`[UI] 💪 자세 점수 업데이트 (${dataSource}):`, { 
+    console.log(`[UI] 💪 자세 점수 업데이트 (UI-only mode):`, { 
       rawScore: postureScore, 
-      isWorkerMode,
       timestamp: new Date().toISOString()
     });
     
     // 시선 안정성 점수 계산 (통일된 scores 객체 우선 사용)
     let gazeStabilityScore = null;
     
-    // 우선순위 1: 통일된 scores 객체 사용 (metrics-utils.js에서 계산된 값)
+    // 우선순위 1: 통일된 scores 객체 사용
     if (metrics?.scores?.gaze != null) {
         gazeStabilityScore = Math.round(metrics.scores.gaze);
         console.log('[UI] ✅ scores.gaze 사용:', gazeStabilityScore);
@@ -1138,7 +1090,7 @@ function updateCameraMetrics(metrics) {
     // 집중도 점수 계산 (통일된 scores 객체 우선 사용)
     let concentrationScore = null;
     
-    // 우선순위 1: 통일된 scores 객체 사용 (metrics-utils.js에서 계산된 값)
+    // 우선순위 1: 통일된 scores 객체 사용
     if (metrics?.scores?.concentration != null) {
         concentrationScore = Math.round(metrics.scores.concentration);
         console.log('[UI] ✅ scores.concentration 사용:', concentrationScore);
@@ -1203,7 +1155,7 @@ function updateCameraMetrics(metrics) {
       }
     }
     
-    console.log(`[UI] 집중도 점수 업데이트 (${dataSource}):`, concentrationScore);
+    console.log(`[UI] 집중도 점수 업데이트 (UI-only mode):`, concentrationScore);
     
     // 시선 안정성 점수 (워커 데이터와 HTTP 분석 데이터 모두 지원)
     // 이미 위에서 계산된 gazeStabilityScore 사용
@@ -1258,12 +1210,12 @@ function updateCameraMetrics(metrics) {
       }
     }
     
-    console.log(`[UI] 시선 안정성 점수 업데이트 (${dataSource}):`, gazeScore);
+    console.log(`[UI] 시선 안정성 점수 업데이트 (UI-only mode):`, gazeScore);
     
     // 깜빡임 점수 계산 (통일된 scores 객체 우선 사용)
     let blinkScore = null;
     
-    // 우선순위 1: 통일된 scores 객체 사용 (metrics-utils.js에서 계산된 값)
+    // 우선순위 1: 통일된 scores 객체 사용
     if (metrics?.scores?.blink != null) {
         blinkScore = Math.round(metrics.scores.blink);
         console.log('[UI] ✅ scores.blink 사용:', blinkScore);
@@ -1329,7 +1281,7 @@ function updateCameraMetrics(metrics) {
       }
     }
     
-    console.log(`[UI] 깜빡임 점수 업데이트 (${dataSource}):`, blinkScore);
+    console.log(`[UI] 깜빡임 점수 업데이트 (UI-only mode):`, blinkScore);
     
     // 표정 분석 결과 처리 (PyTorch 모델 기반)
     let expressionScore = null;
@@ -1422,42 +1374,8 @@ function updateCameraMetrics(metrics) {
         });
       }
     } else if (metrics?.smileIntensity !== undefined) {
-      // 기존 MediaPipe 미소 분석 사용 (백업)
-      const smileIntensity = metrics.smileIntensity;
-      const personalBaseSmile = metrics.personalBaseSmile || 30;
-      
-      // 개인별 기준 대비 상대적 평가
-      const smileRatio = smileIntensity / personalBaseSmile;
-      
-      // 점수 계산
-      if (smileRatio > 1.3) {
-        expressionScore = 90;
-        expressionText = '매우 따뜻함';
-      } else if (smileRatio > 1.1) {
-        expressionScore = 80;
-        expressionText = '따뜻함';
-      } else if (smileRatio > 0.9) {
-        expressionScore = 70;
-        expressionText = '긍정적';
-      } else if (smileRatio > 0.7) {
-        expressionScore = 60;
-        expressionText = '중립적';
-      } else {
-        expressionScore = 40;
-        expressionText = '개선 필요';
-      }
-      
-      // MediaPipe 분석 결과도 저장
-      lastExpressionScore = expressionScore;
-      lastExpressionText = expressionText;
-      lastExpressionUpdate = currentTime;
-      
-      console.log('[UI] MediaPipe 미소 분석 결과:', {
-        smileIntensity,
-        smileRatio,
-        expressionScore,
-        expressionText
-      });
+      // UI-only mode: MediaPipe 미소 분석 비활성화
+      console.log('[UI] (noop) MediaPipe 미소 분석 비활성화됨');
     } else if (metrics?.labels?.expression) {
       expressionText = metrics.labels.expression;
       // 기본값 제거 - 실제 분석 데이터가 없으면 null 유지
@@ -1511,7 +1429,7 @@ function updateCameraMetrics(metrics) {
       }
     }
     
-    console.log(`[UI] 표정 점수 업데이트 (${dataSource}):`, { expressionScore, expressionText });
+    console.log(`[UI] 표정 점수 업데이트 (UI-only mode):`, { expressionScore, expressionText });
     
     // 점수 색상 업데이트 함수 (ui-utils.js로 이동됨)
     
@@ -1925,12 +1843,11 @@ async function checkPermissionStatus() {
      // 비디오 초기화
      initializeVideo();
      
-     // 카메라 분석기 시작
-     console.log('[ANALYZER] 🔍 카메라 분석기 시작 준비...');
+     // 카메라 분석기 시작 (UI-only mode)
+     console.log('[ANALYZER] 🔍 카메라 분석기 시작 준비... (UI-only mode)');
      console.log('[ANALYZER] 📦 함수 확인:', {
          scheduleAnalyzerStart: typeof scheduleAnalyzerStart,
-         CameraAnalyzer: typeof CameraAnalyzer,
-         MediaPipeDirect: typeof window.MediaPipeDirect
+         CameraAnalyzer: typeof CameraAnalyzer
      });
      
      if (typeof scheduleAnalyzerStart === 'function') {
@@ -2168,35 +2085,10 @@ const POSTURE_HISTORY_SIZE = 15; // 최근 15개 자세 값으로 안정화
 const POSTURE_SMOOTHING_WINDOW = 8000; // 8초 윈도우로 자세 안정화
 const POSTURE_CHANGE_THRESHOLD = 15; // 급격한 변화 임계값 (15점 이상 변화 시 제한)
 
-// 워커로부터 받은 랜드마크를 배치에 적재 (개선된 버전)
+// 워커로부터 받은 랜드마크를 배치에 적재 (UI-only mode)
 function onLandmarkFrame(lmBuffer, ear) {
-  console.log('[LANDMARK] 랜드마크 처리 시작:', { ear });
-  
-  // Float32Array를 Uint8Array로 변환
-  const b = new Uint8Array(lmBuffer);
-  let s = "";
-  for (let i = 0; i < b.length; i++) s += String.fromCharCode(b[i]);
-  const base64 = btoa(s);
-
-  const now = Date.now();
-
-
-  // 랜드마크 배치에 추가 (WebSocket 전송용)
-  if (!window.lmBatch) {
-    // lmBatch가 없으면 초기화
-    window.lmBatch = [];
-    console.log('[LANDMARK] lmBatch 초기화됨');
-  }
-  
-  window.lmBatch.push({
-    t: now,
-    model: "facemesh-468",
-    mode: "full",
-    lm: base64,
-    ear
-  });
-  
-  console.log('[LANDMARK] 배치에 추가됨:', window.lmBatch.length, '개 프레임');
+  // UI-only mode: 랜드마크 처리 비활성화
+  console.log('[LANDMARK] (noop) 랜드마크 처리 비활성화됨');
 }
 
 
