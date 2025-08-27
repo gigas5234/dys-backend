@@ -35,6 +35,7 @@ except ImportError:
     OPENAI_AVAILABLE = False
 
 # faster-whisper 시도 (libctranslate2 오류 방지)
+FASTER_WHISPER_AVAILABLE = False
 try:
     from faster_whisper import WhisperModel
     FASTER_WHISPER_AVAILABLE = True
@@ -278,6 +279,7 @@ class VoiceAnalyzer:
         self._stt_method = "none"
         
         # 방법 1: faster-whisper 시도 (libctranslate2 오류 방지)
+        global FASTER_WHISPER_AVAILABLE
         if FASTER_WHISPER_AVAILABLE:
             try:
                 self._asr_model = WhisperModel("base", device="cpu", compute_type="int8")
@@ -285,11 +287,11 @@ class VoiceAnalyzer:
                 logger.info("✅ ASR 모델 로드 성공 (faster-whisper base)")
                 logger.info("🎤 faster-whisper base 모델 채택")
             except Exception as e:
+                logger.warning(f"⚠️ faster-whisper base 로드 실패: {e}")
                 if "libctranslate2" in str(e).lower():
                     logger.warning("⚠️ libctranslate2 오류로 faster-whisper 비활성화")
                     FASTER_WHISPER_AVAILABLE = False
                 else:
-                    logger.warning(f"⚠️ faster-whisper base 로드 실패: {e}")
                     # tiny 모델로 재시도
                     try:
                         self._asr_model = WhisperModel("tiny", device="cpu", compute_type="int8")
@@ -297,11 +299,10 @@ class VoiceAnalyzer:
                         logger.info("✅ ASR 모델 로드 성공 (faster-whisper tiny)")
                         logger.info("🎤 faster-whisper tiny 모델 채택")
                     except Exception as e2:
+                        logger.warning(f"⚠️ faster-whisper tiny도 실패: {e2}")
                         if "libctranslate2" in str(e2).lower():
                             logger.warning("⚠️ libctranslate2 오류로 faster-whisper tiny도 비활성화")
                             FASTER_WHISPER_AVAILABLE = False
-                        else:
-                            logger.warning(f"⚠️ faster-whisper tiny도 실패: {e2}")
         
         # 방법 2: OpenAI Whisper API 시도 (faster-whisper 실패 시)
         if self._asr_model is None and OPENAI_AVAILABLE:

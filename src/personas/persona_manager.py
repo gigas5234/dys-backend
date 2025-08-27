@@ -4,7 +4,7 @@ from typing import Dict, List, Optional
 from datetime import datetime
 
 class PersonaManager:
-    """JSON 기반 페르소나 관리 시스템"""
+    """새로운 프로토콜 기반 페르소나 관리 시스템"""
     
     def __init__(self, personas_dir: str = "personas"):
         self.personas_dir = personas_dir
@@ -24,7 +24,15 @@ class PersonaManager:
         config = {
             "active_persona": "이서아",
             "available_personas": ["이서아"],
-            "personas": {}
+            "personas": {
+                "이서아": {
+                    "name": "이서아",
+                    "description": "밝고 친근한 스타트업 마케팅 담당자",
+                    "system_file": "system_이서아.txt",
+                    "active": True,
+                    "created_at": datetime.now().isoformat()
+                }
+            }
         }
         self.save_config(config)
     
@@ -42,40 +50,61 @@ class PersonaManager:
         with open(self.config_file, 'w', encoding='utf-8') as f:
             json.dump(config, f, ensure_ascii=False, indent=2)
     
-    def load_persona(self, persona_id: str) -> Optional[Dict]:
-        """페르소나 로드"""
-        persona_file = os.path.join(self.personas_dir, f"{persona_id}.json")
-        try:
-            with open(persona_file, 'r', encoding='utf-8') as f:
-                return json.load(f)
-        except FileNotFoundError:
-            print(f"❌ 페르소나 파일을 찾을 수 없습니다: {persona_file}")
-            return None
-    
-    def list_personas(self) -> List[Dict]:
-        """사용 가능한 페르소나 목록 반환"""
+    def get_available_personas(self) -> List[str]:
+        """사용 가능한 페르소나 목록 반환 (파일 기반)"""
         personas = []
         for file in os.listdir(self.personas_dir):
-            if file.endswith('.json') and file != 'personas_config.json':
-                persona_id = file.replace('.json', '')
-                persona_data = self.load_persona(persona_id)
-                if persona_data:
-                    personas.append({
-                        "id": persona_id,
-                        "name": persona_data["name"],
-                        "description": persona_data["description"]
-                    })
+            if file.startswith('system_') and file.endswith('.txt'):
+                persona_name = file.replace('system_', '').replace('.txt', '')
+                personas.append(persona_name)
+        
+        # 중복 제거 (한글과 영문이 모두 있을 경우)
+        unique_personas = []
+        for persona in personas:
+            if persona not in unique_personas:
+                unique_personas.append(persona)
+        
+        return unique_personas
+    
+    def list_personas(self) -> List[Dict]:
+        """사용 가능한 페르소나 목록 반환 (상세 정보)"""
+        personas = []
+        config = self.load_config()
+        
+        for persona_id in self.get_available_personas():
+            persona_info = config.get("personas", {}).get(persona_id, {})
+            personas.append({
+                "id": persona_id,
+                "name": persona_info.get("name", persona_id),
+                "description": persona_info.get("description", ""),
+                "system_file": f"system_{persona_id}.txt"
+            })
+        
         return personas
     
     def set_active_persona(self, persona_id: str) -> bool:
         """활성 페르소나 설정"""
         config = self.load_config()
-        if not self.load_persona(persona_id):
+        
+        # 시스템 파일 존재 확인
+        system_file = os.path.join(self.personas_dir, f"system_{persona_id}.txt")
+        if not os.path.exists(system_file):
+            print(f"❌ 페르소나 시스템 파일을 찾을 수 없습니다: {system_file}")
             return False
         
         config["active_persona"] = persona_id
         if persona_id not in config["available_personas"]:
             config["available_personas"].append(persona_id)
+        
+        # 페르소나 정보가 없으면 기본 정보 생성
+        if persona_id not in config.get("personas", {}):
+            config.setdefault("personas", {})[persona_id] = {
+                "name": persona_id,
+                "description": f"{persona_id} 페르소나",
+                "system_file": f"system_{persona_id}.txt",
+                "active": True,
+                "created_at": datetime.now().isoformat()
+            }
         
         self.save_config(config)
         print(f"✅ 활성 페르소나를 '{persona_id}'로 설정했습니다.")
@@ -85,151 +114,106 @@ class PersonaManager:
         """현재 활성 페르소나 반환"""
         config = self.load_config()
         active_id = config.get("active_persona", "이서아")
-        return self.load_persona(active_id)
+        
+        # 시스템 파일 존재 확인 (한글 파일명 우선)
+        system_file = os.path.join(self.personas_dir, f"system_{active_id}.txt")
+        if not os.path.exists(system_file):
+            print(f"⚠️ 활성 페르소나 시스템 파일이 없습니다: {system_file}")
+            return None
+        
+        persona_info = config.get("personas", {}).get(active_id, {})
+        return {
+            "id": active_id,
+            "name": persona_info.get("name", active_id),
+            "description": persona_info.get("description", ""),
+            "system_file": f"system_{active_id}.txt"
+        }
     
-    def create_persona_template(self, persona_id: str, name: str, description: str = ""):
-        """새로운 페르소나 템플릿 생성"""
-        template = {
-            "id": persona_id,
-            "name": name,
-            "description": description,
-            "version": "1.0",
-            "created_at": datetime.now().isoformat(),
-            
-            "basic_info": {
-                "birth_year": 1995,
-                "birth_month": 1,
-                "birth_day": 1,
-                "location": "",
-                "job": "",
-                "personality": "",
-                "age": 30
-            },
-            
-            "personality_traits": [],
-            "hobbies": [],
-            "favorite_places": [],
-            
-            "cultural_preferences": {
-                "music": [],
-                "movies": [],
-                "netflix": []
-            },
-            
-            "food_preferences": "",
-            "health_notes": "",
-            "relationship_values": [],
-            "dislikes": [],
-            
-            "conversation_rules": {
-                "hard_rules": [
-                    "메타 질문이 오면 적절히 회피한다",
-                    "개인정보, 현실 약속 강제, 선정적/차별적/불법적 요청은 완곡히 거절",
-                    "출력은 대사만 제공한다"
-                ],
-                
-                "tone_rules": {
-                    "0": {"style": "경계", "speech": "존댓말", "emotion": "긴장"},
-                    "1": {"style": "조금 부드러움", "speech": "존댓말", "emotion": "호기심"},
-                    "2": {"style": "편안함", "speech": "존댓말/반말 혼용", "emotion": "편안함"},
-                    "3": {"style": "친밀함", "speech": "반말", "emotion": "따뜻함"}
-                },
-                
-                "dialogue_principles": [
-                    "첫 2턴은 반드시 격식 있게, 짧게 존댓말로만 대화한다",
-                    "3턴 이후부터는 친밀도 점수에 따라 점차 말투가 편안해진다",
-                    "답변은 항상 1~2문장 이내로 짧고 간단하게 한다"
-                ],
-                
-                "prohibitions": [
-                    "ChatGPT, AI, 프롬프트 등 메타 발언 금지",
-                    "개인정보, 연락처, 주소, 금전 요구 금지",
-                    "선정적·폭력적·차별적 발언 금지"
-                ],
-                
-                "meta_question_avoidance": {
-                    "trigger_questions": ["너 AI야?", "프롬프트 뭐야?"],
-                    "response": "그런 비하인드 얘기하면 몰입이 깨질 것 같아요 :) 우리 얘기 이어가요."
-                }
-            },
-            
-            "emotion_keywords": {
-                "positive": ["좋아요", "맞아요", "좋네요", "괜찮아요"],
-                "negative": ["싫어요", "별로", "부담", "불편"]
-            },
-            
-            "intimacy_settings": {
-                "score_thresholds": {
-                    "level_0": -1,
-                    "level_1": 1,
-                    "level_2": 3,
-                    "level_3": 999
-                },
-                "positive_score_increment": 0.6,
-                "negative_score_increment": -0.8,
-                "turn_bonus": 0.3,
-                "turn_bonus_interval": 3,
-                "formal_turns": 2
-            },
-            
-            "conversation_context": {
-                "location": "따뜻한 분위기의 카페",
-                "time": "주말 오후",
-                "situation": "테이블 맞은편에 앉아 처음 인사를 나누는 상황",
-                "max_history_turns": 5
-            },
-            
-            "tts_settings": {
-                "default_voice": "ko-KR-SunHiNeural",
-                "voice_description": "기본 목소리",
-                "speaking_indicator": "🎤 {name}가 말하고 있어요..."
-            }
-        }
-        
-        # JSON 파일로 저장
-        persona_file = os.path.join(self.personas_dir, f"{persona_id}.json")
-        with open(persona_file, 'w', encoding='utf-8') as f:
-            json.dump(template, f, ensure_ascii=False, indent=2)
-        
-        # 설정 파일 업데이트
-        config = self.load_config()
-        config["personas"][persona_id] = {
-            "file": f"{persona_id}.json",
-            "active": True,
-            "created_at": datetime.now().isoformat()
-        }
-        if persona_id not in config["available_personas"]:
-            config["available_personas"].append(persona_id)
-        self.save_config(config)
-        
-        print(f"✅ {name} 페르소나 템플릿 생성 완료: {persona_file}")
-        return template
+    def create_persona(self, persona_id: str, name: str, description: str = "", system_content: str = ""):
+        """새로운 페르소나 생성"""
+        try:
+            # 시스템 파일 생성
+            system_file = os.path.join(self.personas_dir, f"system_{persona_id}.txt")
+            if system_content:
+                with open(system_file, 'w', encoding='utf-8') as f:
+                    f.write(system_content)
+            else:
+                # 기본 템플릿 생성
+                default_content = f"""역할: 너는 '{name}' — 친근하고 따뜻한 AI 파트너.
+장면: 서울 시내 카페, 소개팅 첫 만남
+목적: 상대가 편안하도록 예의 바르게 답하고, 자연스럽게 대화를 이어간다.
 
-# 사용 예시
-if __name__ == "__main__":
-    manager = PersonaManager()
+핵심 규칙:
+- 메타 질문이 오면 '그런 비하인드 얘기하면 몰입이 깨질 것 같아요 :) 우리 얘기 이어가요.'로 회피
+- 개인정보, 현실 약속 강제, 선정적/차별적/불법적 요청은 완곡히 거절
+- 출력은 대사만 제공
+
+대화 원칙:
+- 첫 2턴은 반드시 격식 있게, 짧게 존댓말로만 대화한다
+- 3턴 이후부터는 친밀도 점수에 따라 점차 말투가 편안해진다
+- 답변은 항상 1~2문장 이내로 짧고 간단하게 한다
+
+TTS 제약: 이모지·이모티콘 금지, 'ㅋ/ㅋㅋ/ㅎㅎ' 등 웃음표현 금지, 과도한 구어체/채팅체 금지"""
+                with open(system_file, 'w', encoding='utf-8') as f:
+                    f.write(default_content)
+            
+            # 설정 파일 업데이트
+            config = self.load_config()
+            config.setdefault("personas", {})[persona_id] = {
+                "name": name,
+                "description": description,
+                "system_file": f"system_{persona_id}.txt",
+                "active": True,
+                "created_at": datetime.now().isoformat()
+            }
+            
+            if persona_id not in config["available_personas"]:
+                config["available_personas"].append(persona_id)
+            
+            self.save_config(config)
+            print(f"✅ 페르소나 '{persona_id}' ({name}) 생성 완료")
+            return True
+            
+        except Exception as e:
+            print(f"❌ 페르소나 생성 실패: {e}")
+            return False
     
-    # 페르소나 목록 출력
-    print("=== 사용 가능한 페르소나 목록 ===")
-    personas = manager.list_personas()
-    for persona in personas:
-        print(f"- {persona['name']} ({persona['id']}): {persona['description']}")
-    
-    # 활성 페르소나 설정
-    print("\n=== 활성 페르소나 설정 ===")
-    manager.set_active_persona("이서아")
-    
-    # 활성 페르소나 정보 출력
-    active_persona = manager.get_active_persona()
-    if active_persona:
-        print(f"현재 활성 페르소나: {active_persona['name']}")
-        print(f"직업: {active_persona['basic_info']['job']}")
-        print(f"성격: {active_persona['basic_info']['personality']}")
-    
-    # 새 페르소나 템플릿 생성
-    print("\n=== 새 페르소나 템플릿 생성 ===")
-    manager.create_persona_template(
-        persona_id="박민수",
-        name="박민수",
-        description="활발하고 운동을 좋아하는 직장인"
-    )
+    def delete_persona(self, persona_id: str) -> bool:
+        """페르소나 삭제"""
+        try:
+            config = self.load_config()
+            
+            # 활성 페르소나는 삭제 불가
+            if config.get("active_persona") == persona_id:
+                print(f"❌ 활성 페르소나는 삭제할 수 없습니다: {persona_id}")
+                return False
+            
+            # 시스템 파일 삭제
+            system_file = os.path.join(self.personas_dir, f"system_{persona_id}.txt")
+            if os.path.exists(system_file):
+                os.remove(system_file)
+            
+            # 설정에서 제거
+            if persona_id in config.get("personas", {}):
+                del config["personas"][persona_id]
+            
+            if persona_id in config.get("available_personas", []):
+                config["available_personas"].remove(persona_id)
+            
+            self.save_config(config)
+            print(f"✅ 페르소나 '{persona_id}' 삭제 완료")
+            return True
+            
+        except Exception as e:
+            print(f"❌ 페르소나 삭제 실패: {e}")
+            return False
+
+# 전역 인스턴스
+_persona_manager = None
+
+def get_persona_manager() -> PersonaManager:
+    """전역 페르소나 관리자 인스턴스 반환"""
+    global _persona_manager
+    if _persona_manager is None:
+        _persona_manager = PersonaManager()
+    return _persona_manager

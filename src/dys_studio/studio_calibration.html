@@ -1128,18 +1128,26 @@ function updateCameraMetrics(metrics) {
     // 자세 분석 상태 업데이트
     const postureStatusElement = document.getElementById('posture-status');
     if (postureStatusElement) {
-      if (postureScore >= 80) {
-        postureStatusElement.textContent = '우수';
-        postureStatusElement.style.color = '#10b981';
-      } else if (postureScore >= 60) {
-        postureStatusElement.textContent = '양호';
-        postureStatusElement.style.color = '#3b82f6';
-      } else if (postureScore >= 40) {
-        postureStatusElement.textContent = '보통';
-        postureStatusElement.style.color = '#f59e0b';
+      if (postureScore != null) {
+        if (postureScore >= 85) {
+          postureStatusElement.textContent = '매우 우수';
+          postureStatusElement.style.color = '#10b981';
+        } else if (postureScore >= 70) {
+          postureStatusElement.textContent = '우수';
+          postureStatusElement.style.color = '#10b981';
+        } else if (postureScore >= 55) {
+          postureStatusElement.textContent = '양호';
+          postureStatusElement.style.color = '#3b82f6';
+        } else if (postureScore >= 40) {
+          postureStatusElement.textContent = '보통';
+          postureStatusElement.style.color = '#f59e0b';
+        } else {
+          postureStatusElement.textContent = '개선 필요';
+          postureStatusElement.style.color = '#ef4444';
+        }
       } else {
-        postureStatusElement.textContent = '개선 필요';
-        postureStatusElement.style.color = '#ef4444';
+        postureStatusElement.textContent = '분석 대기 중';
+        postureStatusElement.style.color = '#6b7280';
       }
     }
     
@@ -1219,8 +1227,24 @@ function updateCameraMetrics(metrics) {
     if (concentrationStatusElement) {
       if (metrics?.gazeAnalysis && concentrationScore != null) {
         const isFocused = metrics.gazeAnalysis.isFocused;
-        concentrationStatusElement.textContent = isFocused ? '집중 중' : '분산됨';
-        concentrationStatusElement.style.color = isFocused ? '#10b981' : '#f59e0b';
+        const gazeDirection = metrics.gazeAnalysis.gazeDirection;
+        
+        if (isFocused && gazeDirection === 'center') {
+          concentrationStatusElement.textContent = '집중 중';
+          concentrationStatusElement.style.color = '#10b981';
+        } else if (concentrationScore > 80) {
+          concentrationStatusElement.textContent = '매우 집중';
+          concentrationStatusElement.style.color = '#10b981';
+        } else if (concentrationScore > 60) {
+          concentrationStatusElement.textContent = '집중';
+          concentrationStatusElement.style.color = '#3b82f6';
+        } else if (concentrationScore > 40) {
+          concentrationStatusElement.textContent = '보통';
+          concentrationStatusElement.style.color = '#f59e0b';
+        } else {
+          concentrationStatusElement.textContent = '분산됨';
+          concentrationStatusElement.style.color = '#ef4444';
+        }
       } else {
         concentrationStatusElement.textContent = '분석 대기 중';
         concentrationStatusElement.style.color = '#6b7280';
@@ -1258,8 +1282,22 @@ function updateCameraMetrics(metrics) {
     if (gazeStatusElement) {
       if (metrics?.gazeAnalysis && gazeScore != null) {
         const isFocused = metrics.gazeAnalysis.isFocused;
-        gazeStatusElement.textContent = isFocused ? '집중 중' : '분산됨';
-        gazeStatusElement.style.color = isFocused ? '#10b981' : '#f59e0b';
+        const gazeDirection = metrics.gazeAnalysis.gazeDirection;
+        const stabilityScore = metrics.gazeAnalysis.stabilityScore;
+        
+        if (isFocused && gazeDirection === 'center') {
+          gazeStatusElement.textContent = '집중 중';
+          gazeStatusElement.style.color = '#10b981';
+        } else if (stabilityScore > 70) {
+          gazeStatusElement.textContent = '안정적';
+          gazeStatusElement.style.color = '#3b82f6';
+        } else if (stabilityScore > 50) {
+          gazeStatusElement.textContent = '보통';
+          gazeStatusElement.style.color = '#f59e0b';
+        } else {
+          gazeStatusElement.textContent = '불안정';
+          gazeStatusElement.style.color = '#ef4444';
+        }
       } else {
         gazeStatusElement.textContent = '분석 대기 중';
         gazeStatusElement.style.color = '#6b7280';
@@ -1298,31 +1336,40 @@ function updateCameraMetrics(metrics) {
       currentBlinkingData = {
         earResult: metrics.earResult,
         score: blinkScore,
+        blinkRatePerMinute: metrics.earResult.blinkRatePerMinute,
+        avgBlinkDuration: metrics.earResult.avgBlinkDuration,
+        totalBlinkCount: metrics.earResult.totalBlinkCount,
+        blinkStatus: metrics.earResult.blinkStatus,
         timestamp: Date.now()
       };
       console.log('[UI] 깜빡임 데이터 저장:', currentBlinkingData);
     } else {
-      console.warn('[UI] ⚠️ earResult 데이터 없음:', metrics);
+      console.warn('[UI] ⚠️ 깜빡임 분석 데이터(earResult) 없음:', metrics);
     }
     
     // 깜빡임 분석 상태 업데이트
-    const blinkingStatusElement = document.getElementById('blinking-status');
-    if (blinkingStatusElement) {
-      if (metrics?.earResult?.blinkStatus && blinkScore != null) {
+    const blinkStatusElement = document.getElementById('blinking-status');
+    if (blinkStatusElement) {
+      if (metrics?.earResult && blinkScore != null) {
         const blinkStatus = metrics.earResult.blinkStatus;
-        if (blinkStatus === 'open') {
-          blinkingStatusElement.textContent = '눈 뜸';
-          blinkingStatusElement.style.color = '#10b981';
-        } else if (blinkStatus === 'blinking') {
-          blinkingStatusElement.textContent = '깜빡임';
-          blinkingStatusElement.style.color = '#f59e0b';
-        } else if (blinkStatus === 'closed') {
-          blinkingStatusElement.textContent = '눈 감음';
-          blinkingStatusElement.style.color = '#ef4444';
+        const blinkRate = metrics.earResult.blinkRatePerMinute;
+        
+        if (blinkStatus === 'closed') {
+          blinkStatusElement.textContent = '눈 감음';
+          blinkStatusElement.style.color = '#ef4444';
+        } else if (blinkRate > 20) {
+          blinkStatusElement.textContent = '과도한 깜빡임';
+          blinkStatusElement.style.color = '#f59e0b';
+        } else if (blinkRate < 8) {
+          blinkStatusElement.textContent = '부족한 깜빡임';
+          blinkStatusElement.style.color = '#f59e0b';
+        } else {
+          blinkStatusElement.textContent = '정상';
+          blinkStatusElement.style.color = '#10b981';
         }
       } else {
-        blinkingStatusElement.textContent = '분석 대기 중';
-        blinkingStatusElement.style.color = '#6b7280';
+        blinkStatusElement.textContent = '분석 대기 중';
+        blinkStatusElement.style.color = '#6b7280';
       }
     }
     
@@ -1333,7 +1380,49 @@ function updateCameraMetrics(metrics) {
     let expressionText = '-';
     const currentTime = Date.now();
     
-    if (metrics?.expressionAnalysis?.success) {
+    // 서버에서 직접 반환하는 표정 분석 결과 처리
+    if (metrics?.success && metrics?.expression && metrics?.score) {
+      // 서버에서 직접 반환하는 구조
+      const expressionResult = {
+        success: metrics.success,
+        expression: metrics.expression,
+        confidence: metrics.confidence,
+        score: metrics.score
+      };
+      
+      if (expressionResult.score && typeof expressionResult.score.score === 'number') {
+        // 2초마다 업데이트하거나 신뢰도가 높을 때만 업데이트
+        if (currentTime - lastExpressionUpdate > EXPRESSION_UPDATE_INTERVAL || 
+            expressionResult.confidence > 0.6) {
+          expressionScore = expressionResult.score.score;
+          expressionText = expressionResult.score.label || '중립적';
+          lastExpressionScore = expressionScore;
+          lastExpressionText = expressionText;
+          lastExpressionUpdate = currentTime;
+        } else {
+          // 이전 값 유지
+          expressionScore = lastExpressionScore;
+          expressionText = lastExpressionText;
+        }
+        
+        // 표정 데이터를 전역 변수에 저장 (팝업용)
+        currentExpressionData = {
+          expression: expressionResult.expression,
+          confidence: expressionResult.confidence,
+          score: expressionResult.score,
+          probabilities: metrics.probabilities || {}, // 서버에서 직접 반환하는 probabilities 사용
+          timestamp: Date.now()
+        };
+        console.log('[UI] 표정 데이터 저장:', currentExpressionData);
+        
+        console.log('[UI] 🎭 서버 표정 분석 결과:', {
+          expression: expressionResult.expression,
+          confidence: expressionResult.confidence,
+          score: expressionScore,
+          label: expressionText
+        });
+      }
+    } else if (metrics?.expressionAnalysis?.success) {
       // PyTorch 모델 분석 결과 사용
       const expressionResult = metrics.expressionAnalysis;
       const scoreResult = expressionResult.score;
@@ -1440,8 +1529,8 @@ function updateCameraMetrics(metrics) {
     // 표정 분석 상태 업데이트 (평가 라벨 표시)
     const expressionStatusElement = document.getElementById('expression-status');
     if (expressionStatusElement) {
-      if (metrics?.expressionAnalysis?.success) {
-        const scoreResult = metrics.expressionAnalysis.score;
+      if ((metrics?.success && metrics?.score?.label) || (metrics?.expressionAnalysis?.success && metrics?.expressionAnalysis?.score?.label)) {
+        const scoreResult = metrics?.score || metrics?.expressionAnalysis?.score;
         if (scoreResult && scoreResult.label) {
           expressionStatusElement.textContent = scoreResult.label;
           // 라벨에 따른 색상 설정
