@@ -5,6 +5,11 @@ metadata:
 spec:
   # 안정성을 위해 동일한 앱을 2개 실행시킵니다.
   replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
   selector:
     matchLabels:
       app: dys-backend
@@ -17,10 +22,33 @@ spec:
       containers:
       - name: dys-backend-container
         # 💡 중요: CI/CD 파이프라인에서 빌드한 본인의 이미지 주소를 넣어야 합니다.
-        image: asia-northeast3-docker.pkg.dev/deyeonso10/dys-backend/dys-backend:e11e71b723f5ef5ba652260c92f57c6f12acdb26
+        image: asia-northeast3-docker.pkg.dev/deyeonso10/dys-backend/dys-backend:latest
         ports:
         - containerPort: 8000 # 메인 서버 포트
         - containerPort: 8001 # WebSocket 서버 포트
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
         env:
         - name: MONGODB_URI
           value: "mongodb+srv://dys-chatbot:epdusth@cluster0.drwwbhn.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"

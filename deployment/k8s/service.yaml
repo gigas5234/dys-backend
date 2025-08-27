@@ -10,17 +10,20 @@ spec:
     # 'app: my-backend' 라벨이 붙은 Pod를 찾아 연결합니다.
     app: dys-backend
   ports:
-  - protocol: TCP
+  - name: http
+    protocol: TCP
     # 외부에서는 80 포트로 접속하면,
     port: 80
     # 컨테이너의 8000 포트(메인 서버)로 연결해줍니다.
     targetPort: 8000
-  - protocol: TCP
+  - name: https
+    protocol: TCP
     # 외부에서는 443 포트(HTTPS)로 접속하면,
     port: 443
     # 컨테이너의 8000 포트(메인 서버)로 연결해줍니다.
     targetPort: 8000
-  - protocol: TCP
+  - name: websocket
+    protocol: TCP
     # 외부에서는 8001 포트로 접속하면,
     port: 8001
     # 컨테이너의 8001 포트(WebSocket 서버)로 연결해줍니다.
