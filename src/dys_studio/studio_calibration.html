@@ -282,7 +282,10 @@
      <div class="card">
        <header>💬 대화 중</header>
        <div class="chat-log" id="chatLog"></div>
-                      <div class="chat-input">
+       <div class="persona-info-section" id="personaInfoSection">
+         <!-- Persona 카드가 여기에 동적으로 추가됩니다 -->
+       </div>
+       <div class="chat-input">
            <input type="text" id="chatInput" placeholder="메시지를 입력하세요...">
            <button id="inputBtn" class="input-btn" title="메시지 전송">
                                <img src="" alt="전송" id="inputIcon">
@@ -469,6 +472,20 @@ function initializeUserData() {
     } else {
         console.error('❌ 사용자 정보를 찾을 수 없습니다.');
         return false;
+    }
+}
+
+// --- 기본 Persona 정보 설정 (사용자 정보가 없을 때) ---
+function setDefaultPersonaInfo() {
+    if (!window.personaName) {
+        window.personaName = '이서아';
+        window.personaAge = '28';
+        window.personaMbti = 'ENFP';
+        window.personaJob = '마케팅 담당자';
+        window.personaPersonality = '밝고 친근한';
+        window.personaImage = 'woman1.webp';
+        
+        console.log('✅ 기본 Persona 정보 설정 완료:', window.personaName);
     }
 }
 
@@ -789,6 +806,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.location.reload();
         return;
     }
+    
+    // 기본 Persona 정보 설정 (사용자 정보가 없을 때)
+    setDefaultPersonaInfo();
     
     // 캘리브레이션 모듈 로딩 대기 및 초기화
     await waitForCalibrationModule();

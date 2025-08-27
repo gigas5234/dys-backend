@@ -110,6 +110,12 @@
         addPersonaCard() {
             if (!this.personaName) return;
             
+            // 기존 persona 카드가 있으면 제거
+            const existingCard = document.querySelector('.persona-card');
+            if (existingCard) {
+                existingCard.remove();
+            }
+            
             const personaCard = document.createElement('div');
             personaCard.className = 'persona-card';
             
@@ -142,8 +148,14 @@
                 </div>
             `;
             
-            this.chatLog.appendChild(personaCard);
-            this.chatLog.scrollTop = this.chatLog.scrollHeight;
+            // persona-info-section에 추가
+            const personaSection = document.getElementById('personaInfoSection');
+            if (personaSection) {
+                personaSection.appendChild(personaCard);
+            } else {
+                // fallback: chat-log에 추가
+                this.chatLog.appendChild(personaCard);
+            }
         }
 
         addBubble(text, role) {
