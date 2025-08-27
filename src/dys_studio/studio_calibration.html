@@ -77,8 +77,48 @@ document.addEventListener('DOMContentLoaded', () => {
 <script src="js/metrics/metrics-utils.js?v=20241226-1"></script>
 
 
-<!-- MediaPipe 직접 모듈 -->
-<script src="js/mediapipe-direct.js?v=20241223"></script>
+<!-- MediaPipe 직접 모듈 (MediaPipe 라이브러리 로딩 후 실행) -->
+<script>
+// MediaPipe 라이브러리 로딩 완료 후 mediapipe-direct.js 로드
+function loadMediaPipeDirect() {
+    const script = document.createElement('script');
+    script.src = 'js/mediapipe-direct.js?v=20241223';
+    script.onload = () => {
+        console.log('[STUDIO] ✅ MediaPipe 직접 모듈 로드 완료');
+    };
+    script.onerror = () => {
+        console.error('[STUDIO] ❌ MediaPipe 직접 모듈 로드 실패');
+    };
+    document.head.appendChild(script);
+}
+
+// MediaPipe 라이브러리 로딩 완료 확인 후 모듈 로드
+function checkAndLoadMediaPipeDirect() {
+    const libraries = {
+        'FaceMesh': typeof FaceMesh,
+        'Camera': typeof Camera,
+        'ControlUtils': typeof ControlUtils,
+        'DrawingUtils': typeof DrawingUtils
+    };
+    
+    const missingLibraries = Object.entries(libraries)
+        .filter(([name, type]) => type === 'undefined')
+        .map(([name]) => name);
+    
+    if (missingLibraries.length === 0) {
+        console.log('[STUDIO] ✅ MediaPipe 라이브러리 로딩 완료, 직접 모듈 로드 시작');
+        loadMediaPipeDirect();
+    } else {
+        console.log('[STUDIO] ⏳ MediaPipe 라이브러리 로딩 대기 중...', missingLibraries);
+        setTimeout(checkAndLoadMediaPipeDirect, 1000);
+    }
+}
+
+// DOM 로드 완료 후 MediaPipe 직접 모듈 로드
+document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(checkAndLoadMediaPipeDirect, 3000); // 3초 후 확인
+});
+</script>
 <!-- 카메라 분석기 모듈 -->
 <script src="js/camera-analyzer.js?v=20241222-2"></script>
     <!-- 음성 입력 모듈 -->
