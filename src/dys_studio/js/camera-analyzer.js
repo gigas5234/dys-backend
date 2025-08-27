@@ -82,7 +82,7 @@ class CameraAnalyzer {
     
     // MediaPipe 직접 모듈이 로드될 때까지 대기
     let retryCount = 0;
-    const maxRetries = 10; // 최대 10초 대기
+    const maxRetries = 20; // 최대 20초 대기 (MediaPipe 라이브러리 로딩 시간 고려)
     
     const waitForMediaPipeDirect = async () => {
       console.log(`[ANALYZER] 🔍 MediaPipe 직접 모듈 검색 시도 ${retryCount + 1}/${maxRetries}:`, {

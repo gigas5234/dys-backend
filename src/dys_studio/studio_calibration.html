@@ -6,41 +6,12 @@
 <title>데연소 · Love Glass UI (피드백 고도화)</title>
     <link rel="stylesheet" href="styles/studio_calibration.css?v=20241223-24">
 <!-- MediaPipe 라이브러리 (CDN) -->
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@mediapipe/camera_utils@0.3/camera_utils.js" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@mediapipe/control_utils@0.6/control_utils.js" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@mediapipe/drawing_utils@0.3/drawing_utils.js" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@mediapipe/face_mesh@0.4/face_mesh.js" crossorigin="anonymous"></script>
 
-<!-- MediaPipe 라이브러리 대체 CDN (fallback) -->
-<script>
-// MediaPipe 라이브러리 로딩 실패 시 대체 CDN 시도
-function loadMediaPipeFallback() {
-    const libraries = ['camera_utils', 'control_utils', 'drawing_utils', 'face_mesh'];
-    const cdnUrls = [
-        'https://cdn.jsdelivr.net/npm/@mediapipe/',
-        'https://unpkg.com/@mediapipe/',
-        'https://cdnjs.cloudflare.com/ajax/libs/mediapipe/'
-    ];
-    
-    libraries.forEach(lib => {
-        if (typeof window[lib.replace('_', '').replace(/([A-Z])/g, '$1')] === 'undefined') {
-            console.warn(`[MEDIAPIPE-FALLBACK] ⚠️ ${lib} 라이브러리 로딩 실패, 대체 CDN 시도...`);
-        }
-    });
-}
-
-// 3초 후 대체 CDN 확인
-setTimeout(loadMediaPipeFallback, 3000);
-</script>
-<!-- 기본 캘리브레이션 설정 모듈 -->
-<script src="js/default-calibration.js?v=20241223"></script>
-<!-- 캘리브레이션 모듈 -->
-<script src="js/calibration.js?v=20241222"></script>
-<!-- 성능 모니터링 (개발용) -->
-<script src="js/performance-monitor.js?v=20241222"></script>
-<!-- 공통 메트릭 유틸리티 -->
-<script src="js/metrics/metrics-utils.js?v=20241226-1"></script>
-<!-- MediaPipe 라이브러리 로딩 상태 확인 -->
+<!-- MediaPipe 라이브러리 로딩 상태 확인 및 대체 CDN -->
 <script>
 // MediaPipe 라이브러리 로딩 상태 확인
 function checkMediaPipeLibraries() {
@@ -59,6 +30,7 @@ function checkMediaPipeLibraries() {
     
     if (missingLibraries.length > 0) {
         console.error('[MEDIAPIPE-CHECK] ❌ 누락된 MediaPipe 라이브러리:', missingLibraries);
+        loadMediaPipeFallback();
         return false;
     } else {
         console.log('[MEDIAPIPE-CHECK] ✅ 모든 MediaPipe 라이브러리 로드 완료');
@@ -66,11 +38,44 @@ function checkMediaPipeLibraries() {
     }
 }
 
+// MediaPipe 라이브러리 로딩 실패 시 대체 CDN 시도
+function loadMediaPipeFallback() {
+    console.warn('[MEDIAPIPE-FALLBACK] 🔄 대체 CDN에서 MediaPipe 라이브러리 로딩 시도...');
+    
+    const fallbackScripts = [
+        { src: 'https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3/camera_utils.js', name: 'Camera' },
+        { src: 'https://cdn.jsdelivr.net/npm/@mediapipe/control_utils@0.6/control_utils.js', name: 'ControlUtils' },
+        { src: 'https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils@0.3/drawing_utils.js', name: 'DrawingUtils' },
+        { src: 'https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4/face_mesh.js', name: 'FaceMesh' }
+    ];
+    
+    fallbackScripts.forEach(script => {
+        if (typeof window[script.name] === 'undefined') {
+            console.warn(`[MEDIAPIPE-FALLBACK] ⚠️ ${script.name} 라이브러리 로딩 실패, 대체 CDN 시도...`);
+            const fallbackScript = document.createElement('script');
+            fallbackScript.src = script.src;
+            fallbackScript.crossOrigin = 'anonymous';
+            fallbackScript.onload = () => console.log(`[MEDIAPIPE-FALLBACK] ✅ ${script.name} 대체 CDN 로딩 성공`);
+            fallbackScript.onerror = () => console.error(`[MEDIAPIPE-FALLBACK] ❌ ${script.name} 대체 CDN 로딩 실패`);
+            document.head.appendChild(fallbackScript);
+        }
+    });
+}
+
 // DOM 로드 완료 후 MediaPipe 라이브러리 상태 확인
 document.addEventListener('DOMContentLoaded', () => {
-    setTimeout(checkMediaPipeLibraries, 1000); // 1초 후 확인
+    setTimeout(checkMediaPipeLibraries, 2000); // 2초 후 확인
 });
 </script>
+<!-- 기본 캘리브레이션 설정 모듈 -->
+<script src="js/default-calibration.js?v=20241223"></script>
+<!-- 캘리브레이션 모듈 -->
+<script src="js/calibration.js?v=20241222"></script>
+<!-- 성능 모니터링 (개발용) -->
+<script src="js/performance-monitor.js?v=20241222"></script>
+<!-- 공통 메트릭 유틸리티 -->
+<script src="js/metrics/metrics-utils.js?v=20241226-1"></script>
+
 
 <!-- MediaPipe 직접 모듈 -->
 <script src="js/mediapipe-direct.js?v=20241223"></script>
