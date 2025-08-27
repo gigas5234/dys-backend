@@ -509,26 +509,36 @@ async def create_session(
     try:
         print(f"🔄 [CREATE_SESSION] 세션 생성 시작...")
         
-        # persona 정보가 있으면 세션 이름에 포함
+        # 새로운 페르소나 시스템에서 기본 페르소나 가져오기
+        from personas.persona_manager import get_persona_manager
+        manager = get_persona_manager()
+        active_persona = manager.get_active_persona()
+        
+        # 클라이언트에서 전송한 페르소나가 있으면 사용, 없으면 활성 페르소나 사용
+        persona_name = session.persona_name or (active_persona["name"] if active_persona else "이서아")
+        
+        # 세션 이름 설정
         session_name = session.session_name
-        if session.persona_name:
-            session_name = f"{session.persona_name}와의 데이트"
-            print(f"📝 [CREATE_SESSION] Persona 정보 포함: {session.persona_name}")
+        if persona_name:
+            session_name = f"{persona_name}와의 데이트"
+            print(f"📝 [CREATE_SESSION] Persona 정보 포함: {persona_name}")
         
         # 클라이언트에서 전송한 user_id가 있으면 사용, 없으면 생성된 ID 사용
         final_user_id = session.user_id if session.user_id else current_user_id
+        
+        print(f"🎭 [CREATE_SESSION] 사용할 페르소나: {persona_name}")
         
         # 페르소나 정보를 포함하여 세션 생성
         session_id = await create_chat_session_with_persona(
             final_user_id, 
             session_name,
             {
-                "persona_name": session.persona_name,
-                "persona_age": session.persona_age,
-                "persona_mbti": session.persona_mbti,
-                "persona_job": session.persona_job,
-                "persona_personality": session.persona_personality,
-                "persona_image": session.persona_image
+                "persona_name": persona_name,
+                "persona_age": session.persona_age or "28",
+                "persona_mbti": session.persona_mbti or "ENFP",
+                "persona_job": session.persona_job or "마케팅 담당자",
+                "persona_personality": session.persona_personality or "밝고 친근한",
+                "persona_image": session.persona_image or "woman1.webp"
             }
         )
         if session_id:
@@ -1465,120 +1475,56 @@ async def analyze_feedback(request: Request):
 # ====== 페르소나 정보 로드 함수 ======
 
 async def load_persona_context(session_id: str) -> str:
-    "세션 정보 또는 JSON 파일에서 페르소나 정보를 로드하여 컨텍스트 생성"
+    """새로운 프로토콜 기반 페르소나 컨텍스트 로드"""
     try:
-        # 기본 페르소나 이름 (세션에서 가져오거나 기본값)
-        persona_name = ""
+        # 새로운 페르소나 관리자 사용
+        from personas.persona_manager import get_persona_manager
+        from personas.prompt_protocol import read_system_text
         
-        # 세션에서 페르소나 정보 가져오기 시도
-        if MONGODB_AVAILABLE:
-            try:
-                from database import get_session_info
-                session_info = await get_session_info(session_id)
-                if session_info and session_info.get('persona_name'):
-                    persona_name = session_info.get('persona_name')
-                    print(f" [PERSONA] 세션에서 페르소나 정보 가져옴: {persona_name}")
-            except Exception as e:
-                print(f" [PERSONA] 세션 정보 가져오기 실패: {e}")
+        manager = get_persona_manager()
+        active_persona = manager.get_active_persona()
         
-        # JSON 파일에서 상세 페르소나 정보 로드
-        persona_file = f"src/personas/{persona_name}.json"
-        
-        if os.path.exists(persona_file):
-            print(f" [PERSONA] JSON 파일에서 페르소나 로드: {persona_file}")
+        if active_persona:
+            persona_id = active_persona["id"]
+            print(f"🎭 [PERSONA] 활성 페르소나: {active_persona['name']} ({persona_id})")
             
-            with open(persona_file, 'r', encoding='utf-8') as f:
-                persona_data = json.load(f)
-            
-            # 상세한 페르소나 컨텍스트 생성
-            personality_traits = ", ".join(persona_data.get('personality_traits', []))
-            hobbies = ", ".join(persona_data.get('lifestyle_hobbies', []))
-            interests = ", ".join(persona_data.get('activities_interests', []))
-            music_prefs = ", ".join(persona_data.get('cultural_preferences', {}).get('music', []))
-            
-            persona_context = f"""
-당신은 {persona_data.get('name', '')}입니다.
-
-기본 정보:
-- 이름: {persona_data.get('name', '')}
-- 나이: {2025 - int(persona_data.get('birth_date', '1997-09-15').split('-')[0])}세 (1997년생)
-- 거주지: {persona_data.get('residence', {}).get('city', '')} {persona_data.get('residence', {}).get('district', '')}
-- 직업: {persona_data.get('job', '')}
-- MBTI: {persona_data.get('mbti', '')}
-
-성격 특성:
-{personality_traits}
-
-취미와 관심사:
-- 라이프스타일: {hobbies}
-- 활동: {interests}
-- 음악 취향: {music_prefs}
-- 미디어: {", ".join(persona_data.get('media_preferences', {}).get('netflix', []))}
-
-좋아하는 것들:
-- 연애 스타일: {", ".join(persona_data.get('romance_preferences', {}).get('likes', []))}
-- 데이트 활동: {", ".join(persona_data.get('romance_preferences', {}).get('date_activities', []))}
-
-싫어하는 것들:
-- {", ".join(persona_data.get('romance_preferences', {}).get('dislikes', []))}
-- 관심 없는 분야: {", ".join(persona_data.get('low_interest_domains', [])[:3])} 등
-"""
-            
-            print(f" [PERSONA] 상세 페르소나 컨텍스트 생성 완료: {len(persona_context)}자")
-            return persona_context
-            
+            # 시스템 텍스트 로드
+            system_text = read_system_text(persona_id)
+            print(f"✅ [PERSONA] 시스템 텍스트 로드 완료: {len(system_text)}자")
+            return system_text
         else:
-            print(f"[PERSONA] JSON 파일 없음: {persona_file}")
-            # 기본 설정
-            return """
-당신은 AI 파트너입니다.
-
-기본 정보:
-- 이름: 
-- 나이: 
-- 거주지: 
-- 직업: 
-- MBTI: 
-
-성격 특성:
-- 
-
-대화 스타일:
-- 존댓말 사용
-- 상대방 이야기에 관심과 공감
-
-"""
+            print(f"⚠️ [PERSONA] 활성 페르소나 없음 - 기본값 사용")
+            return "당신은 친근하고 따뜻한 AI 파트너입니다."
             
     except Exception as e:
-        print(f" [PERSONA] 페르소나 정보 로드 실패: {e}")
+        print(f"❌ [PERSONA] 페르소나 정보 로드 실패: {e}")
         return "당신은 친근하고 따뜻한 AI 파트너입니다."
 
 # ====== AI 응답 생성 함수 ======
 
 async def generate_ai_response(user_message: str, session_id: str) -> str:
-    "OpenAI GPT-4o-mini를 사용하여 AI 응답 생성"
+    """새로운 프로토콜 기반 AI 응답 생성"""
     try:
         if not OPENAI_API_KEY:
             print("❌ [AI_RESPONSE] OpenAI API 키가 없음 - 오류 반환")
             raise HTTPException(status_code=503, detail="OpenAI API key not configured")
         
-        # 페르소나 정보 로드 (JSON 파일에서)
-        persona_context = await load_persona_context(session_id)
+        # 새로운 프로토콜 시스템 사용
+        from personas.prompt_protocol import compile_messages, apply_style_constraints
+        from personas.persona_manager import get_persona_manager
         
-        # 시스템 프롬프트 설정
-        system_prompt = f"""{persona_context}
-
-대화 규칙:
-1. 응답은 1-2문장으로 간결하게 유지
-2. 첫 데이트 상황임을 고려하여 편안하고 조용한 대화
-3. 이모지는 삭제
-
-
-상황: 지금은 카페에서의 첫 데이트 중이며, 상대방을 편안하게 만들고 즐거운 대화를 나누는 것이 목표입니다."""
-
+        # 활성 페르소나 가져오기
+        manager = get_persona_manager()
+        active_persona = manager.get_active_persona()
+        persona_id = active_persona["id"] if active_persona else "이서아"
+        
         print(f"🤖 [AI_RESPONSE] OpenAI API 호출 시작...")
         print(f"📝 [AI_RESPONSE] 사용자 메시지: {user_message}")
         print(f"👤 [AI_RESPONSE] 세션 ID: {session_id}")
+        print(f"🎭 [AI_RESPONSE] 페르소나: {persona_id}")
+        
+        # 메시지 컴파일
+        messages = compile_messages(user_message, persona_id)
         
         # OpenAI API 호출
         from openai import OpenAI
@@ -1587,11 +1533,8 @@ async def generate_ai_response(user_message: str, session_id: str) -> str:
         response = await asyncio.to_thread(
             client.chat.completions.create,
             model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_message}
-            ],
-            max_tokens=150,
+            messages=messages,
+            max_tokens=80,
             temperature=0.8,
             frequency_penalty=0.3,
             presence_penalty=0.3
@@ -1601,11 +1544,16 @@ async def generate_ai_response(user_message: str, session_id: str) -> str:
         print(f"✅ [AI_RESPONSE] OpenAI 응답 생성 완료: {len(ai_response)}자")
         print(f"💬 [AI_RESPONSE] AI 응답: {ai_response}")
         
-        return ai_response
+        # TTS 최적화 적용
+        final_response = apply_style_constraints(user_message, ai_response)
+        print(f"🎤 [AI_RESPONSE] TTS 최적화 완료: {final_response}")
+        
+        return final_response
         
     except Exception as e:
         print(f"❌ [AI_RESPONSE] OpenAI API 호출 실패: {e}")
-        raise HTTPException(status_code=500, detail=f"AI response generation failed: {str(e)}")
+        print(f"📋 [AI_RESPONSE] 상세 오류: {e}")
+        return "안녕하세요. 편안하신가요?"
 
 # ====== 음성 분석 API 엔드포인트 ======
 
@@ -2111,6 +2059,9 @@ async def analyze_expression_api(request: Request):
         if result.get('success', False):
             score_result = _expression_analyzer.get_expression_score(result)
             result['score'] = score_result
+            # probabilities 필드가 있으면 유지
+            if 'probabilities' not in result:
+                result['probabilities'] = {}
             print(f"✅ [EXPRESSION] 분석 완료: {result.get('expression', 'Unknown')} (신뢰도: {result.get('confidence', 0):.3f})")
         else:
             print(f"❌ [EXPRESSION] 분석 실패: {result.get('error', 'Unknown error')}")

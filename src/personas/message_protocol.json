@@ -1,0 +1,102 @@
+{
+  "schema_version": "1.0",
+  "message_types": [
+    "SystemMessage",
+    "AIMessage",
+    "HumanMessage",
+    "ToolMessage"
+  ],
+  "contracts": {
+    "token_balance": {
+      "target_tokens_per_turn": 60,
+      "max_tokens_per_turn": 80,
+      "match_user_ratio": 0.2
+    },
+    "length": {
+      "max_sentences": 2,
+      "max_question_per_turn": 1,
+      "max_question_words": 10
+    },
+    "style": {
+      "allow_emojis": false,
+      "allow_kakao_tics": false,
+      "tts_mode": true,
+      "punctuation_policy": "use '.' and ','; forbid '...', multiple '!!' or '??'",
+      "speech_level": "polite_formal"
+    }
+  },
+  "formats": {
+    "SystemMessage": {
+      "role": "system",
+      "content_file": "system_{persona_name}.txt"
+    },
+    "HumanMessage": {
+      "role": "user",
+      "content": "초반 강조 프롬프트를 넣을 수 있습니다. 예) '오늘은 편안하지만 단정한 톤으로, 질문은 한 번만.'"
+    },
+    "AIMessage": {
+      "role": "assistant",
+      "constraints": [
+        "1~2문장",
+        "사용자 길이 ±20% 토큰 매칭",
+        "최대 80토큰",
+        "최대 1개 짧은 질문"
+      ],
+      "content_example": "처음 뵙겠습니다. 자리는 편안하신가요?"
+    },
+    "ToolMessage": {
+      "role": "tool",
+      "format": {
+        "name": "string(툴이름)",
+        "args": "object(JSON 인자, 선택)",
+        "result": "object|string(툴 결과)"
+      },
+      "example_call": {
+        "name": "search_places",
+        "args": {
+          "query": "성수 카페 추천 2곳"
+        }
+      },
+      "example_result": {
+        "result": [
+          {
+            "name": "카페A",
+            "distance_min": 8
+          },
+          {
+            "name": "카페B",
+            "distance_min": 12
+          }
+        ]
+      }
+    }
+  },
+  "examples": [
+    {
+      "type": "SystemMessage",
+      "content_ref": "system_{persona_name}.txt"
+    },
+    {
+      "type": "HumanMessage",
+      "content": "안녕하세요. 오늘 날씨가 꽤 덥네요."
+    },
+    {
+      "type": "AIMessage",
+      "content": "안녕하세요. 시원한 음료로 시작해 보실래요?"
+    },
+    {
+      "type": "ToolMessage",
+      "content": {
+        "name": "search_places",
+        "args": {
+          "query": "근처 조용한 카페 1곳"
+        }
+      }
+    }
+  ],
+  "context": {
+    "location": "카페",
+    "situation": "소개팅 첫 만남",
+    "mood": "약간 어색함"
+  }
+}
