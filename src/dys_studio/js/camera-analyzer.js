@@ -1,4 +1,28 @@
 /**
+ * Design-only stub: MediaPipe/Camera logic removed.
+ * Keeps public API surface so UI can load without errors.
+ */
+
+let analyzerClient = null;
+let analyzerStarted = false;
+
+class CameraAnalyzer {
+  constructor() {}
+  async start() { console.log('[ANALYZER] (noop) start'); }
+  stop() { console.log('[ANALYZER] (noop) stop'); }
+  cleanup() { console.log('[ANALYZER] (noop) cleanup'); }
+  ingestRealtimeScores() {}
+}
+
+function scheduleAnalyzerStart() {
+  console.log('[ANALYZER] (noop) scheduleAnalyzerStart');
+}
+
+window.CameraAnalyzer = CameraAnalyzer;
+window.analyzerClient = analyzerClient;
+window.analyzerStarted = analyzerStarted;
+window.scheduleAnalyzerStart = scheduleAnalyzerStart;
+/**
  * 카메라 분석기 모듈
  * 실시간 카메라 스트림 분석 및 피드백 처리를 담당
  */
