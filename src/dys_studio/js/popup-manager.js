@@ -27,7 +27,10 @@ function closeExpressionDetails() {
 }
 
 function updateExpressionPopupContent() {
-    if (!currentExpressionData) {
+    // 전역 변수에서 표정 데이터 가져오기
+    const expressionData = window.currentExpressionData || currentExpressionData;
+    
+    if (!expressionData) {
         document.getElementById('expression-main-value').textContent = '데이터 없음';
         document.getElementById('expression-confidence-value').textContent = '0%';
         document.getElementById('expression-probabilities').innerHTML = '<div class="no-data">표정 분석 데이터가 없습니다.</div>';
@@ -36,8 +39,8 @@ function updateExpressionPopupContent() {
     }
     
     // 주요 정보 업데이트
-    const expression = currentExpressionData.expression;
-    const confidence = currentExpressionData.confidence;
+    const expression = expressionData.expression;
+    const confidence = expressionData.confidence;
     document.getElementById('expression-main-value').textContent = getExpressionKoreanName(expression);
     // 신뢰도: 0.xxx (xx.x%) 형식으로 표시 (0-1 범위로 정규화)
     let normalizedConfidence = confidence;
@@ -64,12 +67,15 @@ function updateExpressionPopupContent() {
 function updateExpressionProbabilities() {
     const probabilitiesDiv = document.getElementById('expression-probabilities');
     
-    if (!currentExpressionData?.probabilities) {
+    // 전역 변수에서 표정 데이터 가져오기
+    const expressionData = window.currentExpressionData || currentExpressionData;
+    
+    if (!expressionData?.probabilities) {
         probabilitiesDiv.innerHTML = '<div class="no-data">확률 데이터가 없습니다.</div>';
         return;
     }
     
-    const probabilities = currentExpressionData.probabilities;
+    const probabilities = expressionData.probabilities;
     let html = '';
     
     Object.entries(probabilities).forEach(([expression, probability]) => {
@@ -108,11 +114,14 @@ function getExpressionKoreanName(expression) {
 }
 
 function generateExpressionExplanation() {
-    if (!currentExpressionData) {
+    // 전역 변수에서 표정 데이터 가져오기
+    const expressionData = window.currentExpressionData || currentExpressionData;
+    
+    if (!expressionData) {
         return '표정 분석 데이터가 없습니다.';
     }
     
-    const { expression, confidence, score } = currentExpressionData;
+    const { expression, confidence, score } = expressionData;
     const koreanExpression = getExpressionKoreanName(expression);
     
     // 신뢰도 정규화

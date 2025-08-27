@@ -13,6 +13,20 @@ console.log('[MEDIAPIPE-DIRECT] 📦 MediaPipe 라이브러리 상태:', {
   DrawingUtils: typeof DrawingUtils
 });
 
+// 라이브러리 로딩 상태 상세 확인
+const missingLibraries = [];
+if (typeof FaceMesh === 'undefined') missingLibraries.push('FaceMesh');
+if (typeof Camera === 'undefined') missingLibraries.push('Camera');
+if (typeof ControlUtils === 'undefined') missingLibraries.push('ControlUtils');
+if (typeof DrawingUtils === 'undefined') missingLibraries.push('DrawingUtils');
+
+if (missingLibraries.length > 0) {
+  console.error('[MEDIAPIPE-DIRECT] ❌ 누락된 MediaPipe 라이브러리:', missingLibraries);
+  console.error('[MEDIAPIPE-DIRECT] 🔍 CDN 로딩 실패 가능성 - 네트워크 상태 확인 필요');
+} else {
+  console.log('[MEDIAPIPE-DIRECT] ✅ 모든 MediaPipe 라이브러리 로드 완료');
+}
+
 // 전역 변수
 let faceMesh = null;
 let isProcessing = false;
@@ -45,6 +59,13 @@ async function initializeMediaPipe() {
     if (typeof FaceMesh === 'undefined') {
         console.error('[MEDIAPIPE-DIRECT] ❌ FaceMesh 라이브러리가 로드되지 않음');
         console.error('[MEDIAPIPE-DIRECT] 📋 CDN 로드 상태 확인 필요');
+        console.error('[MEDIAPIPE-DIRECT] 🔍 현재 전역 상태:', {
+            FaceMesh: typeof FaceMesh,
+            Camera: typeof Camera,
+            ControlUtils: typeof ControlUtils,
+            DrawingUtils: typeof DrawingUtils,
+            windowKeys: Object.keys(window).filter(key => key.includes('MediaPipe') || key.includes('media'))
+        });
         throw new Error('MediaPipe FaceMesh 라이브러리가 로드되지 않았습니다');
     }
     
