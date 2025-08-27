@@ -24,16 +24,24 @@ function checkMediaPipeLibraries() {
     
     console.log('[MEDIAPIPE-CHECK] 📦 MediaPipe 라이브러리 로딩 상태:', libraries);
     
+    // FaceMesh만 필수로 체크, 나머지는 선택
+    const required = ['FaceMesh'];
     const missingLibraries = Object.entries(libraries)
-        .filter(([name, type]) => type === 'undefined')
+        .filter(([name, type]) => required.includes(name) && type === 'undefined')
         .map(([name]) => name);
     
     if (missingLibraries.length > 0) {
-        console.error('[MEDIAPIPE-CHECK] ❌ 누락된 MediaPipe 라이브러리:', missingLibraries);
+        console.error('[MEDIAPIPE-CHECK] ❌ 누락된 필수 MediaPipe 라이브러리:', missingLibraries);
         loadMediaPipeFallback();
         return false;
     } else {
-        console.log('[MEDIAPIPE-CHECK] ✅ 모든 MediaPipe 라이브러리 로드 완료');
+        const optionalMissing = Object.entries(libraries)
+            .filter(([name, type]) => !required.includes(name) && type === 'undefined')
+            .map(([name]) => name);
+        if (optionalMissing.length > 0) {
+            console.warn('[MEDIAPIPE-CHECK] ⚠️ 선택 라이브러리 누락(무시):', optionalMissing);
+        }
+        console.log('[MEDIAPIPE-CHECK] ✅ 필수 라이브러리(FaceMesh) 로드 완료');
         return true;
     }
 }
@@ -101,15 +109,23 @@ function checkAndLoadMediaPipeDirect() {
         'DrawingUtils': typeof DrawingUtils
     };
     
+    // FaceMesh만 필수, 나머지는 선택
+    const required = ['FaceMesh'];
     const missingLibraries = Object.entries(libraries)
-        .filter(([name, type]) => type === 'undefined')
+        .filter(([name, type]) => required.includes(name) && type === 'undefined')
         .map(([name]) => name);
     
     if (missingLibraries.length === 0) {
-        console.log('[STUDIO] ✅ MediaPipe 라이브러리 로딩 완료, 직접 모듈 로드 시작');
+        const optionalMissing = Object.entries(libraries)
+            .filter(([name, type]) => !required.includes(name) && type === 'undefined')
+            .map(([name]) => name);
+        if (optionalMissing.length > 0) {
+            console.warn('[STUDIO] ⚠️ 선택 라이브러리 누락(무시):', optionalMissing);
+        }
+        console.log('[STUDIO] ✅ 필수 라이브러리(FaceMesh) 로딩 완료, 직접 모듈 로드 시작');
         loadMediaPipeDirect();
     } else {
-        console.log('[STUDIO] ⏳ MediaPipe 라이브러리 로딩 대기 중...', missingLibraries);
+        console.log('[STUDIO] ⏳ FaceMesh 로딩 대기 중...', missingLibraries);
         setTimeout(checkAndLoadMediaPipeDirect, 1000);
     }
 }
