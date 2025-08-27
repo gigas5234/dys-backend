@@ -37,11 +37,8 @@ transformers>=4.30.0,<=4.33.0
 # ML Pipeline
 mlflow>=2.8.0  # 표정 분석기 모듈
 
-# Computer Vision
-opencv-python-headless==4.8.1.78  # OpenCV headless 버전 (GUI 없음)
-
-# MediaPipe (Real-time Face Analysis)
-mediapipe>=0.10.0  # 얼굴 랜드마크 감지 및 분석
+# Computer Vision (MediaPipe 제거에 따라 OpenCV도 임시 제거)
+# opencv-python-headless==4.8.1.78  # 필요 시 재추가
 
 # Disabled due to compatibility
 # ctranslate2==3.22.0  # 음성 분석 모듈 (libctranslate2 호환성 문제로 비활성화)
