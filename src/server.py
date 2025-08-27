@@ -81,7 +81,7 @@ if not VOICE_ANALYSIS_AVAILABLE:
         
         # OpenAI Whisper API 확인
         try:
-            import openai
+            from openai import OpenAI
             if os.getenv('OPENAI_API_KEY'):
                 print("✅ OpenAI Whisper API 사용 가능")
                 VOICE_ANALYSIS_AVAILABLE = True
@@ -134,10 +134,8 @@ except ImportError as e:
     print(f"⚠️ PyTorch 모듈 로드 실패: {e}")
 
 # OpenAI API 설정
-import openai
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 if OPENAI_API_KEY:
-    openai.api_key = OPENAI_API_KEY
     print("✅ OpenAI API 키 설정 완료")
 else:
     print("⚠️ OpenAI API 키가 설정되지 않았습니다")
@@ -833,7 +831,7 @@ async def startup_event():
     # 2. OpenAI Whisper API 확인 (faster-whisper 실패 시)
     if not stt_available:
         try:
-            import openai
+            from openai import OpenAI
             if os.getenv('OPENAI_API_KEY'):
                 print("✅ OpenAI Whisper API 사용 가능")
                 stt_available = True
@@ -1423,7 +1421,7 @@ async def chat_with_ai(request: Request):
         # 임시 AI 응답 (실제로는 AI 모델 호출)
         last_message = messages[-1]["parts"][0]["text"] if messages else ""
         
-        ai_response = f"안녕하세요! '{last_message}'에 대해 답변드리겠습니다. 현재는 테스트 모드입니다."
+        ai_response = f"처음 뵙겠습니다! '{last_message}'에 대해 답변드리겠습니다. 현재는 테스트 모드입니다."
         
         return {
             "response": ai_response,
@@ -1494,11 +1492,11 @@ async def load_persona_context(session_id: str) -> str:
             return system_text
         else:
             print(f"⚠️ [PERSONA] 활성 페르소나 없음 - 기본값 사용")
-            return "당신은 친근하고 따뜻한 AI 파트너입니다."
+            return "당신은 '이서아'입니다. 처음 뵙는 사람에게 정중하고 따뜻하게 대화하는 마케팅 담당자입니다."
             
     except Exception as e:
         print(f"❌ [PERSONA] 페르소나 정보 로드 실패: {e}")
-        return "당신은 친근하고 따뜻한 AI 파트너입니다."
+        return "당신은 '이서아'입니다. 처음 뵙는 사람에게 정중하고 따뜻하게 대화하는 마케팅 담당자입니다."
 
 # ====== AI 응답 생성 함수 ======
 
@@ -1553,7 +1551,7 @@ async def generate_ai_response(user_message: str, session_id: str) -> str:
     except Exception as e:
         print(f"❌ [AI_RESPONSE] OpenAI API 호출 실패: {e}")
         print(f"📋 [AI_RESPONSE] 상세 오류: {e}")
-        return "안녕하세요. 편안하신가요?"
+        return "처음 뵙겠습니다."
 
 # ====== 음성 분석 API 엔드포인트 ======
 

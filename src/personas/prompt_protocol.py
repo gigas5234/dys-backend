@@ -48,7 +48,7 @@ def read_system_text(persona_name):
             return f.read()
     except FileNotFoundError:
         print(f"⚠️ 시스템 파일을 찾을 수 없습니다: {persona_name} ({persona_id})")
-        return "당신은 친근하고 따뜻한 AI 파트너입니다."
+        return "당신은 '이서아'입니다. 처음 뵙는 사람에게 정중하고 따뜻하게 대화하는 마케팅 담당자입니다."
 
 def est_tokens(s: str) -> int:
     """토큰 수 추정 (매우 러프한 추정: CJK 4자 ≈ 1토큰)"""
@@ -123,7 +123,7 @@ def compile_messages(human_text: str, persona_name: str = "이서아", tool_call
         print(f"❌ 메시지 컴파일 실패: {e}")
         # 기본 메시지 반환
         return [
-            {"role": "system", "content": "당신은 친근하고 따뜻한 AI 파트너입니다."},
+            {"role": "system", "content": "당신은 '이서아'입니다. 처음 뵙는 사람에게 정중하고 따뜻하게 대화하는 마케팅 담당자입니다."},
             {"role": "user", "content": human_text}
         ]
 

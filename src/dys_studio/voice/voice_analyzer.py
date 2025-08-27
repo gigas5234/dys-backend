@@ -29,7 +29,7 @@ except ImportError:
 
 # OpenAI API 대안 추가
 try:
-    import openai
+    from openai import OpenAI
     OPENAI_AVAILABLE = True
 except ImportError:
     OPENAI_AVAILABLE = False
@@ -583,9 +583,12 @@ class VoiceAnalyzer:
                 torchaudio.save(temp_path, torch.tensor(audio_array).unsqueeze(0), 16000)
             
             try:
-                # OpenAI API 호출
+                # OpenAI API 호출 (새로운 클라이언트 방식)
+                from openai import OpenAI
+                client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+                
                 with open(temp_path, 'rb') as audio_file:
-                    response = openai.Audio.transcribe(
+                    response = client.audio.transcriptions.create(
                         model="whisper-1",
                         file=audio_file,
                         language="ko"
