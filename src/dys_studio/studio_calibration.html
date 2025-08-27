@@ -6,10 +6,10 @@
 <title>데연소 · Love Glass UI (피드백 고도화)</title>
     <link rel="stylesheet" href="styles/studio_calibration.css?v=20241223-24">
 <!-- MediaPipe 라이브러리 (CDN) -->
-<script src="https://unpkg.com/@mediapipe/camera_utils@0.3/camera_utils.js" crossorigin="anonymous"></script>
-<script src="https://unpkg.com/@mediapipe/control_utils@0.6/control_utils.js" crossorigin="anonymous"></script>
-<script src="https://unpkg.com/@mediapipe/drawing_utils@0.3/drawing_utils.js" crossorigin="anonymous"></script>
-<script src="https://unpkg.com/@mediapipe/face_mesh@0.4/face_mesh.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3/camera_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils@0.6/control_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils@0.3/drawing_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4/face_mesh.js" crossorigin="anonymous"></script>
 
 <!-- MediaPipe 라이브러리 로딩 상태 확인 및 대체 CDN -->
 <script>
@@ -43,10 +43,10 @@ function loadMediaPipeFallback() {
     console.warn('[MEDIAPIPE-FALLBACK] 🔄 대체 CDN에서 MediaPipe 라이브러리 로딩 시도...');
     
     const fallbackScripts = [
-        { src: 'https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3/camera_utils.js', name: 'Camera' },
-        { src: 'https://cdn.jsdelivr.net/npm/@mediapipe/control_utils@0.6/control_utils.js', name: 'ControlUtils' },
-        { src: 'https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils@0.3/drawing_utils.js', name: 'DrawingUtils' },
-        { src: 'https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4/face_mesh.js', name: 'FaceMesh' }
+        { src: 'https://unpkg.com/@mediapipe/camera_utils@0.3/camera_utils.js', name: 'Camera' },
+        { src: 'https://unpkg.com/@mediapipe/control_utils@0.6/control_utils.js', name: 'ControlUtils' },
+        { src: 'https://unpkg.com/@mediapipe/drawing_utils@0.3/drawing_utils.js', name: 'DrawingUtils' },
+        { src: 'https://unpkg.com/@mediapipe/face_mesh@0.4/face_mesh.js', name: 'FaceMesh' }
     ];
     
     fallbackScripts.forEach(script => {
@@ -64,7 +64,7 @@ function loadMediaPipeFallback() {
 
 // DOM 로드 완료 후 MediaPipe 라이브러리 상태 확인
 document.addEventListener('DOMContentLoaded', () => {
-    setTimeout(checkMediaPipeLibraries, 2000); // 2초 후 확인
+    setTimeout(checkMediaPipeLibraries, 5000); // 5초 후 확인 (더 긴 대기 시간)
 });
 </script>
 <!-- 기본 캘리브레이션 설정 모듈 -->
@@ -116,7 +116,7 @@ function checkAndLoadMediaPipeDirect() {
 
 // DOM 로드 완료 후 MediaPipe 직접 모듈 로드
 document.addEventListener('DOMContentLoaded', () => {
-    setTimeout(checkAndLoadMediaPipeDirect, 3000); // 3초 후 확인
+    setTimeout(checkAndLoadMediaPipeDirect, 8000); // 8초 후 확인 (MediaPipe 라이브러리 로딩 완료 대기)
 });
 </script>
 <!-- 카메라 분석기 모듈 -->
