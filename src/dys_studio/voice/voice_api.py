@@ -116,7 +116,6 @@ def fallback_stt_analysis(audio_array: np.ndarray, sr: int = 16000, elapsed_sec:
         
         # 2. OpenAI Whisper API 시도
         try:
-            import openai
             import tempfile
             import os
             import torchaudio
@@ -128,8 +127,12 @@ def fallback_stt_analysis(audio_array: np.ndarray, sr: int = 16000, elapsed_sec:
                     torchaudio.save(temp_path, torch.tensor(audio_array).unsqueeze(0), sr)
                 
                 try:
+                    # OpenAI API 호출 (새로운 클라이언트 방식)
+                    from openai import OpenAI
+                    client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+                    
                     with open(temp_path, 'rb') as audio_file:
-                        response = openai.Audio.transcribe(
+                        response = client.audio.transcriptions.create(
                             model="whisper-1",
                             file=audio_file,
                             language="ko"
