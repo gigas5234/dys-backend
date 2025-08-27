@@ -328,9 +328,44 @@ def get_supabase_config():
 @app.get("/api/websocket/config")
 def get_websocket_config():
     """WebSocket 서버 설정 정보 반환"""
-    # 환경변수에서 WebSocket 호스트 가져오기
-    ws_host = os.getenv("WEBSOCKET_HOST", "")
-    ws_port = os.getenv("WEBSOCKET_PORT", "8001")
+    try:
+        # 환경에 따른 WebSocket 설정
+        # GKE 환경 감지
+        is_gke = os.getenv('KUBERNETES_SERVICE_HOST') is not None
+        
+        if is_gke:
+            # GKE 환경 설정
+            config = {
+                "protocol": "wss",
+                "host": "34.64.136.237",  # GKE WebSocket 서버 IP
+                "port": 8001,
+                "environment": "gke"
+            }
+        else:
+            # 로컬/개발 환경 설정
+            config = {
+                "protocol": "ws",
+                "host": "localhost",
+                "port": 8001,
+                "environment": "local"
+            }
+        
+        return {
+            "success": True,
+            "config": config,
+            "message": "WebSocket 설정 정보"
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "config": {
+                "protocol": "ws",
+                "host": "localhost",
+                "port": 8001,
+                "environment": "fallback"
+            }
+        }
     
     return {
         "websocket_host": ws_host,
