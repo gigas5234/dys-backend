@@ -46,90 +46,17 @@ function clamp01To100(v) {
 }
 
 /**
- * 개인화된 꿀팁 생성 함수
- * @param {Object} metrics - 메트릭 데이터
+ * 개인화된 꿀팁 생성 함수 (UI-only mode)
+ * @param {Object} metrics - 메트릭 데이터 (현재 사용되지 않음)
  * @returns {Array} 꿀팁 배열
  */
 function generatePersonalizedTips(metrics) {
     const tips = [];
     
-    // 자세 관련 (실제 UI 점수 사용)
-    const postureElement = document.getElementById('posture-score');
-    const postureScore = postureElement ? parseInt(postureElement.textContent) : 60;
-    
-    if (postureScore < 70) {
-        if (postureScore < 50) {
-            tips.push("자세가 많이 나빠졌어요. 목을 곧게 펴고 어깨를 내려보세요.");
-        } else {
-            tips.push("자세를 조금 더 개선해보세요. 목을 곧게 펴고 어깨를 내려보세요.");
-        }
-    }
-    
-    // 어깨 자세 관련
-    if (metrics?.shoulderAnalysis) {
-        const shoulder = metrics.shoulderAnalysis;
-        
-        // details가 있는지 확인 후 접근
-        if (shoulder.details && shoulder.details.heightBalance < 70) {
-            tips.push("어깨 높이를 맞춰 균형잡힌 자세를 유지하세요.");
-        }
-        
-        if (shoulder.details && shoulder.details.slope < 70) {
-            tips.push("어깨를 수평으로 맞춰 삐딱한 자세를 교정하세요.");
-        }
-        
-        if (shoulder.details && shoulder.details.width < 70) {
-            tips.push("어깨를 자연스럽게 펴고 올바른 자세를 취하세요.");
-        }
-        
-        if (shoulder.details && shoulder.details.rotation < 70) {
-            tips.push("한쪽 어깨가 앞으로 나오지 않도록 주의하세요.");
-        }
-        
-        // details가 없으면 전체 점수로 판단
-        if (!shoulder.details && shoulder.shoulderPostureScore < 70) {
-            tips.push("어깨 자세를 개선해보세요.");
-        }
-    }
-    
-    // 시선 관련 (실제 UI 점수 사용)
-    const gazeElement = document.getElementById('gaze-score');
-    const gazeScore = gazeElement ? parseInt(gazeElement.textContent) : 60;
-    
-    if (gazeScore < 60) {
-        tips.push("화면 중앙을 응시하며 집중해보세요.");
-    }
-    
-    // 깜빡임 관련 (실제 UI 점수 사용)
-    const blinkElement = document.getElementById('blinking-score');
-    const blinkScore = blinkElement ? parseInt(blinkElement.textContent) : 80;
-    
-    if (blinkScore < 60) {
-        tips.push("자연스럽게 깜빡여 눈을 보호하세요.");
-    } else if (blinkScore < 80) {
-        tips.push("깜빡임이 조금 부족해요. 편안하게 깜빡여보세요.");
-    }
-    
-    // 미소 관련 (개인별 기준 적용)
-    if (metrics?.smileIntensity !== undefined && metrics?.personalBaseSmile !== undefined) {
-        const smileRatio = metrics.smileIntensity / metrics.personalBaseSmile;
-        
-        if (smileRatio < 0.7) {
-            tips.push("😊 표정이 평소보다 많이 딱딱해 보여요. 입꼬리를 살짝 올려보세요!");
-        } else if (smileRatio < 0.9) {
-            tips.push("😊 표정이 평소보다 조금 딱딱해 보여요. 자연스러운 미소를 연습해보세요!");
-        } else if (smileRatio > 1.3) {
-            tips.push("😊 표정이 평소보다 많이 밝아 보여요. 너무 과하지 않게 자연스럽게 유지해보세요!");
-        }
-    } else if (metrics?.smileIntensity < 30) {
-        // 개인별 기준이 없을 때 기존 방식 사용
-        tips.push("편안한 미소로 대화를 시작해보세요.");
-    }
-    
-    // 기본 꿀팁 (조건에 맞지 않을 때)
-    if (tips.length === 0) {
-        tips.push("훌륭한 자세입니다! 계속 유지해보세요.");
-    }
+    // UI-only mode: 기본적인 대화 팁 제공
+    tips.push("자연스럽고 편안한 대화를 나누어보세요.");
+    tips.push("상대방의 말에 집중하고 적절한 반응을 보여주세요.");
+    tips.push("명확하고 자신감 있는 목소리로 대화해보세요.");
     
     return tips.slice(0, 3); // 최대 3개까지만 표시
 }

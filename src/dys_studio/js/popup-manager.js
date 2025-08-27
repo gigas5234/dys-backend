@@ -3,12 +3,9 @@
  * 모든 상세 정보 팝업의 관리와 데이터 처리를 담당
  */
 
-// 전역 데이터 변수들
+// 전역 데이터 변수들 (UI-only mode)
 let currentExpressionData = null;
-let currentGazeData = null;
-let currentConcentrationData = null;
-let currentPostureData = null;
-let currentBlinkingData = null;
+// MediaPipe-related data variables removed for UI-only mode
 
 // ===== 표정 상세 정보 팝업 =====
 function showExpressionDetails() {
@@ -157,7 +154,7 @@ function generateExpressionExplanation() {
     return explanation;
 }
 
-// ===== 시선 안정성 상세 정보 팝업 =====
+// ===== 시선 안정성 상세 정보 팝업 (UI-only mode) =====
 function showGazeDetails() {
     const popup = document.getElementById('gaze-details-popup');
     if (popup) {
@@ -174,19 +171,12 @@ function closeGazeDetails() {
 }
 
 function updateGazePopupContent() {
-    if (!currentGazeData) {
-        document.getElementById('gaze-main-value').textContent = '데이터 없음';
-        document.getElementById('gaze-stability-value').textContent = '0%';
-        document.getElementById('gaze-landmarks').innerHTML = '<div class="no-data">시선 분석 데이터가 없습니다.</div>';
-        document.getElementById('gaze-criteria-text').innerHTML = '시선 분석 데이터가 없습니다.';
-        document.getElementById('gaze-explanation-text').innerHTML = '시선 분석 데이터가 없습니다.';
-        return;
-    }
-    
-    // 주요 정보 업데이트
-    const isFocused = currentGazeData.isFocused;
-    document.getElementById('gaze-main-value').textContent = isFocused ? '집중 중' : '분산됨';
-    document.getElementById('gaze-stability-value').textContent = `${currentGazeData.score}%`;
+    // UI-only mode: 기본 데이터 표시
+    document.getElementById('gaze-main-value').textContent = 'UI 모드';
+    document.getElementById('gaze-stability-value').textContent = '0%';
+    document.getElementById('gaze-landmarks').innerHTML = '<div class="no-data">시선 분석 기능이 비활성화되어 있습니다.</div>';
+    document.getElementById('gaze-criteria-text').innerHTML = '시선 분석 기능이 비활성화되어 있습니다.';
+    document.getElementById('gaze-explanation-text').innerHTML = '시선 분석 기능이 비활성화되어 있습니다.';
     
     // HTML 팝업 파일의 함수들 사용
     if (typeof window.updateGazeLandmarksInfo === 'function') {
@@ -200,17 +190,7 @@ function updateGazePopupContent() {
     }
 }
 
-// 시선 안정성 관련 함수들은 gaze-details-popup.html에서 관리
-
-// 시선 분석 요소 정보 업데이트 (HTML 팝업 파일의 함수 사용)
-function updateGazeFactorsInfo() {
-    // gaze-details-popup.html에 정의된 함수 사용
-    if (typeof window.updateGazeLandmarksInfo === 'function') {
-        window.updateGazeLandmarksInfo();
-    }
-}
-
-// ===== 집중도 상세 정보 팝업 =====
+// ===== 집중도 상세 정보 팝업 (UI-only mode) =====
 function showConcentrationDetails() {
     const popup = document.getElementById('concentration-details-popup');
     if (popup) {
@@ -227,19 +207,12 @@ function closeConcentrationDetails() {
 }
 
 function updateConcentrationPopupContent() {
-    if (!currentConcentrationData) {
-        document.getElementById('concentration-main-value').textContent = '데이터 없음';
-        document.getElementById('concentration-score-value').textContent = '0%';
-        document.getElementById('concentration-factors').innerHTML = '<div class="no-data">집중도 분석 데이터가 없습니다.</div>';
-        document.getElementById('concentration-criteria-text').innerHTML = '집중도 분석 데이터가 없습니다.';
-        document.getElementById('concentration-explanation-text').innerHTML = '집중도 분석 데이터가 없습니다.';
-        return;
-    }
-    
-    // 주요 정보 업데이트
-    const isFocused = currentConcentrationData.isFocused;
-    document.getElementById('concentration-main-value').textContent = isFocused ? '집중 중' : '분산됨';
-    document.getElementById('concentration-score-value').textContent = `${currentConcentrationData.score}%`;
+    // UI-only mode: 기본 데이터 표시
+    document.getElementById('concentration-main-value').textContent = 'UI 모드';
+    document.getElementById('concentration-score-value').textContent = '0%';
+    document.getElementById('concentration-factors').innerHTML = '<div class="no-data">집중도 분석 기능이 비활성화되어 있습니다.</div>';
+    document.getElementById('concentration-criteria-text').innerHTML = '집중도 분석 기능이 비활성화되어 있습니다.';
+    document.getElementById('concentration-explanation-text').innerHTML = '집중도 분석 기능이 비활성화되어 있습니다.';
     
     // HTML 팝업 파일의 함수들 사용
     if (typeof window.updateConcentrationFactorsInfo === 'function') {
@@ -253,11 +226,7 @@ function updateConcentrationPopupContent() {
     }
 }
 
-// 집중도 관련 함수들은 concentration-details-popup.html에서 관리
-
-// 집중도 관련 함수들은 concentration-details-popup.html에서 관리
-
-// ===== 깜빡임 상세 정보 팝업 =====
+// ===== 깜빡임 상세 정보 팝업 (UI-only mode) =====
 function showBlinkingDetails() {
     const popup = document.getElementById('blinking-details-popup');
     if (popup) {
@@ -393,20 +362,12 @@ function getLowestCategory(categories) {
 }
 
 function updateBlinkingPopupContent() {
-    if (!currentBlinkingData) {
-        document.getElementById('blinking-main-value').textContent = '데이터 없음';
-        document.getElementById('blinking-rate-value').textContent = '0회/분';
-        document.getElementById('blinking-factors').innerHTML = '<div class="no-data">깜빡임 분석 데이터가 없습니다.</div>';
-        document.getElementById('blinking-criteria-text').innerHTML = '깜빡임 분석 데이터가 없습니다.';
-        document.getElementById('blinking-explanation-text').innerHTML = '깜빡임 분석 데이터가 없습니다.';
-        return;
-    }
-    
-    // 주요 정보 업데이트
-    const blinkStatus = currentBlinkingData.earResult.blinkStatus;
-    const blinkRatePerMinute = currentBlinkingData.earResult.blinkRatePerMinute || 0;
-    document.getElementById('blinking-main-value').textContent = getBlinkStatusKorean(blinkStatus);
-    document.getElementById('blinking-rate-value').textContent = `${blinkRatePerMinute}회/분`;
+    // UI-only mode: 기본 데이터 표시
+    document.getElementById('blinking-main-value').textContent = 'UI 모드';
+    document.getElementById('blinking-rate-value').textContent = '0회/분';
+    document.getElementById('blinking-factors').innerHTML = '<div class="no-data">깜빡임 분석 기능이 비활성화되어 있습니다.</div>';
+    document.getElementById('blinking-criteria-text').innerHTML = '깜빡임 분석 기능이 비활성화되어 있습니다.';
+    document.getElementById('blinking-explanation-text').innerHTML = '깜빡임 분석 기능이 비활성화되어 있습니다.';
     
     // HTML 팝업 파일의 함수들 사용
     if (typeof window.updateBlinkingFactorsInfo === 'function') {
@@ -420,20 +381,7 @@ function updateBlinkingPopupContent() {
     }
 }
 
-function getBlinkStatusKorean(status) {
-    const statusMap = {
-        'open': '눈 뜸',
-        'blinking': '깜빡임',
-        'closed': '눈 감음'
-    };
-    return statusMap[status] || status;
-}
-
-// 깜빡임 관련 함수들은 blinking-details-popup.html에서 관리
-
-// 깜빡임 관련 함수들은 blinking-details-popup.html에서 관리
-
-// ===== 자세 상세 정보 팝업 =====
+// ===== 자세 상세 정보 팝업 (UI-only mode) =====
 function showPostureDetails() {
     const popup = document.getElementById('posture-details-popup');
     if (popup) {
@@ -450,24 +398,12 @@ function closePostureDetails() {
 }
 
 function updatePosturePopupContent() {
-    if (!currentPostureData) {
-        document.getElementById('posture-main-value').textContent = '데이터 없음';
-        document.getElementById('posture-score-value').textContent = '0%';
-        document.getElementById('posture-factors').innerHTML = '<div class="no-data">자세 분석 데이터가 없습니다.</div>';
-        document.getElementById('posture-criteria-text').innerHTML = '자세 분석 데이터가 없습니다.';
-        document.getElementById('posture-explanation-text').innerHTML = '자세 분석 데이터가 없습니다.';
-        return;
-    }
-    
-    // 주요 정보 업데이트
-    const score = currentPostureData.score;
-    let postureStatus = '보통';
-    if (score >= 80) postureStatus = '우수';
-    else if (score >= 60) postureStatus = '양호';
-    else if (score < 40) postureStatus = '개선 필요';
-    
-    document.getElementById('posture-main-value').textContent = postureStatus;
-    document.getElementById('posture-score-value').textContent = `${score}%`;
+    // UI-only mode: 기본 데이터 표시
+    document.getElementById('posture-main-value').textContent = 'UI 모드';
+    document.getElementById('posture-score-value').textContent = '0%';
+    document.getElementById('posture-factors').innerHTML = '<div class="no-data">자세 분석 기능이 비활성화되어 있습니다.</div>';
+    document.getElementById('posture-criteria-text').innerHTML = '자세 분석 기능이 비활성화되어 있습니다.';
+    document.getElementById('posture-explanation-text').innerHTML = '자세 분석 기능이 비활성화되어 있습니다.';
     
     // HTML 팝업 파일의 함수들 사용
     if (typeof window.updatePostureFactorsInfo === 'function') {
@@ -480,10 +416,6 @@ function updatePosturePopupContent() {
         window.updatePostureExplanationInfo();
     }
 }
-
-// 자세 관련 함수들은 posture-details-popup.html에서 관리
-
-// 자세 관련 함수들은 posture-details-popup.html에서 관리
 
 // ===== 팝업 외부 클릭 시 닫기 =====
 document.addEventListener('click', function(event) {
