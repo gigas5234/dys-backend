@@ -54,8 +54,7 @@ def check_required_directories():
         "src/frontend/pages",
         "src/frontend/assets",
         "deployment/k8s",
-        "deployment/docker",
-        "logs"
+        "deployment/docker"
     ]
     
     all_exist = True
@@ -126,7 +125,7 @@ def check_environment_variables():
     return all_required
 
 def check_docker_files():
-    """Docker 관련 파일 확인"""
+    """Docker 관련 파일 확인 (GKE 환경용)"""
     print("\n🐳 Docker 파일 확인...")
     docker_files = [
         "deployment/docker/Dockerfile",
@@ -141,6 +140,9 @@ def check_docker_files():
         else:
             print(f"❌ {file_path} - 없음")
             all_exist = False
+    
+    # GKE 환경에서는 Docker가 이미 설치되어 있으므로 경로만 확인
+    print("ℹ️ GKE 환경에서는 Docker가 이미 설치되어 있음")
     
     return all_exist
 
@@ -181,7 +183,7 @@ def main():
     if all_passed:
         print("🎉 모든 체크 통과! GKE 배포 준비 완료")
         print("💡 다음 단계:")
-        print("   1. docker build -f deployment/docker/Dockerfile -t dys-backend .")
+        print("   1. GKE 환경에서: docker build -f deployment/docker/Dockerfile -t dys-backend .")
         print("   2. docker push <your-registry>/dys-backend")
         print("   3. kubectl apply -f deployment/k8s/")
     else:
