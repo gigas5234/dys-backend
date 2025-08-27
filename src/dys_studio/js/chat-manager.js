@@ -50,31 +50,42 @@
         async createSession() {
             try {
                 const sessionName = this.personaName ? `${this.personaName}와의 데이트` : '새로운 데이트';
+                const requestBody = {
+                    session_name: sessionName,
+                    user_id: this.userId,
+                    email: this.email,
+                    persona_name: this.personaName,
+                    persona_age: this.personaAge,
+                    persona_mbti: this.personaMbti,
+                    persona_job: this.personaJob,
+                    persona_personality: this.personaPersonality,
+                    persona_image: this.personaImage
+                };
+                
+                console.log('🔄 [CHAT] 세션 생성 요청:', {
+                    url: `${this.apiBase}/api/chat/sessions`,
+                    body: requestBody
+                });
+                
                 const response = await fetch(`${this.apiBase}/api/chat/sessions`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({
-                        session_name: sessionName,
-                        user_id: this.userId,
-                        email: this.email,
-                        persona_name: this.personaName,
-                        persona_age: this.personaAge,
-                        persona_mbti: this.personaMbti,
-                        persona_job: this.personaJob,
-                        persona_personality: this.personaPersonality,
-                        persona_image: this.personaImage
-                    })
+                    body: JSON.stringify(requestBody)
                 });
 
+                console.log('📋 [CHAT] 세션 생성 응답 상태:', response.status);
+                
                 if (response.ok) {
                     const result = await response.json();
                     this.currentSessionId = result.session_id;
                     console.log('✅ [CHAT] 세션 생성 성공:', this.currentSessionId);
+                    console.log('📋 [CHAT] 세션 생성 응답:', result);
                     return true;
                 } else {
-                    console.error('❌ [CHAT] 세션 생성 실패:', response.status);
+                    const errorText = await response.text();
+                    console.error('❌ [CHAT] 세션 생성 실패:', response.status, errorText);
                     return false;
                 }
             } catch (error) {
@@ -199,6 +210,15 @@
             this.isSending = true;
             
             try {
+                // 세션이 없으면 자동으로 생성
+                if (!this.currentSessionId) {
+                    console.log('🔄 [CHAT] 세션이 없어서 자동 생성 시도...');
+                    const sessionCreated = await this.createSession();
+                    if (!sessionCreated) {
+                        throw new Error('세션 생성에 실패했습니다.');
+                    }
+                }
+                
                 // UI echo
                 this.addBubble(text, 'me');
                 this.chatHistory.push({ role: 'user', content: text });

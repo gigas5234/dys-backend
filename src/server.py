@@ -595,6 +595,9 @@ async def send_message(
     # session_id가 null이거나 유효하지 않은 경우 처리
     if not session_id or session_id == "null":
         print("❌ [SEND_MESSAGE] 유효하지 않은 session_id")
+        print(f"📋 [SEND_MESSAGE] session_id 값: '{session_id}'")
+        print(f"📋 [SEND_MESSAGE] session_id 타입: {type(session_id)}")
+        print(f"📋 [SEND_MESSAGE] session_id 길이: {len(str(session_id)) if session_id else 0}")
         raise HTTPException(status_code=400, detail="Invalid session_id")
     
     # 인증 토큰 확인 (선택적)
