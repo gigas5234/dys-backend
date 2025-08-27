@@ -39,6 +39,14 @@ except ImportError as e:
     MONITORING_AVAILABLE = False
 
 
+# MediaPipe 환경 변수(서버/컨테이너에서 안정 동작) 설정 후 모듈 import (얼굴 랜드마크 감지)
+# - 서버는 기본 CPU 사용 권장
+# - glog 로그를 stderr로 출력
+os.environ.setdefault("GLOG_logtostderr", "1")
+os.environ.setdefault("MEDIAPIPE_DISABLE_GPU", "1")
+# 필요 시 TensorFlow 루그 레벨 완화
+os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "2")
+
 # MediaPipe 모듈 import (얼굴 랜드마크 감지)
 MEDIAPIPE_AVAILABLE = False
 try:
@@ -247,6 +255,77 @@ def health():
         "mongodb_available": MONGODB_AVAILABLE,
         "timestamp": time.time()
     }
+
+# 간단한 MediaPipe Self-Test (정적/합성 이미지 기반, CPU 전용)
+@app.get("/api/mediapipe/selftest")
+def mediapipe_selftest():
+    """서버에서 MediaPipe FaceMesh가 최소한 동작하는지 정적 이미지로 점검.
+    - 웹캠/실시간 프레임은 사용하지 않음
+    - 샘플 이미지가 없으면 합성 이미지를 생성하여 처리
+    """
+    try:
+        if not MEDIAPIPE_AVAILABLE:
+            return {"ok": False, "message": "MediaPipe not available on server"}
+
+        import cv2  # 지연 import
+
+        # 후보 경로에서 샘플 이미지 찾기
+        candidate_paths = [
+            "/app/sample.jpg",
+            str(BASE_DIR / "sample.jpg"),
+            str(BASE_DIR / "dys_studio" / "img" / "face_sample.jpg"),
+        ]
+
+        image = None
+        chosen_path = None
+        for p in candidate_paths:
+            if os.path.exists(p):
+                image = cv2.imread(p)
+                chosen_path = p
+                break
+
+        # 이미지가 없으면 합성(검은 배경에 원/사각형) 생성
+        if image is None:
+            image = (255 * (0.0 * 0 + 0)).astype if False else None  # placate linters
+            image = cv2.cvtColor(
+                cv2.merge([
+                    (255 * (0)).__class__(
+                        (480, 640),
+                    ),
+                    (255 * (0)).__class__((480, 640)),
+                    (255 * (0)).__class__((480, 640)),
+                ]),
+                cv2.COLOR_GRAY2BGR,
+            ) if False else None
+            # 간단히 zeros로 생성 후 도형 그리기
+            image = (0 * 0).__class__ if False else None
+            import numpy as np
+            image = np.zeros((480, 640, 3), dtype=np.uint8)
+            cv2.circle(image, (320, 200), 60, (255, 255, 255), -1)
+            cv2.rectangle(image, (280, 280), (360, 360), (200, 200, 200), -1)
+            chosen_path = "synthetic"
+
+        rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+
+        mp_face_mesh = mp.solutions.face_mesh
+        with mp_face_mesh.FaceMesh(
+            static_image_mode=True,
+            max_num_faces=1,
+            refine_landmarks=True,
+            min_detection_confidence=0.5,
+            min_tracking_confidence=0.5,
+        ) as fm:
+            out = fm.process(rgb)
+            num_faces = len(out.multi_face_landmarks or [])
+
+        return {
+            "ok": True,
+            "source": chosen_path,
+            "faces": num_faces,
+            "cpu_only": os.environ.get("MEDIAPIPE_DISABLE_GPU") == "1",
+        }
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
 
 # /webcam 엔드포인트 제거됨 - 사용하지 않음
 
