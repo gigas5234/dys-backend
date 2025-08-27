@@ -39,18 +39,15 @@
 </div>
 
 <script>
-// 시선 안정성 상세 정보 팝업 관련 함수들
+// 시선 안정성 상세 정보 팝업 관련 함수들 (UI-only mode)
 function updateGazeLandmarksInfo() {
     const landmarksDiv = document.getElementById('gaze-landmarks');
     
-    // 시선 분석에만 사용되는 MediaPipe FaceMesh 랜드마크 정보
+    // UI-only mode: 기본 정보 표시
     const landmarkInfo = [
-        { name: '왼쪽 눈 윤곽', value: '16개', description: '왼쪽 눈의 윤곽선을 구성하는 랜드마크' },
-        { name: '오른쪽 눈 윤곽', value: '16개', description: '오른쪽 눈의 윤곽선을 구성하는 랜드마크' },
-        { name: '왼쪽 눈썹', value: '10개', description: '왼쪽 눈썹의 윤곽선을 구성하는 랜드마크' },
-        { name: '오른쪽 눈썹', value: '10개', description: '오른쪽 눈썹의 윤곽선을 구성하는 랜드마크' },
-        { name: '눈동자 중심', value: '2개', description: '왼쪽/오른쪽 눈동자의 중심점' },
-        { name: '시선 추적용', value: '54개', description: '시선 방향과 안정성 분석에 사용되는 총 랜드마크' }
+        { name: '시선 분석', value: '비활성화', description: 'MediaPipe 기반 시선 분석 기능이 비활성화되어 있습니다.' },
+        { name: '눈 추적', value: '비활성화', description: '실시간 눈 추적 기능이 비활성화되어 있습니다.' },
+        { name: '안정성 측정', value: '비활성화', description: '시선 안정성 측정 기능이 비활성화되어 있습니다.' }
     ];
     
     let html = '';
@@ -72,19 +69,19 @@ function updateGazeCriteriaInfo() {
     
     const criteria = `
         <div class="criteria-section">
-            <h4>🎯 시선 안정성 평가 기준</h4>
+            <h4>🎯 시선 안정성 평가 기준 (UI-only mode)</h4>
             <ul>
-                <li><strong>점프 거리 (40%)</strong>: 눈동자 중심점의 급격한 이동 거리</li>
-                <li><strong>속도 (30%)</strong>: 눈동자 이동의 평균 속도 (픽셀/프레임)</li>
-                <li><strong>안정성 (30%)</strong>: 눈동자가 한 영역에 머무는 정도</li>
+                <li><strong>시선 분석 기능</strong>: MediaPipe 기반 시선 분석이 비활성화되어 있습니다.</li>
+                <li><strong>실시간 추적</strong>: 실시간 시선 추적 기능이 비활성화되어 있습니다.</li>
+                <li><strong>안정성 측정</strong>: 시선 안정성 측정 기능이 비활성화되어 있습니다.</li>
             </ul>
             
             <h4>👁️ 시선 분석 방법</h4>
             <ul>
-                <li><strong>눈 윤곽 추적</strong>: 32개 랜드마크로 눈의 위치와 크기 측정</li>
-                <li><strong>눈동자 중심 계산</strong>: 눈 윤곽 내부의 중심점 추정</li>
-                <li><strong>시선 방향 분석</strong>: 눈동자 중심의 화면 내 위치 변화 추적</li>
-                <li><strong>안정성 판단</strong>: 일정 시간 동안의 시선 변화량 계산</li>
+                <li><strong>MediaPipe FaceMesh</strong>: 468개 얼굴 랜드마크를 사용한 시선 분석</li>
+                <li><strong>눈 추적</strong>: 32개 눈 랜드마크를 통한 정확한 눈 위치 추적</li>
+                <li><strong>시선 방향</strong>: 눈동자 중심점을 통한 시선 방향 계산</li>
+                <li><strong>안정성 평가</strong>: 시선 변화량과 속도를 통한 안정성 측정</li>
             </ul>
             
             <h4>📊 점수 기준</h4>
@@ -104,37 +101,18 @@ function updateGazeCriteriaInfo() {
 function updateGazeExplanationInfo() {
     const explanationDiv = document.getElementById('gaze-explanation-text');
     
-    // 전역 변수에서 시선 데이터 가져오기
-    const gazeData = window.currentGazeData || currentGazeData;
-    
-    if (!gazeData) {
-        explanationDiv.innerHTML = '시선 분석 데이터가 없습니다.';
-        return;
-    }
-    
-    const { jumpDistance, velocity, isFocused, score } = gazeData;
-    
+    // UI-only mode: 기본 설명 표시
     let explanation = `<div class="explanation-section">`;
-    explanation += `<h4>📈 현재 분석 결과</h4>`;
+    explanation += `<h4>📈 현재 상태 (UI-only mode)</h4>`;
     explanation += `<ul>`;
-    explanation += `<li><strong>시선 상태</strong>: ${isFocused ? '집중 중' : '분산됨'}</li>`;
-    explanation += `<li><strong>점프 거리</strong>: ${(jumpDistance * 100).toFixed(2)}% (화면 대비)</li>`;
-    explanation += `<li><strong>이동 속도</strong>: ${velocity.toFixed(4)} (픽셀/프레임)</li>`;
-    explanation += `<li><strong>최종 점수</strong>: ${score}점</li>`;
+    explanation += `<li><strong>시선 분석</strong>: MediaPipe 기반 시선 분석이 비활성화되어 있습니다.</li>`;
+    explanation += `<li><strong>실시간 추적</strong>: 실시간 시선 추적 기능이 비활성화되어 있습니다.</li>`;
+    explanation += `<li><strong>안정성 측정</strong>: 시선 안정성 측정 기능이 비활성화되어 있습니다.</li>`;
+    explanation += `<li><strong>점수 계산</strong>: 실시간 점수 계산이 비활성화되어 있습니다.</li>`;
     explanation += `</ul>`;
     
-    // 점수 해석
-    if (score >= 90) {
-        explanation += `<p>🎯 <strong>매우 우수한 시선 안정성</strong>: 시선이 매우 안정적으로 유지되고 있습니다.</p>`;
-    } else if (score >= 70) {
-        explanation += `<p>🎯 <strong>우수한 시선 안정성</strong>: 시선이 안정적으로 유지되고 있습니다.</p>`;
-    } else if (score >= 50) {
-        explanation += `<p>🎯 <strong>보통 수준의 시선 안정성</strong>: 시선이 어느 정도 안정적입니다.</p>`;
-    } else if (score >= 30) {
-        explanation += `<p>🎯 <strong>개선이 필요한 시선 안정성</strong>: 시선이 다소 불안정합니다.</p>`;
-    } else {
-        explanation += `<p>🎯 <strong>매우 개선이 필요한 시선 안정성</strong>: 시선이 매우 불안정합니다.</p>`;
-    }
+    explanation += `<p>🎯 <strong>UI 디자인 모드</strong>: 현재 UI 디자인만 표시되고 있으며, 실제 시선 분석 기능은 비활성화되어 있습니다.</p>`;
+    explanation += `<p>💡 <strong>기능 활성화</strong>: MediaPipe 통합이 완료되면 실시간 시선 분석 기능이 활성화됩니다.</p>`;
     
     explanation += `</div>`;
     
