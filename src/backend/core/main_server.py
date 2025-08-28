@@ -62,13 +62,6 @@ def load_voice_models():
     except Exception as e:
         print(f"⚠️ 음성 분석 모듈 지연 로딩 실패: {e}")
         return False
-            except ImportError:
-                print("⚠️ Google Speech-to-Text API 미설치")
-            except Exception as e:
-                print(f"⚠️ Google Speech-to-Text API 설정 실패: {e}")
-        
-        if not VOICE_ANALYSIS_AVAILABLE:
-            print("❌ 모든 STT 방법 실패 - 음성 인식 기능 제한됨")
 
 # TTS 모듈 import
 try:
