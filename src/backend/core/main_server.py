@@ -140,6 +140,7 @@ app = FastAPI(title=APP_NAME)
 
 # 정적 파일 서빙 설정
 app.mount("/frontend", StaticFiles(directory=str(BASE_DIR / "src" / "frontend")), name="frontend")
+app.mount("/api/gke/frontend", StaticFiles(directory=str(BASE_DIR / "src" / "frontend")), name="api_gke_frontend")
 app.mount("/dys_studio", StaticFiles(directory=str(BASE_DIR / "src" / "frontend")), name="dys_studio")
 app.mount("/dys_studio/pages", StaticFiles(directory=str(BASE_DIR / "src" / "frontend" / "pages")), name="dys_studio_pages")
 app.mount("/dys_studio/assets", StaticFiles(directory=str(BASE_DIR / "src" / "frontend" / "assets")), name="dys_studio_assets")
@@ -211,6 +212,7 @@ def health():
 # /webcam 엔드포인트 제거됨 - 사용하지 않음
 
 @app.get("/frontend/video/{filename}")
+@app.get("/api/gke/frontend/video/{filename}")
 async def get_video(filename: str):
     """비디오 파일 직접 서빙"""
     video_path = BASE_DIR / "src" / "frontend" / "assets" / "videos" / filename
