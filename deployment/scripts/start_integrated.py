@@ -118,6 +118,12 @@ async def run_integrated_server():
         src_path = Path(__file__).parent.parent.parent / "src"
         sys.path.insert(0, str(src_path))
         
+        # 벡터 서비스 초기화 (선택적)
+        try:
+            await initialize_vector_service()
+        except Exception as e:
+            logger.warning(f"⚠️ 벡터 서비스 초기화 실패 (서버는 계속 실행됩니다): {e}")
+        
         # 통합 서버 매니저 import 및 실행
         from backend.core.server_manager import IntegratedServerManager
         
@@ -161,7 +167,6 @@ def main():
         logger.info("🎉 모든 준비 완료! 서버 시작...")
         
         # 통합 서버 실행 (벡터 서비스 초기화 포함)
-        await initialize_vector_service()
         asyncio.run(run_integrated_server())
         
     except KeyboardInterrupt:
