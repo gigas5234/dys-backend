@@ -49,6 +49,16 @@ html, body {
   font-family: 'Pretendard', 'Segoe UI', 'Malgun Gothic', sans-serif; 
   overflow: hidden;
 }
+
+/* 헤더 및 제목 요소들의 기본 마진 초기화 */
+header, h1, h2, h3, h4, h5, h6, p {
+  margin: 0;
+}
+
+/* 상단 헤더 특별 마진 초기화 */
+.top-header {
+  margin: 0;
+}
 body {
   background: var(--bg);
   position: relative;
@@ -549,6 +559,7 @@ section.body {
   align-items: center;
   justify-content: space-between;
   padding: 0 24px;
+  margin: 0; /* 마진 명시적 초기화 */
 }
 
 .top-header .logo {

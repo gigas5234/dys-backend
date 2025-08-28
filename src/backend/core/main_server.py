@@ -52,6 +52,15 @@ except ImportError as e:
     print(f"⚠️ 표정 분석 모듈 로드 실패: {e}")
     EXPRESSION_ANALYSIS_AVAILABLE = False
 
+# MediaPipe 분석 모듈 import
+try:
+    from ..services.analysis.mediapipe_analyzer import mediapipe_analyzer
+    MEDIAPIPE_ANALYSIS_AVAILABLE = True
+    print("✅ MediaPipe 분석 모듈 로드됨")
+except ImportError as e:
+    print(f"⚠️ MediaPipe 분석 모듈 로드 실패: {e}")
+    MEDIAPIPE_ANALYSIS_AVAILABLE = False
+
 # 음성 분석 모듈 import (지연 로딩으로 메모리 최적화)
 VOICE_ANALYSIS_AVAILABLE = False
 _voice_models_loaded = False
@@ -2594,6 +2603,79 @@ def get_expression_analyzer_status():
         
     except Exception as e:
         print(f"❌ [EXPRESSION] 상태 확인 실패: {e}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+@app.get("/api/mediapipe/status")
+def get_mediapipe_analyzer_status():
+    """MediaPipe 분석기 상태를 확인합니다."""
+    try:
+        if not MEDIAPIPE_ANALYSIS_AVAILABLE:
+            return {
+                "success": False,
+                "error": "MediaPipe analysis module not available",
+                "module_available": False
+            }
+        
+        return {
+            "success": True,
+            "module_available": True,
+            "is_initialized": mediapipe_analyzer.is_initialized,
+            "analysis_history_count": len(mediapipe_analyzer.analysis_history) if mediapipe_analyzer.analysis_history else 0
+        }
+        
+    except Exception as e:
+        print(f"❌ [MEDIAPIPE] 상태 확인 실패: {e}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+@app.post("/api/mediapipe/initialize")
+def initialize_mediapipe_analyzer():
+    """MediaPipe 분석기를 초기화합니다."""
+    try:
+        if not MEDIAPIPE_ANALYSIS_AVAILABLE:
+            return {
+                "success": False,
+                "error": "MediaPipe analysis module not available"
+            }
+        
+        success = mediapipe_analyzer.initialize()
+        return {
+            "success": success,
+            "is_initialized": mediapipe_analyzer.is_initialized,
+            "message": "MediaPipe 분석기 초기화 완료" if success else "MediaPipe 분석기 초기화 실패"
+        }
+        
+    except Exception as e:
+        print(f"❌ [MEDIAPIPE] 초기화 실패: {e}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+@app.get("/api/mediapipe/summary")
+def get_mediapipe_summary():
+    """MediaPipe 분석 결과 요약을 반환합니다."""
+    try:
+        if not MEDIAPIPE_ANALYSIS_AVAILABLE or not mediapipe_analyzer.is_initialized:
+            return {
+                "success": False,
+                "error": "MediaPipe analysis module not available or not initialized"
+            }
+        
+        summary = mediapipe_analyzer.get_analysis_summary()
+        return {
+            "success": True,
+            "summary": summary,
+            "timestamp": time.time()
+        }
+        
+    except Exception as e:
+        print(f"❌ [MEDIAPIPE] 요약 조회 실패: {e}")
         return {
             "success": False,
             "error": str(e)
