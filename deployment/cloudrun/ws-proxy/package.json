@@ -1,0 +1,19 @@
+{
+  "name": "ws-proxy",
+  "version": "1.0.0",
+  "private": true,
+  "main": "server.js",
+  "license": "MIT",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "http-proxy": "1.18.1"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
+
+
