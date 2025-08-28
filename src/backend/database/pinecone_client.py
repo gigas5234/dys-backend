@@ -9,7 +9,7 @@ import os
 import logging
 import asyncio
 from typing import List, Dict, Any, Optional, Tuple
-import pinecone
+from pinecone import Pinecone
 from datetime import datetime
 
 # 로깅 설정
@@ -20,6 +20,7 @@ class PineconeClient:
     """Pinecone Vector Database 클라이언트"""
     
     def __init__(self):
+        self.pc = None
         self.index = None
         self.index_name = "deyeonso"
         self.dimension = 1024  # llama-text-embed-v2 모델의 차원
@@ -28,7 +29,6 @@ class PineconeClient:
         
         # Pinecone 설정
         self.api_key = os.getenv("PINECONE_API_KEY")
-        self.environment = os.getenv("PINECONE_ENVIRONMENT", "gcp-starter")
         self.host = os.getenv("PINECONE_HOST", "https://deyeonso-if637zn.svc.aped-4627-b74a.pinecone.io")
         
         logger.info("🎯 Pinecone 클라이언트 초기화됨")
@@ -40,38 +40,50 @@ class PineconeClient:
                 logger.warning("⚠️ PINECONE_API_KEY가 설정되지 않았습니다. Pinecone 기능이 비활성화됩니다.")
                 return False
             
-            # Pinecone 초기화
-            pinecone.init(
-                api_key=self.api_key,
-                environment=self.environment
-            )
+            # 환경 변수에서 proxies 제거 (Pinecone 클라이언트 오류 방지)
+            original_proxies = os.environ.pop('HTTP_PROXY', None)
+            original_https_proxies = os.environ.pop('HTTPS_PROXY', None)
             
-            # 인덱스 확인 및 생성
-            if self.index_name not in pinecone.list_indexes():
-                logger.info(f"🔄 인덱스 '{self.index_name}' 생성 중...")
-                pinecone.create_index(
-                    name=self.index_name,
-                    dimension=self.dimension,
-                    metric=self.metric,
-                    spec=pinecone.ServerlessSpec(
-                        cloud="aws",
-                        region="us-east-1"
+            try:
+                # 새로운 Pinecone 클라이언트 초기화
+                self.pc = Pinecone(api_key=self.api_key)
+                
+                # 인덱스 확인 및 생성
+                existing_indexes = [index.name for index in self.pc.list_indexes()]
+                
+                if self.index_name not in existing_indexes:
+                    logger.info(f"🔄 인덱스 '{self.index_name}' 생성 중...")
+                    from pinecone import ServerlessSpec
+                    self.pc.create_index(
+                        name=self.index_name,
+                        dimension=self.dimension,
+                        metric=self.metric,
+                        spec=ServerlessSpec(
+                            cloud="aws", 
+                            region="us-east-1"
+                        )
                     )
-                )
-                logger.info(f"✅ 인덱스 '{self.index_name}' 생성 완료")
-            else:
-                logger.info(f"✅ 인덱스 '{self.index_name}' 이미 존재함")
-            
-            # 인덱스 연결
-            self.index = pinecone.Index(self.index_name)
-            self.is_initialized = True
-            
-            # 인덱스 통계 확인
-            stats = self.index.describe_index_stats()
-            logger.info(f"📊 인덱스 통계: {stats}")
-            
-            logger.info("✅ Pinecone 클라이언트 초기화 완료")
-            return True
+                    logger.info(f"✅ 인덱스 '{self.index_name}' 생성 완료")
+                else:
+                    logger.info(f"✅ 인덱스 '{self.index_name}' 이미 존재함")
+                
+                # 인덱스 연결
+                self.index = self.pc.Index(self.index_name)
+                self.is_initialized = True
+                
+                # 인덱스 통계 확인
+                stats = self.index.describe_index_stats()
+                logger.info(f"📊 인덱스 통계: {stats}")
+                
+                logger.info("✅ Pinecone 클라이언트 초기화 완료")
+                return True
+                
+            finally:
+                # 환경 변수 복원
+                if original_proxies:
+                    os.environ['HTTP_PROXY'] = original_proxies
+                if original_https_proxies:
+                    os.environ['HTTPS_PROXY'] = original_https_proxies
             
         except Exception as e:
             logger.error(f"❌ Pinecone 초기화 실패: {e}")

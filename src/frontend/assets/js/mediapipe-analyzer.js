@@ -40,17 +40,14 @@ class MediaPipeAnalyzer {
      */
     initializeBaseUrl() {
         // 웹소켓 베이스 URL 동적 구성
-        // 우선순위: window.WS_BASE_URL > (protocol + WEBSOCKET_HOST:WEBSOCKET_PORT) > localhost 대체
-        const fallbackHost = '34.64.136.237';
-        const protocol = (window.WS_PROTOCOL) ? window.WS_PROTOCOL : (location.protocol === 'https:' ? 'wss' : 'ws');
-        const host = window.WS_HOST || window.WEBSOCKET_HOST || fallbackHost;
-        const port = window.WS_PORT || window.WEBSOCKET_PORT || 8001;
-        const computedBase = `${protocol}://${host}:${port}`;
-        this.baseUrl = window.WS_BASE_URL || computedBase;
+        const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
+        const host = location.host;
+        
+        // Ingress 경로 기반 접근: /ws로 시작하는 경로는 포트 8001로 라우팅됨
+        this.baseUrl = `${protocol}://${host}/ws`;
         
         console.log("🔗 MediaPipe WebSocket URL:", this.baseUrl);
-        console.log("🔗 window.WS_BASE_URL:", window.WS_BASE_URL);
-        console.log("🔗 computedBase:", computedBase);
+        console.log("🔗 Location:", { protocol: location.protocol, host: location.host });
     }
     
     /**
@@ -58,8 +55,10 @@ class MediaPipeAnalyzer {
      */
     connect() {
         try {
-            // 랜드마크 데이터용 웹소켓
-            this.ws = new WebSocket(`${this.baseUrl}/ws/landmarks`);
+            // 랜드마크 데이터용 웹소켓 (Ingress를 통한 경로 기반 라우팅)
+            const landmarksUrl = `${this.baseUrl}/landmarks`;
+            console.log("🔗 연결 시도:", landmarksUrl);
+            this.ws = new WebSocket(landmarksUrl);
             
             this.ws.onopen = () => {
                 console.log("🔗 MediaPipe 랜드마크 웹소켓 연결됨");
@@ -77,10 +76,13 @@ class MediaPipeAnalyzer {
             
             this.ws.onerror = (error) => {
                 console.error("❌ MediaPipe 랜드마크 웹소켓 오류:", error);
+                console.error("❌ 연결 시도 URL:", landmarksUrl);
             };
             
-            // 분석 결과용 웹소켓
-            this.analysisWs = new WebSocket(`${this.baseUrl}/ws/analysis`);
+            // 분석 결과용 웹소켓 (Ingress를 통한 경로 기반 라우팅)
+            const analysisUrl = `${this.baseUrl}/analysis`;
+            console.log("🔗 연결 시도:", analysisUrl);
+            this.analysisWs = new WebSocket(analysisUrl);
             
             this.analysisWs.onopen = () => {
                 console.log("🔗 MediaPipe 분석 웹소켓 연결됨");
@@ -99,6 +101,7 @@ class MediaPipeAnalyzer {
             
             this.analysisWs.onerror = (error) => {
                 console.error("❌ MediaPipe 분석 웹소켓 오류:", error);
+                console.error("❌ 연결 시도 URL:", analysisUrl);
             };
             
         } catch (error) {

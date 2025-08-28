@@ -113,18 +113,27 @@ async function loadCalibrationPopup() {
         const html = await loadPopup('calibration-popup');
         if (html) {
             container.innerHTML = html;
-            console.log('✅ 캘리브레이션 팝업 로드 완료');
-        }
-    }
-}
-
-// 캘리브레이션 팝업 로드
-async function loadCalibrationPopup() {
-    const container = document.getElementById('calibration-popup-container');
-    if (container) {
-        const html = await loadPopup('calibration-popup');
-        if (html) {
-            container.innerHTML = html;
+            
+            // 팝업 로드 후 카메라 아이콘 경로 설정
+            setTimeout(() => {
+                const cameraIcon = document.getElementById('cameraIcon');
+                if (cameraIcon) {
+                    const serverUrl = window.serverUrl || "https://dys-phi.vercel.app/api/gke";
+                    const iconPath = `${serverUrl}/frontend/assets/images/icon/camera.webp`;
+                    cameraIcon.src = iconPath;
+                    console.log('✅ 카메라 아이콘 경로 설정:', iconPath);
+                    
+                    // 이미지 로드 실패 시 대체 처리
+                    cameraIcon.onerror = function() {
+                        console.warn('⚠️ 카메라 아이콘 로드 실패, 대체 이미지 시도');
+                        // 상대 경로로 재시도
+                        this.src = 'assets/images/icon/camera.webp';
+                    };
+                } else {
+                    console.warn('⚠️ cameraIcon 요소를 찾을 수 없습니다');
+                }
+            }, 100);
+            
             console.log('✅ 캘리브레이션 팝업 로드 완료');
         }
     }
