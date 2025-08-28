@@ -10,7 +10,14 @@ class MediaPipeAnalyzer {
         this.analysisWs = null;
         this.isConnected = false;
         this.isAnalysisConnected = false;
-        this.baseUrl = 'ws://localhost:8001';
+        // 웹소켓 베이스 URL 동적 구성
+        // 우선순위: window.WS_BASE_URL > (protocol + WEBSOCKET_HOST:WEBSOCKET_PORT) > localhost 대체
+        const fallbackHost = '34.64.136.237';
+        const protocol = (window.WS_PROTOCOL) ? window.WS_PROTOCOL : (location.protocol === 'https:' ? 'wss' : 'ws');
+        const host = window.WS_HOST || window.WEBSOCKET_HOST || fallbackHost;
+        const port = window.WS_PORT || window.WEBSOCKET_PORT || 8001;
+        const computedBase = `${protocol}://${host}:${port}`;
+        this.baseUrl = window.WS_BASE_URL || computedBase;
         
         // 분석 결과 저장
         this.currentAnalysis = {

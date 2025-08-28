@@ -1468,7 +1468,9 @@ document.querySelectorAll('.suggestion-tags .tag').forEach(tag => {
      
      // 비디오 파일 경로 설정 (캐시 방지를 위한 타임스탬프 추가)
      const timestamp = new Date().getTime();
-             const videoPath = `${window.serverUrl || 'https://dys-phi.vercel.app/api/gke'}/frontend/video/woman1_cafe.mp4?t=${timestamp}`;
+     const DEFAULT_API_BASE = window.API_BASE_URL || `http://${window.BACKEND_HOST || '34.64.136.237'}:8000`;
+     const apiBase = window.serverUrl || DEFAULT_API_BASE;
+     const videoPath = `${apiBase}/frontend/video/woman1_cafe.mp4?t=${timestamp}`;
      
      console.log('🎬 [VIDEO] 비디오 초기화 시작:', videoPath);
      
