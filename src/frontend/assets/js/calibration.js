@@ -35,7 +35,7 @@ function initializeCalibrationElements() {
  */
 async function checkUserCalibration() {
     try {
-        const response = await fetch(window.apiEndpoints?.user_check || `${window.serverUrl || 'https://dys-phi.vercel.app/api/gke'}/api/user/check`, {
+        const response = await fetch(window.apiEndpoints?.user_check || `${window.serverUrl || 'https://dys-phi.vercel.app/api/gke'}/user/check`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
@@ -74,7 +74,7 @@ async function checkUserCalibration() {
  */
 async function loadPersonalCalibration() {
     try {
-        const response = await fetch(`${window.serverUrl || 'https://dys-phi.vercel.app/api/gke'}/api/calibration/user/${window.userId}`);
+        const response = await fetch(`${window.serverUrl || 'https://dys-phi.vercel.app/api/gke'}/calibration/user/${window.userId}`);
         if (!response.ok) {
             throw new Error(`개인 캘리브레이션 로드 실패: ${response.status}`);
         }
