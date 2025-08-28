@@ -36,6 +36,8 @@
     <script src="assets/js/ui-utils.js?v=20241226-1"></script>
     <!-- 채팅 매니저 모듈 -->
     <script src="assets/js/chat-manager.js?v=20241226-1"></script>
+    <!-- 표정 분석 모듈 -->
+    <script src="assets/js/expression-analyzer.js?v=20241226-1"></script>
     
     <!-- 전역 함수 노출 -->
     <script>
@@ -49,7 +51,11 @@
         window.hideConfirmDialog = window.hideConfirmDialog || function() {
             console.log('[UI] 확인 팝업 숨김 (stub)');
         };
+        
+
     </script>
+    
+
 </head>
 <body>
 
@@ -60,6 +66,7 @@
 <div id="initial-guide-popup-container"></div>
 <div id="confirm-popup-container"></div>
 <div id="camera-warning-popup-container"></div>
+
 
 <!-- 캘리브레이션 팝업은 popup-loader.js에서 동적으로 로드됨 -->
  

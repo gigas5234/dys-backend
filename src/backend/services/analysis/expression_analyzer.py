@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-실시간 표정 분석기 - MediaPipe + PyTorch ViT 모델 통합
+실시간 표정 분석기 - MLflow PyTorch 모델 통합
 """
 
 import torch
@@ -10,7 +10,8 @@ from PIL import Image
 import base64
 import io
 import os
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List, Tuple
+import logging
 
 # 새로운 구조에 맞게 import 경로 수정
 import sys
@@ -26,7 +27,7 @@ except ImportError:
     print("⚠️ MLflow 없음 - PyTorch 직접 로드 방식 사용")
 
 class ExpressionAnalyzer:
-    """MediaPipe와 PyTorch ViT 모델을 통합한 실시간 표정 분석기"""
+    """MLflow PyTorch 모델을 사용한 실시간 표정 분석기"""
     
     def __init__(self):
         self.model = None
@@ -35,12 +36,10 @@ class ExpressionAnalyzer:
             'happy', 'sad', 'angry', 'surprised', 'fearful', 'disgusted', 'neutral', 'contempt'
         ]
         self.is_initialized = False
+        self.logger = logging.getLogger(__name__)
         
     def _ensure_vit_runtime_compat(self):
-        """Transformers 버전/가중치 불일치로 인한 런타임 오류를 예방하기 위한 호환성 패치.
-        - ViTSelfAttention 모듈에 dropout 속성이 없으면 추가
-        - config에 필요한 필드가 없으면 기본값으로 추가
-        """
+        """Transformers 버전/가중치 불일치로 인한 런타임 오류를 예방하기 위한 호환성 패치."""
         try:
             import torch.nn as nn
         except Exception:
@@ -71,10 +70,10 @@ class ExpressionAnalyzer:
                         p = 0.0
                     try:
                         m.dropout = nn.Dropout(p)
-                        print(f"🔧 ViTSelfAttention.dropout 추가(p={p})")
+                        self.logger.info(f"🔧 ViTSelfAttention.dropout 추가(p={p})")
                     except Exception:
                         m.dropout = nn.Identity()
-                        print("🔧 ViTSelfAttention.dropout=Identity()로 대체")
+                        self.logger.info("🔧 ViTSelfAttention.dropout=Identity()로 대체")
             return m
         
         # 하위 모듈 순회하며 패치 적용
@@ -82,24 +81,12 @@ class ExpressionAnalyzer:
             for name, module in self.model.named_modules():
                 patch_module(module)
         except Exception as e:
-            print(f"⚠️ ViT 호환성 패치 중 경고: {e}")
+            self.logger.warning(f"⚠️ ViT 호환성 패치 중 경고: {e}")
         
     def initialize(self):
         """모델을 초기화합니다."""
         try:
-            print("🤖 표정 분석기 초기화 시작...")
-            
-            # 모델 파일 경로들 (Google Storage에서 다운로드된 .pth 파일)
-            model_file_paths = [
-                # Google Storage에서 다운로드된 파일
-                os.path.join(os.path.dirname(__file__), "models", "data", "model.pth"),
-                # 서버 실행 디렉토리 기준
-                os.path.join(os.getcwd(), "src", "backend", "models", "ml_models", "data", "model.pth"),
-                os.path.join(os.getcwd(), "backend", "models", "ml_models", "data", "model.pth"),
-                # 절대 경로
-                "/workspace/app/src/backend/models/ml_models/data/model.pth",
-                "/usr/src/app/src/backend/models/ml_models/data/model.pth"
-            ]
+            self.logger.info("🤖 표정 분석기 초기화 시작...")
             
             # MLflow 모델 경로들 (우선순위 순서)
             mlflow_paths = [
@@ -118,15 +105,14 @@ class ExpressionAnalyzer:
             
             model_loaded = False
             
-            # 1. MLflow 모델 로드 시도 (우선)
+            # MLflow 모델 로드 시도
             if MLFLOW_AVAILABLE:
-                print("🔄 MLflow 모델 로딩 시도 중...")
+                self.logger.info("🔄 MLflow 모델 로딩 시도 중...")
                 for model_path in mlflow_paths:
                     try:
-                        print(f"📁 MLflow 모델 경로 시도: {os.path.abspath(model_path)}")
+                        self.logger.info(f"📁 MLflow 모델 경로 시도: {os.path.abspath(model_path)}")
                         if os.path.exists(model_path) and os.path.exists(os.path.join(model_path, "MLmodel")):
-                            print("🔄 MLflow 모델 로딩 중...")
-                            import mlflow.pytorch
+                            self.logger.info("🔄 MLflow 모델 로딩 중...")
                             
                             # MLflow 모델 로드 (CPU 매핑으로 CUDA 호환성 문제 해결)
                             self.model = mlflow.pytorch.load_model(model_path, map_location='cpu')
@@ -134,31 +120,39 @@ class ExpressionAnalyzer:
                             # ViT 모델 호환성 패치 적용
                             self._ensure_vit_runtime_compat()
                             
-                            print(f"✅ MLflow 모델 로드 완료: {model_path}")
-                            print(f"📊 모델 정보: {type(self.model)}")
+                            self.logger.info(f"✅ MLflow 모델 로드 완료: {model_path}")
+                            self.logger.info(f"📊 모델 정보: {type(self.model)}")
                             model_loaded = True
                             self.is_initialized = True
                             break
                         else:
-                            print(f"⚠️ MLflow 모델 파일 없음: {model_path}")
-                            print(f"   - 디렉토리 존재: {os.path.exists(model_path)}")
-                            print(f"   - MLmodel 파일 존재: {os.path.exists(os.path.join(model_path, 'MLmodel'))}")
+                            self.logger.warning(f"⚠️ MLflow 모델 파일 없음: {model_path}")
+                            self.logger.warning(f"   - 디렉토리 존재: {os.path.exists(model_path)}")
+                            self.logger.warning(f"   - MLmodel 파일 존재: {os.path.exists(os.path.join(model_path, 'MLmodel'))}")
                     except Exception as e:
-                        print(f"⚠️ MLflow 모델 경로 실패: {model_path}")
-                        print(f"   - 오류: {e}")
+                        self.logger.warning(f"⚠️ MLflow 모델 경로 실패: {model_path}")
+                        self.logger.warning(f"   - 오류: {e}")
                         import traceback
                         traceback.print_exc()
                         continue
             else:
-                print("⚠️ MLflow가 사용 불가능 - PyTorch 직접 로드로 진행")
+                self.logger.warning("⚠️ MLflow가 사용 불가능 - PyTorch 직접 로드로 진행")
             
-            # 2. PyTorch 직접 로드 시도 (.pth 파일)
+            # PyTorch 직접 로드 시도 (.pth 파일)
             if not model_loaded:
+                model_file_paths = [
+                    os.path.join(os.path.dirname(__file__), "models", "data", "model.pth"),
+                    os.path.join(os.getcwd(), "src", "backend", "models", "ml_models", "data", "model.pth"),
+                    os.path.join(os.getcwd(), "backend", "models", "ml_models", "data", "model.pth"),
+                    "/workspace/app/src/backend/models/ml_models/data/model.pth",
+                    "/usr/src/app/src/backend/models/ml_models/data/model.pth"
+                ]
+                
                 for model_file in model_file_paths:
                     try:
-                        print(f"📁 PyTorch 모델 파일 시도: {os.path.abspath(model_file)}")
+                        self.logger.info(f"📁 PyTorch 모델 파일 시도: {os.path.abspath(model_file)}")
                         if os.path.exists(model_file):
-                            print("🔄 PyTorch 모델 로딩 중...")
+                            self.logger.info("🔄 PyTorch 모델 로딩 중...")
                             
                             # transformers 모델인 경우 처리
                             try:
@@ -169,33 +163,34 @@ class ExpressionAnalyzer:
                                 if hasattr(self.model, 'config'):
                                     if not hasattr(self.model.config, 'output_attentions'):
                                         self.model.config.output_attentions = False
-                                        print("🔧 output_attentions 속성 추가")
+                                        self.logger.info("🔧 output_attentions 속성 추가")
                                     if not hasattr(self.model.config, 'output_hidden_states'):
                                         self.model.config.output_hidden_states = False
-                                        print("🔧 output_hidden_states 속성 추가")
+                                        self.logger.info("🔧 output_hidden_states 속성 추가")
                                     if not hasattr(self.model.config, 'use_return_dict'):
                                         self.model.config.use_return_dict = True
-                                        print("🔧 use_return_dict 속성 추가")
+                                        self.logger.info("🔧 use_return_dict 속성 추가")
                                 
-                                print(f"✅ PyTorch 모델 로드 완료: {model_file}")
+                                self.logger.info(f"✅ PyTorch 모델 로드 완료: {model_file}")
                                 model_loaded = True
+                                self.is_initialized = True
                                 break
                             except Exception as pytorch_error:
-                                print(f"⚠️ 일반 PyTorch 로드 실패: {pytorch_error}")
+                                self.logger.warning(f"⚠️ 일반 PyTorch 로드 실패: {pytorch_error}")
                                 
                                 # transformers 모델로 시도
                                 try:
-                                    print("🔄 Transformers 모델로 재시도...")
+                                    self.logger.info("🔄 Transformers 모델로 재시도...")
                                     
                                     # Transformers 라이브러리가 있는 경우 실제 모델 로드
                                     try:
                                         from transformers import ViTForImageClassification, ViTConfig
-                                        print("✅ Transformers 라이브러리 확인됨")
+                                        self.logger.info("✅ Transformers 라이브러리 확인됨")
                                         
                                         # 실제 모델 파일에서 로드
                                         # 먼저 저장된 모델 타입 확인
                                         model_dict = torch.load(model_file, map_location='cpu')
-                                        print(f"🔍 모델 딕셔너리 키: {list(model_dict.keys())}")
+                                        self.logger.info(f"🔍 모델 딕셔너리 키: {list(model_dict.keys())}")
                                         
                                         # 호환 가능한 ViT 설정으로 모델 생성
                                         try:
@@ -256,20 +251,20 @@ class ExpressionAnalyzer:
                                             # strict=False로 호환되지 않는 키 무시
                                             missing_keys, unexpected_keys = self.model.load_state_dict(cleaned_state_dict, strict=False)
                                             if missing_keys:
-                                                print(f"⚠️ 누락된 키: {len(missing_keys)}개")
+                                                self.logger.warning(f"⚠️ 누락된 키: {len(missing_keys)}개")
                                             if unexpected_keys:
-                                                print(f"⚠️ 예상치 못한 키: {len(unexpected_keys)}개")
+                                                self.logger.warning(f"⚠️ 예상치 못한 키: {len(unexpected_keys)}개")
                                         else:
                                             # 직접 모델 객체인 경우
                                             self.model = model_dict
                                         
-                                        print(f"✅ ViT 모델 로드 완료: {model_file}")
+                                        self.logger.info(f"✅ ViT 모델 로드 완료: {model_file}")
                                         model_loaded = True
                                         self.is_initialized = True
                                         break
                                         
                                     except ImportError:
-                                        print("⚠️ Transformers 라이브러리 없음 - 더미 모델 생성")
+                                        self.logger.warning("⚠️ Transformers 라이브러리 없음 - 더미 모델 생성")
                                         # 개발용 더미 모델
                                         import torch.nn as nn
                                         
@@ -291,76 +286,53 @@ class ExpressionAnalyzer:
                                                 return Output(logits)
                                         
                                         self.model = DummyExpressionModel()
-                                        print(f"⚠️ 더미 표정 분석 모델 생성 (개발용): {model_file}")
+                                        self.logger.warning(f"⚠️ 더미 표정 분석 모델 생성 (개발용): {model_file}")
                                         model_loaded = True
                                         self.is_initialized = True
                                         break
                                     
                                 except Exception as transformers_error:
-                                    print(f"⚠️ Transformers 모델 로드도 실패: {transformers_error}")
+                                    self.logger.warning(f"⚠️ Transformers 모델 로드도 실패: {transformers_error}")
                                     continue
-                                    
                     except Exception as e:
-                        print(f"⚠️ 모델 파일 처리 실패: {model_file} - {e}")
-                    continue
+                        self.logger.warning(f"⚠️ PyTorch 모델 파일 실패: {model_file}")
+                        self.logger.warning(f"   - 오류: {e}")
+                        continue
             
             if not model_loaded:
-                print("❌ 모든 모델 경로에서 모델을 찾을 수 없습니다.")
-                print("⚠️ 표정 분석기 초기화 실패 - 모델 파일 없음")
-                print("🔍 확인된 경로들:")
-                for path in model_file_paths + mlflow_paths:
-                    print(f"   - {os.path.abspath(path)} (존재: {os.path.exists(path)})")
+                self.logger.error("❌ 모든 모델 로드 시도 실패")
                 return False
             
-            # GPU 설정 및 상세 정보 출력
-            cuda_available = torch.cuda.is_available()
-            print(f"🖥️ CUDA 지원 상태: {cuda_available}")
-            
-            if cuda_available:
-                print(f"🎮 GPU 개수: {torch.cuda.device_count()}")
-                print(f"🎮 현재 GPU: {torch.cuda.current_device()}")
-                print(f"🎮 GPU 이름: {torch.cuda.get_device_name(0)}")
-                print(f"🎮 GPU 메모리: {torch.cuda.get_device_properties(0).total_memory / 1024**3:.1f} GB")
-                print(f"🎮 CUDA 버전: {torch.version.cuda}")
-            else:
-                print("⚠️ CUDA가 지원되지 않는 환경입니다. CPU를 사용합니다.")
-                
-            self.device = torch.device('cuda' if cuda_available else 'cpu')
-            print(f"🖥️ 사용 디바이스: {self.device}")
-            
-            # 모델을 GPU로 이동
-            if cuda_available:
-                self.model = self.model.to(self.device)
-                print("✅ 모델을 GPU로 이동 완료")
-            else:
-                print("💻 CPU 모드로 모델 실행")
-            
             # 모델을 평가 모드로 설정
-            # 런타임 호환성 패치 적용 후 eval
-            self._ensure_vit_runtime_compat()
             self.model.eval()
-            print("✅ 모델을 평가 모드로 설정")
             
-            self.is_initialized = True
-            print("✅ 표정 분석기 초기화 완료!")
+            # CUDA 사용 가능 여부 확인 및 설정
+            if torch.cuda.is_available():
+                self.device = torch.device('cuda')
+                self.model = self.model.to(self.device)
+                self.logger.info("🚀 CUDA 사용 가능 - GPU 가속 활성화")
+            else:
+                self.device = torch.device('cpu')
+                self.logger.info("💻 CPU 모드로 실행")
             
+            self.logger.info("✅ 표정 분석기 초기화 완료")
             return True
             
         except Exception as e:
-            print(f"❌ 표정 분석기 초기화 실패: {e}")
+            self.logger.error(f"❌ 표정 분석기 초기화 실패: {e}")
             import traceback
             traceback.print_exc()
             return False
-    
+
     def preprocess_image(self, image_data: str) -> Optional[torch.Tensor]:
-        """Base64 이미지 데이터를 전처리합니다."""
+        """이미지를 모델 입력 형식으로 전처리합니다."""
         try:
             # Base64 디코딩
             if image_data.startswith('data:image'):
                 # data:image/jpeg;base64, 형태 제거
                 image_data = image_data.split(',')[1]
             
-            # 이미지 디코딩
+            # Base64 디코딩
             image_bytes = base64.b64decode(image_data)
             image = Image.open(io.BytesIO(image_bytes))
             
@@ -368,209 +340,167 @@ class ExpressionAnalyzer:
             if image.mode != 'RGB':
                 image = image.convert('RGB')
             
-            # 크기 조정 (224x224)
+            # 리사이즈 (224x224)
             image = image.resize((224, 224), Image.Resampling.LANCZOS)
             
-            # NumPy 배열로 변환
-            image_array = np.array(image).astype(np.float32)
+            # numpy 배열로 변환
+            image_array = np.array(image)
             
-            # 정규화 (0-255 -> 0-1)
-            image_array = image_array / 255.0
+            # 정규화 (0-1 범위)
+            image_array = image_array.astype(np.float32) / 255.0
             
-            # ImageNet 정규화 (평균, 표준편차)
-            mean = np.array([0.485, 0.456, 0.406])
-            std = np.array([0.229, 0.224, 0.225])
-            
-            # 채널별 정규화
-            for i in range(3):
-                image_array[:, :, i] = (image_array[:, :, i] - mean[i]) / std[i]
-            
-            # 텐서로 변환 및 차원 조정 (HWC -> CHW)
-            image_tensor = torch.from_numpy(image_array).permute(2, 0, 1)
+            # PyTorch 텐서로 변환
+            image_tensor = torch.from_numpy(image_array).permute(2, 0, 1)  # HWC -> CHW
             
             # 배치 차원 추가
             image_tensor = image_tensor.unsqueeze(0)
             
+            # 디바이스로 이동
+            image_tensor = image_tensor.to(self.device)
+            
             return image_tensor
             
         except Exception as e:
-            print(f"❌ 이미지 전처리 실패: {e}")
+            self.logger.error(f"❌ 이미지 전처리 실패: {e}")
             return None
-    
+
     def analyze_expression(self, image_data: str) -> Dict[str, Any]:
         """이미지에서 표정을 분석합니다."""
-        if not self.is_initialized:
-            print("❌ 표정 분석기가 초기화되지 않았습니다.")
-            return {
-                'success': False,
-                'error': 'Expression analyzer not initialized'
-            }
-        
         try:
+            if not self.is_initialized:
+                self.logger.error("❌ 모델이 초기화되지 않았습니다")
+                return {
+                    'success': False,
+                    'error': 'Model not initialized',
+                    'expressions': {},
+                    'dominant_expression': None,
+                    'confidence': 0.0
+                }
+            
             # 이미지 전처리
             image_tensor = self.preprocess_image(image_data)
             if image_tensor is None:
                 return {
                     'success': False,
-                    'error': 'Image preprocessing failed'
+                    'error': 'Image preprocessing failed',
+                    'expressions': {},
+                    'dominant_expression': None,
+                    'confidence': 0.0
                 }
             
-            # GPU로 이동
-            if self.device.type == 'cuda':
-                image_tensor = image_tensor.to(self.device)
-            
-            # 모델 config 속성 재확인 (런타임 안전장치)
-            if hasattr(self.model, 'config'):
-                if not hasattr(self.model.config, 'output_attentions'):
-                    self.model.config.output_attentions = False
-                if not hasattr(self.model.config, 'output_hidden_states'):
-                    self.model.config.output_hidden_states = False
-                if not hasattr(self.model.config, 'use_return_dict'):
-                    self.model.config.use_return_dict = True
-            
-            # 추론
+            # 모델 추론
             with torch.no_grad():
-                # 추론 직전에도 호환성 패치 재확인
-                self._ensure_vit_runtime_compat()
-                output = self.model(image_tensor)
-            
-            # 결과 처리
-            if hasattr(output, 'logits'):
-                logits = output.logits
+                outputs = self.model(image_tensor)
+                
+                # logits 추출
+                if hasattr(outputs, 'logits'):
+                    logits = outputs.logits
+                else:
+                    logits = outputs
+                
+                # 소프트맥스 적용하여 확률 계산
                 probabilities = torch.softmax(logits, dim=1)
                 
-                # 결과 추출
-                probs = probabilities[0].cpu().numpy()
-                predicted_class = torch.argmax(probabilities, dim=1).cpu().numpy()[0]
-                confidence = probabilities.max().cpu().numpy()
+                # CPU로 이동하여 numpy로 변환
+                probabilities = probabilities.cpu().numpy()[0]
                 
-                # 표정 카테고리 매핑
-                expression = self.expression_categories[predicted_class]
+                # 결과 구성
+                expressions = {}
+                for i, category in enumerate(self.expression_categories):
+                    expressions[category] = float(probabilities[i])
                 
-                # 결과 반환
-                result = {
+                # 가장 높은 확률의 표정 찾기
+                dominant_idx = np.argmax(probabilities)
+                dominant_expression = self.expression_categories[dominant_idx]
+                confidence = float(probabilities[dominant_idx])
+                
+                return {
                     'success': True,
-                    'expression': expression,
-                    'confidence': float(confidence),
-                    'predicted_class': int(predicted_class),
-                    'probabilities': {
-                        cat: float(prob) for cat, prob in zip(self.expression_categories, probs)
-                    },
-                    'all_probabilities': probs.tolist()
+                    'expressions': expressions,
+                    'dominant_expression': dominant_expression,
+                    'confidence': confidence,
+                    'probabilities': probabilities.tolist()
                 }
                 
-                print(f"🎭 표정 분석 결과: {expression} (신뢰도: {confidence:.3f})")
-                return result
-            
         except Exception as e:
-            print(f"❌ 표정 분석 실패: {e}")
+            self.logger.error(f"❌ 표정 분석 실패: {e}")
             import traceback
             traceback.print_exc()
             return {
                 'success': False,
-                'error': str(e)
+                'error': str(e),
+                'expressions': {},
+                'dominant_expression': None,
+                'confidence': 0.0
             }
-    
-    def get_expression_score(self, expression_result: Dict[str, Any]) -> Dict[str, Any]:
-        """표정 분석 결과를 점수로 변환합니다."""
-        if not expression_result.get('success', False):
+
+    def analyze_expression_batch(self, image_data_list: List[str]) -> List[Dict[str, Any]]:
+        """여러 이미지의 표정을 일괄 분석합니다."""
+        results = []
+        for image_data in image_data_list:
+            result = self.analyze_expression(image_data)
+            results.append(result)
+        return results
+
+    def get_expression_summary(self, analysis_results: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """여러 분석 결과를 종합하여 요약합니다."""
+        try:
+            if not analysis_results:
+                return {
+                    'success': False,
+                    'error': 'No analysis results',
+                    'summary': {}
+                }
+            
+            # 성공한 결과만 필터링
+            successful_results = [r for r in analysis_results if r.get('success', False)]
+            
+            if not successful_results:
+                return {
+                    'success': False,
+                    'error': 'No successful analysis results',
+                    'summary': {}
+                }
+            
+            # 각 표정별 평균 확률 계산
+            expression_sums = {category: 0.0 for category in self.expression_categories}
+            expression_counts = {category: 0 for category in self.expression_categories}
+            
+            for result in successful_results:
+                expressions = result.get('expressions', {})
+                for category, probability in expressions.items():
+                    expression_sums[category] += probability
+                    expression_counts[category] += 1
+            
+            # 평균 계산
+            expression_averages = {}
+            for category in self.expression_categories:
+                if expression_counts[category] > 0:
+                    expression_averages[category] = expression_sums[category] / expression_counts[category]
+                else:
+                    expression_averages[category] = 0.0
+            
+            # 가장 많이 나타난 표정 찾기
+            dominant_expression = max(expression_averages.items(), key=lambda x: x[1])
+            
             return {
-                'score': 0,
-                'label': '분석 실패',
-                'details': expression_result.get('error', 'Unknown error')
+                'success': True,
+                'summary': {
+                    'expression_averages': expression_averages,
+                    'dominant_expression': dominant_expression[0],
+                    'dominant_confidence': dominant_expression[1],
+                    'total_analyses': len(successful_results),
+                    'success_rate': len(successful_results) / len(analysis_results)
+                }
             }
-        
-        expression = expression_result['expression']
-        confidence = expression_result['confidence']
-        
-        # 표정별 점수 매핑 (개선된 점수 시스템)
-        expression_scores = {
-            'happy': 95,      # 매우 높은 점수
-            'neutral': 85,    # 높은 점수 (중립적이지만 긍정적)
-            'surprised': 75,  # 긍정적 점수
-            'sad': 45,        # 중간 점수
-            'angry': 25,      # 낮은 점수
-            'fearful': 30,    # 낮은 점수
-            'disgusted': 20,  # 매우 낮은 점수
-            'contempt': 35    # 낮은 점수
-        }
-        
-        # 기본 점수
-        base_score = expression_scores.get(expression, 60)
-        
-        # 신뢰도에 따른 점수 조정 (신뢰도가 높을수록 점수 보너스)
-        confidence_bonus = 1.0 + (confidence - 0.5) * 0.4  # 신뢰도 50% 이상에서 보너스
-        adjusted_score = int(base_score * confidence_bonus)
-        
-        # 점수 범위 제한 (최소 20점 보장)
-        final_score = max(20, min(100, adjusted_score))
-        
-        # 라벨 생성 (개선된 라벨 시스템)
-        if final_score >= 85:
-            label = "매우 긍정적"
-        elif final_score >= 70:
-            label = "긍정적"
-        elif final_score >= 50:
-            label = "중립적"
-        elif final_score >= 30:
-            label = "부정적"
-        else:
-            label = "매우 부정적"
-        
-        return {
-            'score': final_score,
-            'label': label,
-            'expression': expression,
-            'confidence': confidence,
-            'base_score': base_score,
-            'confidence_bonus': confidence_bonus,
-            'expression_scores': expression_scores,
-            'details': f"{expression} 표정 (신뢰도: {confidence:.2f}, 기본점수: {base_score}, 최종점수: {final_score})"
-        }
+            
+        except Exception as e:
+            self.logger.error(f"❌ 표정 분석 요약 실패: {e}")
+            return {
+                'success': False,
+                'error': str(e),
+                'summary': {}
+            }
 
 # 전역 인스턴스
 expression_analyzer = ExpressionAnalyzer()
-
-def initialize_expression_analyzer():
-    """표정 분석기를 초기화합니다."""
-    return expression_analyzer.initialize()
-
-def analyze_expression_from_image(image_data: str) -> Dict[str, Any]:
-    """이미지에서 표정을 분석합니다."""
-    return expression_analyzer.analyze_expression(image_data)
-
-def get_expression_score_from_result(expression_result: Dict[str, Any]) -> Dict[str, Any]:
-    """표정 분석 결과를 점수로 변환합니다."""
-    return expression_analyzer.get_expression_score(expression_result)
-
-if __name__ == "__main__":
-    print("🚀 표정 분석기 테스트")
-    print("=" * 50)
-    
-    # 초기화
-    if initialize_expression_analyzer():
-        print("✅ 표정 분석기 초기화 성공!")
-        
-        # 테스트 이미지 생성 (더미)
-        print("\n🧪 더미 이미지로 테스트...")
-        dummy_image = np.random.randint(0, 255, (224, 224, 3), dtype=np.uint8)
-        dummy_image_pil = Image.fromarray(dummy_image)
-        
-        # PIL 이미지를 Base64로 변환
-        buffer = io.BytesIO()
-        dummy_image_pil.save(buffer, format='JPEG')
-        dummy_image_base64 = base64.b64encode(buffer.getvalue()).decode()
-        
-        # 표정 분석
-        result = analyze_expression_from_image(dummy_image_base64)
-        print(f"📊 분석 결과: {result}")
-        
-        if result['success']:
-            # 점수 변환
-            score_result = get_expression_score_from_result(result)
-            print(f"📈 점수 결과: {score_result}")
-        
-        print("\n" + "=" * 50)
-        print("✅ 테스트 완료!")
-    else:
-        print("❌ 표정 분석기 초기화 실패")

@@ -155,6 +155,123 @@ body {
     background: rgba(231, 76, 60, 0.1);
 }
 
+/* --- 표정 분석 결과 스타일 --- */
+.expression-result {
+    background: var(--card);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin: 10px 0;
+    box-shadow: var(--shadow);
+}
+
+.expression-result.error {
+    border-left: 4px solid #e74c3c;
+    background: #fdf2f2;
+}
+
+.expression-result h4 {
+    margin: 0 0 15px 0;
+    color: var(--text);
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.dominant-expression {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 20px;
+    padding: 15px;
+    background: linear-gradient(135deg, var(--brand1), var(--brand2));
+    border-radius: 12px;
+    color: white;
+}
+
+.dominant-expression .emoji {
+    font-size: 24px;
+}
+
+.dominant-expression .expression-name {
+    font-size: 18px;
+    font-weight: 600;
+    text-transform: capitalize;
+}
+
+.dominant-expression .confidence {
+    font-size: 14px;
+    opacity: 0.9;
+}
+
+.expression-breakdown h5 {
+    margin: 0 0 15px 0;
+    color: var(--text);
+    font-size: 16px;
+    font-weight: 500;
+}
+
+.expression-bars {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.expression-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    background: rgba(108, 124, 255, 0.05);
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.expression-bar.dominant {
+    background: rgba(108, 124, 255, 0.1);
+    border: 1px solid rgba(108, 124, 255, 0.2);
+}
+
+.expression-bar .emoji {
+    font-size: 16px;
+    width: 20px;
+    text-align: center;
+}
+
+.expression-bar .category {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text);
+    text-transform: capitalize;
+    min-width: 80px;
+}
+
+.expression-bar .bar-container {
+    flex: 1;
+    height: 8px;
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.expression-bar .bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary), var(--primary-2));
+    border-radius: 4px;
+    transition: width 0.3s ease;
+}
+
+.expression-bar.dominant .bar {
+    background: linear-gradient(90deg, #667eea, #764ba2);
+}
+
+.expression-bar .percentage {
+    font-size: 12px;
+    color: var(--muted);
+    min-width: 40px;
+    text-align: right;
+}
+
+
+
 /* --- 확인 팝업 스타일 --- */
 .confirm-overlay {
     position: fixed;

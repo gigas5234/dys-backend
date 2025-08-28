@@ -98,6 +98,14 @@ async function loadPosturePopup() {
     }
 }
 
+// 전역 함수로 노출
+window.loadExpressionPopup = loadExpressionPopup;
+window.loadGazePopup = loadGazePopup;
+window.loadPosturePopup = loadPosturePopup;
+window.loadBlinkingPopup = loadBlinkingPopup;
+window.loadConcentrationPopup = loadConcentrationPopup;
+window.loadInitiativePopup = loadInitiativePopup;
+
 // 캘리브레이션 팝업 로드
 async function loadCalibrationPopup() {
     const container = document.getElementById('calibration-popup-container');
