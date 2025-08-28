@@ -20,8 +20,6 @@ spec:
         app: dys-backend
     spec:
       # Autopilot 클러스터에 최적화된 설정
-      nodeSelector:
-        cloud.google.com/gke-nodepool: default-pool
       tolerations:
       - key: "kubernetes.io/arch"
         operator: "Equal"
