@@ -40,10 +40,11 @@ class MediaPipeAnalyzer {
      */
     initializeBaseUrl() {
         // 웹소켓 베이스 URL 동적 구성
-        const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-        const host = location.host;
+        const protocol = 'wss';
         
-        // Ingress 경로 기반 접근: /ws로 시작하는 경로는 포트 8001로 라우팅됨
+        // Vercel을 통한 WebSocket 연결이 어려우므로 직접 GKE IP 사용
+        const host = '34.64.136.237:8001';
+        
         this.baseUrl = `${protocol}://${host}/ws`;
         
         console.log("🔗 MediaPipe WebSocket URL:", this.baseUrl);
