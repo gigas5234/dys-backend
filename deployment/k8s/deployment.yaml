@@ -7,7 +7,7 @@ spec:
   replicas: 1
   strategy:
     type: Recreate
-  progressDeadlineSeconds: 1800
+  progressDeadlineSeconds: 600
   selector:
     matchLabels:
       app: dys-backend
@@ -26,36 +26,12 @@ spec:
         - containerPort: 8001 # WebSocket 서버 포트
         resources:
           requests:
-            memory: "2Gi"
-            cpu: "1000m"
+            memory: "512Mi"
+            cpu: "250m"
           limits:
-            memory: "4Gi"
-            cpu: "2000m"
-        # 프로브 일시 비활성화 - 시작 후 수동으로 활성화
-        # startupProbe:
-        #   httpGet:
-        #     path: /health
-        #     port: 8000
-        #   initialDelaySeconds: 120
-        #   periodSeconds: 30
-        #   timeoutSeconds: 15
-        #   failureThreshold: 15
-        # livenessProbe:
-        #   httpGet:
-        #     path: /health
-        #     port: 8000
-        #   initialDelaySeconds: 180
-        #   periodSeconds: 30
-        #   timeoutSeconds: 15
-        #   failureThreshold: 5
-        # readinessProbe:
-        #   httpGet:
-        #     path: /health
-        #     port: 8000
-        #   initialDelaySeconds: 120
-        #   periodSeconds: 20
-        #   timeoutSeconds: 10
-        #   failureThreshold: 5
+            memory: "1Gi"
+            cpu: "500m"
+        # 프로브 완전 비활성화 - 애플리케이션 안정화 후 활성화 예정
         env:
         - name: MONGODB_URI
           valueFrom:

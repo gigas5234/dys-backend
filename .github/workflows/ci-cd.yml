@@ -95,7 +95,7 @@ jobs:
           
       - name: Wait for rollout (extended)
         run: |
-          kubectl rollout status deployment/dys-deployment --timeout=1800s
+          kubectl rollout status deployment/dys-deployment --timeout=600s
 
       - name: Debug on failure
         if: ${{ always() }}
