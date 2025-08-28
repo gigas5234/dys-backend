@@ -91,3 +91,5 @@ spec:
           value: "gcp-starter"
         - name: PINECONE_HOST
           value: "https://deyeonso-if637zn.svc.aped-4627-b74a.pinecone.io"
+        - name: TRANSFORMERS_CACHE
+          value: "/tmp/huggingface_cache"
