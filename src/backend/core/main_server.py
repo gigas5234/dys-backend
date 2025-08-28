@@ -140,6 +140,7 @@ app = FastAPI(title=APP_NAME)
 
 # 정적 파일 서빙 설정
 app.mount("/frontend", StaticFiles(directory=str(BASE_DIR / "src" / "frontend")), name="frontend")
+app.mount("/dys_studio", StaticFiles(directory=str(BASE_DIR / "src" / "frontend")), name="dys_studio")
 
 # CORS 허용 도메인 설정 - 환경변수에서 가져오기
 CORS_ORIGINS = os.getenv("CORS_ORIGINS", "*").split(",")
@@ -230,6 +231,22 @@ def frontend_studio_calibration():
 @app.get("/frontend/studio_calibration.html")
 def frontend_studio_calibration_html():
     """Frontend Studio 캘리브레이션 페이지 제공 (.html 확장자 포함)"""
+    try:
+        return FileResponse("src/frontend/pages/studio_calibration.html", media_type="text/html")
+    except FileNotFoundError:
+        return Response(status_code=404, content="studio_calibration.html not found")
+
+@app.get("/dys_studio/studio_calibration")
+def dys_studio_calibration():
+    """DYS Studio 캘리브레이션 페이지 제공 (기존 경로 호환성)"""
+    try:
+        return FileResponse("src/frontend/pages/studio_calibration.html", media_type="text/html")
+    except FileNotFoundError:
+        return Response(status_code=404, content="studio_calibration.html not found")
+
+@app.get("/dys_studio/studio_calibration.html")
+def dys_studio_calibration_html():
+    """DYS Studio 캘리브레이션 페이지 제공 (.html 확장자 포함, 기존 경로 호환성)"""
     try:
         return FileResponse("src/frontend/pages/studio_calibration.html", media_type="text/html")
     except FileNotFoundError:
