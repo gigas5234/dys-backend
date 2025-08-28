@@ -143,6 +143,7 @@ app.mount("/frontend", StaticFiles(directory=str(BASE_DIR / "src" / "frontend"))
 app.mount("/dys_studio", StaticFiles(directory=str(BASE_DIR / "src" / "frontend")), name="dys_studio")
 app.mount("/dys_studio/pages", StaticFiles(directory=str(BASE_DIR / "src" / "frontend" / "pages")), name="dys_studio_pages")
 app.mount("/dys_studio/assets", StaticFiles(directory=str(BASE_DIR / "src" / "frontend" / "assets")), name="dys_studio_assets")
+app.mount("/dys_studio/popups", StaticFiles(directory=str(BASE_DIR / "src" / "frontend" / "assets" / "popups")), name="dys_studio_popups")
 
 # CORS 허용 도메인 설정 - 환경변수에서 가져오기
 CORS_ORIGINS = os.getenv("CORS_ORIGINS", "*").split(",")
@@ -1433,37 +1434,7 @@ async def get_calibration_status(user_id: str):
             "message": f"캘리브레이션 상태 확인 중 오류 발생: {str(e)}"
         }
 
-@app.post("/api/user/check")
-async def check_user_status(request: Request):
-    """사용자 상태 확인 (기존 API와 호환)"""
-    try:
-        data = await request.json()
-        user_id = data.get("user_id")
-        email = data.get("email")
-        
-        if not user_id:
-            return {
-                "success": False,
-                "message": "user_id가 필요합니다."
-            }
-        
-        # 캘리브레이션 상태 확인
-        status = await calibration_service.check_user_calibration_status(user_id)
-        
-        return {
-            "success": True,
-            "user_id": user_id,
-            "email": email,
-            "cam_calibration": status.has_calibration,
-            "has_calibration": status.has_calibration,
-            "calibration_status": status.dict()
-        }
-    except Exception as e:
-        print(f"❌ 사용자 상태 확인 실패: {e}")
-        return {
-            "success": False,
-            "message": f"사용자 상태 확인 중 오류 발생: {str(e)}"
-        }
+# 중복된 엔드포인트 제거됨
 
 @app.post("/api/user/update-calibration")
 async def update_user_calibration_status(request: Request):
