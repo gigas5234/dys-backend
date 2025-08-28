@@ -37,7 +37,7 @@ class PineconeClient:
         """Pinecone 클라이언트 초기화"""
         try:
             if not self.api_key:
-                logger.error("❌ PINECONE_API_KEY가 설정되지 않았습니다")
+                logger.warning("⚠️ PINECONE_API_KEY가 설정되지 않았습니다. Pinecone 기능이 비활성화됩니다.")
                 return False
             
             # Pinecone 초기화

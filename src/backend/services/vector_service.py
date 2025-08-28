@@ -41,7 +41,7 @@ class VectorService:
         try:
             # OpenAI 클라이언트 초기화
             if not self.openai_api_key:
-                logger.error("❌ OPENAI_API_KEY가 설정되지 않았습니다")
+                logger.warning("⚠️ OPENAI_API_KEY가 설정되지 않았습니다. 벡터 서비스가 제한적으로 동작합니다.")
                 return False
             
             self.openai_client = OpenAI(api_key=self.openai_api_key)
