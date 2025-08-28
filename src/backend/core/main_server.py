@@ -31,7 +31,7 @@ except ImportError as e:
 
 # 모니터링 모듈 import (선택적)
 try:
-    from monitoring import monitoring, get_metrics, start_timer, record_request_metrics
+    from ..monitoring.monitoring import monitoring, get_metrics, start_timer, record_request_metrics
     MONITORING_AVAILABLE = True
     print("✅ 모니터링 모듈 로드됨")
 except ImportError as e:
@@ -519,7 +519,7 @@ async def create_session(
         print(f"🔄 [CREATE_SESSION] 세션 생성 시작...")
         
         # 새로운 페르소나 시스템에서 기본 페르소나 가져오기
-        from personas.persona_manager import get_persona_manager
+        from ..services.personas.persona_manager import get_persona_manager
         manager = get_persona_manager()
         active_persona = manager.get_active_persona()
         
@@ -670,8 +670,9 @@ async def send_message(
         print(f"✅ [SEND_MESSAGE] 사용자 메시지 저장 성공: {message_id}")
         
         # OpenAI GPT-4o-mini로 AI 응답 생성
+        print(f"🤖 [SEND_MESSAGE] GPT 호출 시작 - 메시지: {message.content[:50]}...")
         ai_response = await generate_ai_response(message.content, session_id)
-        print(f"🤖 [SEND_MESSAGE] AI 응답 생성: {ai_response[:50]}...")
+        print(f"🤖 [SEND_MESSAGE] AI 응답 생성 완료: {ai_response[:50]}...")
         
         # AI 응답 저장
         print(f"🔄 [SEND_MESSAGE] AI 응답 저장 시작...")
@@ -1422,21 +1423,50 @@ async def chat_with_ai(request: Request):
         data = await request.json()
         messages = data.get("messages", [])
         user_id = data.get("user_id", "unknown")
+        session_id = data.get("session_id", "default")
         
-        # 임시 AI 응답 (실제로는 AI 모델 호출)
-        last_message = messages[-1]["parts"][0]["text"] if messages else ""
+        print(f"🤖 [CHAT] 채팅 요청 받음 - 사용자: {user_id}, 세션: {session_id}")
         
-        ai_response = f"처음 뵙겠습니다! '{last_message}'에 대해 답변드리겠습니다. 현재는 테스트 모드입니다."
+        # 사용자 메시지 추출
+        if not messages:
+            return {
+                "response": "안녕하세요! 무엇을 도와드릴까요?",
+                "message": "메시지가 없습니다"
+            }
+        
+        # 마지막 사용자 메시지 추출
+        last_message = ""
+        for message in reversed(messages):
+            if message.get("role") == "user":
+                parts = message.get("parts", [])
+                if parts and isinstance(parts[0], dict):
+                    last_message = parts[0].get("text", "")
+                elif isinstance(parts[0], str):
+                    last_message = parts[0]
+                break
+        
+        if not last_message:
+            return {
+                "response": "메시지를 이해하지 못했습니다. 다시 말씀해 주세요.",
+                "message": "메시지 추출 실패"
+            }
+        
+        print(f"📝 [CHAT] 사용자 메시지: {last_message}")
+        
+        # 실제 GPT 호출
+        ai_response = await generate_ai_response(last_message, session_id)
+        
+        print(f"✅ [CHAT] AI 응답 생성 완료: {ai_response}")
         
         return {
             "response": ai_response,
             "message": "AI 응답 생성 완료"
         }
     except Exception as e:
-        print(f"AI 채팅 오류: {e}")
+        print(f"❌ [CHAT] AI 채팅 오류: {e}")
         return {
             "response": "죄송합니다. 현재 응답을 생성할 수 없습니다.",
-            "message": "오류 발생"
+            "message": f"오류 발생: {str(e)}"
         }
 
 @app.post("/api/feedback")
@@ -1752,8 +1782,8 @@ async def load_persona_context(session_id: str) -> str:
     """새로운 프로토콜 기반 페르소나 컨텍스트 로드"""
     try:
         # 새로운 페르소나 관리자 사용
-        from personas.persona_manager import get_persona_manager
-        from personas.prompt_protocol import read_system_text
+        from ..services.personas.persona_manager import get_persona_manager
+        from ..services.personas.prompt_protocol import read_system_text
         
         manager = get_persona_manager()
         active_persona = manager.get_active_persona()
@@ -1779,13 +1809,17 @@ async def load_persona_context(session_id: str) -> str:
 async def generate_ai_response(user_message: str, session_id: str) -> str:
     """새로운 프로토콜 기반 AI 응답 생성"""
     try:
+        print(f"🤖 [AI_RESPONSE] 함수 시작 - 메시지: {user_message[:50]}...")
+        
         if not OPENAI_API_KEY:
             print("❌ [AI_RESPONSE] OpenAI API 키가 없음 - 오류 반환")
             raise HTTPException(status_code=503, detail="OpenAI API key not configured")
         
+        print(f"✅ [AI_RESPONSE] OpenAI API 키 확인됨")
+        
         # 새로운 프로토콜 시스템 사용
-        from personas.prompt_protocol import compile_messages, apply_style_constraints
-        from personas.persona_manager import get_persona_manager
+        from ..services.personas.prompt_protocol import compile_messages, apply_style_constraints
+        from ..services.personas.persona_manager import get_persona_manager
         
         # 활성 페르소나 가져오기
         manager = get_persona_manager()
@@ -1798,24 +1832,31 @@ async def generate_ai_response(user_message: str, session_id: str) -> str:
         print(f"🎭 [AI_RESPONSE] 페르소나: {persona_id}")
         
         # 메시지 컴파일
+        print(f"📝 [AI_RESPONSE] 메시지 컴파일 시작...")
         messages = compile_messages(user_message, persona_id)
+        print(f"📝 [AI_RESPONSE] 메시지 컴파일 완료 - 메시지 수: {len(messages)}")
         
         # OpenAI API 호출
         from openai import OpenAI
         import os
         
+        print(f"🔗 [AI_RESPONSE] OpenAI 클라이언트 초기화 시작...")
         # 환경 변수에서 proxies 제거 (OpenAI 클라이언트 오류 방지)
         original_proxies = os.environ.pop('HTTP_PROXY', None)
         original_https_proxies = os.environ.pop('HTTPS_PROXY', None)
         
         try:
             client = OpenAI(api_key=OPENAI_API_KEY)
+            print(f"✅ [AI_RESPONSE] OpenAI 클라이언트 초기화 완료")
         finally:
             # 환경 변수 복원
             if original_proxies:
                 os.environ['HTTP_PROXY'] = original_proxies
             if original_https_proxies:
                 os.environ['HTTPS_PROXY'] = original_https_proxies
+        
+        print(f"🚀 [AI_RESPONSE] OpenAI API 호출 시작...")
+        print(f"📋 [AI_RESPONSE] 요청 파라미터: model=gpt-4o-mini, max_tokens=80, temperature=0.8")
         
         response = await asyncio.to_thread(
             client.chat.completions.create,

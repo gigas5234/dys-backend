@@ -34,15 +34,8 @@
     <script src="../assets/js/popup-loader.js?v=20241226-1"></script>
     <!-- UI 유틸리티 모듈 -->
     <script src="../assets/js/ui-utils.js?v=20241226-1"></script>
-    <!-- WebSocket 베이스 설정 -->
-    <script>
-        // 상대 경로 사용 (같은 호스트의 다른 포트)
-        const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-        const host = location.hostname;
-        const port = '8001';
-        window.WS_BASE_URL = `${protocol}://${host}:${port}`;
-        console.log("🔗 WebSocket URL 설정:", window.WS_BASE_URL);
-    </script>
+    <!-- MediaPipe 분석 모듈 -->
+    <script src="../assets/js/mediapipe-analyzer.js?v=20241226-1"></script>
     <!-- 채팅 매니저 모듈 -->
     <script src="../assets/js/chat-manager.js?v=20241226-1"></script>
     
@@ -330,18 +323,15 @@ const apiEndpoints = {
 window.serverUrl = serverUrl;
 window.apiEndpoints = apiEndpoints;
 
-// 이미지 경로 동적 설정
+// 이미지 경로 동적 설정 (채팅 입력 아이콘만)
 document.addEventListener('DOMContentLoaded', function() {
-    const cameraIcon = document.getElementById('cameraIcon');
     const inputIcon = document.getElementById('inputIcon');
-    
-    if (cameraIcon) {
-                    cameraIcon.src = `${window.serverUrl}/frontend/assets/images/icon/camera.webp`;
-    }
     
     if (inputIcon) {
         inputIcon.src = `${window.serverUrl}/frontend/assets/images/icon/enter_icon.webp`;
     }
+    
+    // cameraIcon은 popup-loader.js에서 설정됨
 });
 
 // 분석 파이프라인 제거됨 (UI 전용)
