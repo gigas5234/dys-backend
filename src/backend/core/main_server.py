@@ -252,6 +252,22 @@ def dys_studio_calibration_html():
     except FileNotFoundError:
         return Response(status_code=404, content="studio_calibration.html not found")
 
+@app.get("/api/gke/dys_studio/studio_calibration")
+def api_gke_dys_studio_calibration():
+    """API GKE DYS Studio 캘리브레이션 페이지 제공 (Vercel 프록시 호환성)"""
+    try:
+        return FileResponse("src/frontend/pages/studio_calibration.html", media_type="text/html")
+    except FileNotFoundError:
+        return Response(status_code=404, content="studio_calibration.html not found")
+
+@app.get("/api/gke/dys_studio/studio_calibration.html")
+def api_gke_dys_studio_calibration_html():
+    """API GKE DYS Studio 캘리브레이션 페이지 제공 (.html 확장자 포함, Vercel 프록시 호환성)"""
+    try:
+        return FileResponse("src/frontend/pages/studio_calibration.html", media_type="text/html")
+    except FileNotFoundError:
+        return Response(status_code=404, content="studio_calibration.html not found")
+
 @app.get("/runpod")
 def runpod_studio():
     """RunPod Studio iframe 페이지 제공"""
