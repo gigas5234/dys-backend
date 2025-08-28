@@ -281,7 +281,7 @@ async function updateUserCalibrationStatus(hasCalibration = true) {
 async function sendCalibrationData(calibrationData) {
     try {
         // 1. 캘리브레이션 데이터 저장
-        const response = await fetch(window.apiEndpoints?.calibration || `${window.serverUrl || 'https://dys-phi.vercel.app/api/gke'}/api/calibration`, {
+        const response = await fetch(window.apiEndpoints?.calibration || `${window.serverUrl || 'https://dys-phi.vercel.app/api/gke'}/calibration`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({

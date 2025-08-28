@@ -2183,12 +2183,12 @@ document.addEventListener('DOMContentLoaded', async function() {
     });
     
     // 서버 URL 설정
-    window.serverUrl = window.location.origin;
+    window.serverUrl = 'https://dys-phi.vercel.app/api/gke';
     window.apiEndpoints = {
-        user_check: `${window.serverUrl}/api/user/check`,
-        user_update: `${window.serverUrl}/api/user/update-calibration`,
-        calibration: `${window.serverUrl}/api/calibration`,
-        calibration_user: `${window.serverUrl}/api/calibration/user`
+        user_check: `${window.serverUrl}/user/check`,
+        user_update: `${window.serverUrl}/user/update-calibration`,
+        calibration: `${window.serverUrl}/calibration`,
+        calibration_user: `${window.serverUrl}/calibration/user`
     };
     
     console.log('🔗 API 엔드포인트 설정:', window.apiEndpoints);
