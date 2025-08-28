@@ -9,7 +9,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 # 작업 디렉토리 설정
 WORKDIR /usr/src/app
 
-# 시스템 패키지 설치 (GKE 환경 최적화)
+# 시스템 패키지 설치 (GKE 환경 최적화 + MediaPipe 지원)
 RUN apt-get update && apt-get install -y \
     supervisor \
     openssl \
@@ -22,6 +22,21 @@ RUN apt-get update && apt-get install -y \
     libxext6 \
     libxrender-dev \
     libgtk-3-0 \
+    libgstreamer1.0-0 \
+    libgstreamer-plugins-base1.0-0 \
+    libgstreamer-plugins-bad1.0-0 \
+    gstreamer1.0-plugins-base \
+    gstreamer1.0-plugins-good \
+    gstreamer1.0-plugins-bad \
+    gstreamer1.0-plugins-ugly \
+    gstreamer1.0-libav \
+    gstreamer1.0-tools \
+    gstreamer1.0-x \
+    gstreamer1.0-alsa \
+    gstreamer1.0-gl \
+    gstreamer1.0-gtk3 \
+    gstreamer1.0-qt5 \
+    gstreamer1.0-pulseaudio \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 
@@ -52,5 +67,5 @@ RUN chmod +x ./start.py && \
 # 컨테이너가 8000번 포트와 8001번 포트를 외부에 노출
 EXPOSE 8000 8001
 
-# 컨테이너가 시작될 때 메인 서버 실행 (메모리 최적화)
-CMD ["python", "-m", "uvicorn", "src.backend.core.main_server:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1", "--limit-concurrency", "100", "--limit-max-requests", "1000"]
+# 컨테이너가 시작될 때 통합 서버 실행 (메인 서버 + 웹소켓 서버)
+CMD ["python", "deployment/scripts/start_integrated.py"]

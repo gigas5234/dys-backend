@@ -28,7 +28,7 @@ class IntegratedServerManager:
     async def start_main_server(self):
         """메인 서버 시작 (포트 8000)"""
         try:
-            from server import app
+            from backend.core.main_server import app
             import uvicorn
             
             config = uvicorn.Config(
@@ -50,7 +50,7 @@ class IntegratedServerManager:
     async def start_websocket_server(self):
         """WebSocket 서버 시작 (포트 8001)"""
         try:
-            from websocket_server import app as ws_app
+            from backend.core.websocket_server import app as ws_app
             import uvicorn
             
             config = uvicorn.Config(

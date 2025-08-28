@@ -69,6 +69,27 @@ def check_environment():
         else:
             logger.warning(f"⚠️ 디렉토리 없음: {dir_path}")
 
+def initialize_mediapipe():
+    """MediaPipe 분석기 초기화"""
+    try:
+        logger.info("🎭 MediaPipe 분석기 초기화 중...")
+        
+        # src 디렉토리를 Python 경로에 추가
+        src_path = Path(__file__).parent.parent.parent / "src"
+        sys.path.insert(0, str(src_path))
+        
+        from backend.services.analysis.mediapipe_analyzer import mediapipe_analyzer
+        
+        if mediapipe_analyzer.initialize():
+            logger.info("✅ MediaPipe 분석기 초기화 완료")
+        else:
+            logger.warning("⚠️ MediaPipe 분석기 초기화 실패")
+            
+    except ImportError as e:
+        logger.warning(f"⚠️ MediaPipe 분석기 모듈을 찾을 수 없습니다: {e}")
+    except Exception as e:
+        logger.error(f"❌ MediaPipe 분석기 초기화 오류: {e}")
+
 async def run_integrated_server():
     """통합 서버 실행"""
     try:
@@ -108,6 +129,9 @@ def main():
         
         # 모델 다운로드
         download_model_if_not_exists()
+        
+        # MediaPipe 분석기 초기화
+        initialize_mediapipe()
         
         # .env 파일 로드
         from dotenv import load_dotenv
