@@ -300,13 +300,7 @@ def frontend_studio_calibration_html():
     except FileNotFoundError:
         return Response(status_code=404, content="studio_calibration.html not found")
 
-@app.get("/dys_studio/studio_calibration.html")
-def dys_studio_calibration_html():
-    """Dys Studio 캘리브레이션 페이지 제공"""
-    try:
-        return FileResponse(str(BASE_DIR / "src" / "frontend" / "pages" / "studio_calibration.html"), media_type="text/html")
-    except FileNotFoundError:
-        return Response(status_code=404, content="studio_calibration.html not found")
+
 
 @app.get("/dys_studio/studio_calibration")
 def dys_studio_calibration():
