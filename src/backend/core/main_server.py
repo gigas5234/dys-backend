@@ -215,11 +215,43 @@ def health():
 @app.get("/api/gke/frontend/video/{filename}")
 async def get_video(filename: str):
     """비디오 파일 직접 서빙"""
-    video_path = BASE_DIR / "src" / "frontend" / "assets" / "videos" / filename
-    if video_path.exists():
-        return FileResponse(str(video_path), media_type="video/mp4")
-    else:
-        raise HTTPException(status_code=404, detail=f"Video file {filename} not found")
+    import os
+    print(f"🔍 [VIDEO] 요청: {filename}")
+    
+    # 가능한 경로들
+    possible_paths = [
+        str(BASE_DIR / "src" / "frontend" / "assets" / "videos" / filename),
+        f"src/frontend/assets/videos/{filename}",
+        f"frontend/assets/videos/{filename}",
+        f"assets/videos/{filename}",
+        f"videos/{filename}",
+        f"/usr/src/app/src/frontend/assets/videos/{filename}",
+        f"/workspace/app/src/frontend/assets/videos/{filename}"
+    ]
+    
+    for i, file_path in enumerate(possible_paths, 1):
+        print(f"📁 [VIDEO] 시도 {i}: {file_path}")
+        if os.path.exists(file_path):
+            print(f"✅ [VIDEO] 파일 발견: {file_path}")
+            # 파일 크기 확인
+            file_size = os.path.getsize(file_path)
+            print(f"📊 [VIDEO] 파일 크기: {file_size} bytes")
+            
+            # 파일 확장자에 따른 MIME 타입 설정
+            if filename.endswith('.mp4'):
+                media_type = "video/mp4"
+            elif filename.endswith('.webm'):
+                media_type = "video/webm"
+            elif filename.endswith('.avi'):
+                media_type = "video/x-msvideo"
+            else:
+                media_type = "video/*"
+            
+            return FileResponse(file_path, media_type=media_type)
+    
+    print(f"❌ [VIDEO] 파일을 찾을 수 없음: {filename}")
+    print(f"📋 [VIDEO] 시도한 경로들: {possible_paths}")
+    return Response(status_code=404, content=f"Video {filename} not found")
 
 # 대시보드 엔드포인트 제거됨 - 사용하지 않음
 
