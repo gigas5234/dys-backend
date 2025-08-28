@@ -43,6 +43,15 @@ except ImportError as e:
 
 # analyzers 모듈 제거됨 - 클라이언트 측에서 처리
 
+# 표정 분석 모듈 import
+try:
+    from ..services.analysis.expression_analyzer import expression_analyzer
+    EXPRESSION_ANALYSIS_AVAILABLE = True
+    print("✅ 표정 분석 모듈 로드됨")
+except ImportError as e:
+    print(f"⚠️ 표정 분석 모듈 로드 실패: {e}")
+    EXPRESSION_ANALYSIS_AVAILABLE = False
+
 # 음성 분석 모듈 import (지연 로딩으로 메모리 최적화)
 VOICE_ANALYSIS_AVAILABLE = False
 _voice_models_loaded = False
@@ -2474,6 +2483,121 @@ async def receive_alert(request: Request):
     except Exception as e:
         print(f"❌ [ALERT] 처리 실패: {e}")
         return {"status": "error", "message": str(e)}
+
+# === 표정 분석 API 엔드포인트 ===
+
+@app.post("/api/expression/analyze")
+async def analyze_expression(request: Request):
+    """이미지에서 표정을 분석합니다."""
+    try:
+        if not EXPRESSION_ANALYSIS_AVAILABLE:
+            return {
+                "success": False,
+                "error": "Expression analysis module not available"
+            }
+        
+        # 요청 데이터 파싱
+        data = await request.json()
+        image_data = data.get('image_data')
+        
+        if not image_data:
+            return {
+                "success": False,
+                "error": "Image data is required"
+            }
+        
+        # 표정 분석기 초기화 확인
+        if not expression_analyzer.is_initialized:
+            if not expression_analyzer.initialize():
+                return {
+                    "success": False,
+                    "error": "Failed to initialize expression analyzer"
+                }
+        
+        # 표정 분석 실행
+        result = expression_analyzer.analyze_expression(image_data)
+        
+        return result
+        
+    except Exception as e:
+        print(f"❌ [EXPRESSION] 분석 실패: {e}")
+        import traceback
+        traceback.print_exc()
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+@app.post("/api/expression/analyze-batch")
+async def analyze_expression_batch(request: Request):
+    """여러 이미지의 표정을 일괄 분석합니다."""
+    try:
+        if not EXPRESSION_ANALYSIS_AVAILABLE:
+            return {
+                "success": False,
+                "error": "Expression analysis module not available"
+            }
+        
+        # 요청 데이터 파싱
+        data = await request.json()
+        image_data_list = data.get('image_data_list', [])
+        
+        if not image_data_list:
+            return {
+                "success": False,
+                "error": "Image data list is required"
+            }
+        
+        # 표정 분석기 초기화 확인
+        if not expression_analyzer.is_initialized:
+            if not expression_analyzer.initialize():
+                return {
+                    "success": False,
+                    "error": "Failed to initialize expression analyzer"
+                }
+        
+        # 일괄 표정 분석 실행
+        results = expression_analyzer.analyze_expression_batch(image_data_list)
+        
+        return {
+            "success": True,
+            "results": results
+        }
+        
+    except Exception as e:
+        print(f"❌ [EXPRESSION] 일괄 분석 실패: {e}")
+        import traceback
+        traceback.print_exc()
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+@app.get("/api/expression/status")
+def get_expression_analyzer_status():
+    """표정 분석기 상태를 확인합니다."""
+    try:
+        if not EXPRESSION_ANALYSIS_AVAILABLE:
+            return {
+                "success": False,
+                "error": "Expression analysis module not available",
+                "module_available": False
+            }
+        
+        return {
+            "success": True,
+            "module_available": True,
+            "is_initialized": expression_analyzer.is_initialized,
+            "device": str(expression_analyzer.device) if expression_analyzer.device else None,
+            "expression_categories": expression_analyzer.expression_categories
+        }
+        
+    except Exception as e:
+        print(f"❌ [EXPRESSION] 상태 확인 실패: {e}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
 
 # === 진단 엔드포인트 ===
 
