@@ -61,6 +61,15 @@ except ImportError as e:
     print(f"⚠️ MediaPipe 분석 모듈 로드 실패: {e}")
     MEDIAPIPE_ANALYSIS_AVAILABLE = False
 
+# 벡터 서비스 모듈 import
+try:
+    from ..services.vector_service import vector_service
+    VECTOR_SERVICE_AVAILABLE = True
+    print("✅ 벡터 서비스 모듈 로드됨")
+except ImportError as e:
+    print(f"⚠️ 벡터 서비스 모듈 로드 실패: {e}")
+    VECTOR_SERVICE_AVAILABLE = False
+
 # 음성 분석 모듈 import (지연 로딩으로 메모리 최적화)
 VOICE_ANALYSIS_AVAILABLE = False
 _voice_models_loaded = False
@@ -2676,6 +2685,181 @@ def get_mediapipe_summary():
         
     except Exception as e:
         print(f"❌ [MEDIAPIPE] 요약 조회 실패: {e}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+# === 벡터 서비스 API 엔드포인트 ===
+
+@app.get("/api/vector/status")
+async def get_vector_service_status():
+    """벡터 서비스 상태를 확인합니다."""
+    try:
+        if not VECTOR_SERVICE_AVAILABLE:
+            return {
+                "success": False,
+                "error": "Vector service module not available",
+                "module_available": False
+            }
+        
+        health = await vector_service.health_check()
+        return {
+            "success": True,
+            "module_available": True,
+            "health": health
+        }
+        
+    except Exception as e:
+        print(f"❌ [VECTOR] 상태 확인 실패: {e}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+@app.post("/api/vector/initialize")
+async def initialize_vector_service():
+    """벡터 서비스를 초기화합니다."""
+    try:
+        if not VECTOR_SERVICE_AVAILABLE:
+            return {
+                "success": False,
+                "error": "Vector service module not available"
+            }
+        
+        success = await vector_service.initialize()
+        return {
+            "success": success,
+            "message": "벡터 서비스 초기화 완료" if success else "벡터 서비스 초기화 실패"
+        }
+        
+    except Exception as e:
+        print(f"❌ [VECTOR] 초기화 실패: {e}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+@app.post("/api/vector/store")
+async def store_text_with_embedding(request: dict):
+    """텍스트와 임베딩을 저장합니다."""
+    try:
+        if not VECTOR_SERVICE_AVAILABLE:
+            return {
+                "success": False,
+                "error": "Vector service module not available"
+            }
+        
+        text = request.get("text")
+        content_type = request.get("content_type")
+        content_id = request.get("content_id")
+        metadata = request.get("metadata")
+        
+        if not all([text, content_type, content_id]):
+            return {
+                "success": False,
+                "error": "text, content_type, content_id는 필수입니다"
+            }
+        
+        success = await vector_service.store_text_with_embedding(
+            text=text,
+            content_type=content_type,
+            content_id=content_id,
+            metadata=metadata
+        )
+        
+        return {
+            "success": success,
+            "message": "텍스트 및 임베딩 저장 완료" if success else "텍스트 및 임베딩 저장 실패"
+        }
+        
+    except Exception as e:
+        print(f"❌ [VECTOR] 저장 실패: {e}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+@app.post("/api/vector/search")
+async def search_similar_texts(request: dict):
+    """유사한 텍스트를 검색합니다."""
+    try:
+        if not VECTOR_SERVICE_AVAILABLE:
+            return {
+                "success": False,
+                "error": "Vector service module not available"
+            }
+        
+        query_text = request.get("query_text")
+        content_type = request.get("content_type")
+        top_k = request.get("top_k", 10)
+        
+        if not query_text:
+            return {
+                "success": False,
+                "error": "query_text는 필수입니다"
+            }
+        
+        results = await vector_service.search_similar_texts(
+            query_text=query_text,
+            content_type=content_type,
+            top_k=top_k
+        )
+        
+        return {
+            "success": True,
+            "results": results,
+            "count": len(results)
+        }
+        
+    except Exception as e:
+        print(f"❌ [VECTOR] 검색 실패: {e}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+@app.get("/api/vector/statistics")
+async def get_vector_statistics():
+    """벡터 서비스 통계를 조회합니다."""
+    try:
+        if not VECTOR_SERVICE_AVAILABLE:
+            return {
+                "success": False,
+                "error": "Vector service module not available"
+            }
+        
+        stats = await vector_service.get_statistics()
+        return {
+            "success": True,
+            "statistics": stats
+        }
+        
+    except Exception as e:
+        print(f"❌ [VECTOR] 통계 조회 실패: {e}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+@app.delete("/api/vector/{vector_id}")
+async def delete_embedding(vector_id: str):
+    """임베딩을 삭제합니다."""
+    try:
+        if not VECTOR_SERVICE_AVAILABLE:
+            return {
+                "success": False,
+                "error": "Vector service module not available"
+            }
+        
+        success = await vector_service.delete_embedding(vector_id)
+        return {
+            "success": success,
+            "message": "임베딩 삭제 완료" if success else "임베딩 삭제 실패"
+        }
+        
+    except Exception as e:
+        print(f"❌ [VECTOR] 삭제 실패: {e}")
         return {
             "success": False,
             "error": str(e)

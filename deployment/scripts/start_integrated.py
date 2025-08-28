@@ -90,6 +90,27 @@ def initialize_mediapipe():
     except Exception as e:
         logger.error(f"❌ MediaPipe 분석기 초기화 오류: {e}")
 
+async def initialize_vector_service():
+    """벡터 서비스 초기화"""
+    try:
+        logger.info("🔗 벡터 서비스 초기화 중...")
+        
+        # src 디렉토리를 Python 경로에 추가
+        src_path = Path(__file__).parent.parent.parent / "src"
+        sys.path.insert(0, str(src_path))
+        
+        from backend.services.vector_service import vector_service
+        
+        if await vector_service.initialize():
+            logger.info("✅ 벡터 서비스 초기화 완료")
+        else:
+            logger.warning("⚠️ 벡터 서비스 초기화 실패")
+            
+    except ImportError as e:
+        logger.warning(f"⚠️ 벡터 서비스 모듈을 찾을 수 없습니다: {e}")
+    except Exception as e:
+        logger.error(f"❌ 벡터 서비스 초기화 오류: {e}")
+
 async def run_integrated_server():
     """통합 서버 실행"""
     try:
@@ -139,7 +160,8 @@ def main():
         
         logger.info("🎉 모든 준비 완료! 서버 시작...")
         
-        # 통합 서버 실행
+        # 통합 서버 실행 (벡터 서비스 초기화 포함)
+        await initialize_vector_service()
         asyncio.run(run_integrated_server())
         
     except KeyboardInterrupt:

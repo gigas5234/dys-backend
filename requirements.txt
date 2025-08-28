@@ -6,6 +6,7 @@ starlette==0.27.0
 # Database
 motor==3.3.2
 pymongo==4.6.0
+pinecone-client==2.2.4  # Pinecone Vector Database
 
 # Authentication & Security
 python-jose[cryptography]==3.3.0
