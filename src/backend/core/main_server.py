@@ -1251,6 +1251,7 @@ async def update_user_calibration_status(request: UserCalibrationUpdateRequest):
         }
 
 @app.post("/api/calibration")
+@app.post("/calibration")
 async def save_calibration(request: CalibrationRequest):
     """캘리브레이션 데이터를 Supabase에 저장"""
     try:
