@@ -438,3 +438,22 @@ async def init_database():
     
     logger.info("✅ MongoDB Atlas 초기화 완료")
     return True
+
+# ====== 외부 사용을 위한 헬퍼 ======
+async def get_database():
+    """비동기 MongoDB 데이터베이스 핸들 반환"""
+    return database
+
+def get_sync_database():
+    """동기 MongoDB 데이터베이스 핸들 반환 (인덱스/관리용)"""
+    return sync_database
+
+__all__ = [
+    "database",
+    "async_client",
+    "sync_database",
+    "get_database",
+    "get_sync_database",
+    "create_indexes",
+    "init_database",
+]
