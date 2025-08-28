@@ -172,6 +172,8 @@ app.mount("/dys_studio", StaticFiles(directory=str(BASE_DIR / "src" / "frontend"
 app.mount("/dys_studio/pages", StaticFiles(directory=str(BASE_DIR / "src" / "frontend" / "pages")), name="dys_studio_pages")
 app.mount("/dys_studio/assets", StaticFiles(directory=str(BASE_DIR / "src" / "frontend" / "assets")), name="dys_studio_assets")
 app.mount("/dys_studio/popups", StaticFiles(directory=str(BASE_DIR / "src" / "frontend" / "assets" / "popups")), name="dys_studio_popups")
+app.mount("/assets", StaticFiles(directory=str(BASE_DIR / "src" / "frontend" / "assets")), name="assets")
+app.mount("/api/gke/assets", StaticFiles(directory=str(BASE_DIR / "src" / "frontend" / "assets")), name="api_gke_assets")
 
 # CORS 허용 도메인 설정 - 환경변수에서 가져오기
 CORS_ORIGINS = os.getenv("CORS_ORIGINS", "*").split(",")
