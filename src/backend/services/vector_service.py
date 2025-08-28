@@ -11,7 +11,6 @@ import logging
 import asyncio
 from typing import List, Dict, Any, Optional, Tuple
 from datetime import datetime
-import openai
 from openai import OpenAI
 
 # 로컬 모듈 import
