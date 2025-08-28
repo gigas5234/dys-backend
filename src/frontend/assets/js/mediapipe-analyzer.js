@@ -51,7 +51,7 @@ class MediaPipeAnalyzer {
         console.log("🔗 MediaPipe WebSocket URL:", this.baseUrl);
         console.log("🔗 window.WS_BASE_URL:", window.WS_BASE_URL);
         console.log("🔗 computedBase:", computedBase);
-
+    }
     
     /**
      * 웹소켓 연결 설정

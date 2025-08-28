@@ -66,6 +66,7 @@ RUN chmod +x ./start.py && \
 
 # Autopilot 클러스터를 위한 사용자 생성
 RUN groupadd -r appuser && useradd -r -g appuser appuser
+RUN mkdir -p /tmp/huggingface_cache && chown -R appuser:appuser /tmp/huggingface_cache
 RUN chown -R appuser:appuser /usr/src/app
 USER appuser
 
