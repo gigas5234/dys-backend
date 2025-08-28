@@ -170,6 +170,7 @@ app.mount("/frontend", StaticFiles(directory=str(BASE_DIR / "src" / "frontend"))
 app.mount("/api/gke/frontend", StaticFiles(directory=str(BASE_DIR / "src" / "frontend")), name="api_gke_frontend")
 app.mount("/dys_studio", StaticFiles(directory=str(BASE_DIR / "src" / "frontend")), name="dys_studio")
 app.mount("/dys_studio/pages", StaticFiles(directory=str(BASE_DIR / "src" / "frontend" / "pages")), name="dys_studio_pages")
+app.mount("/dys_studio/studio_calibration.html", StaticFiles(directory=str(BASE_DIR / "src" / "frontend" / "pages")), name="dys_studio_calibration")
 app.mount("/dys_studio/assets", StaticFiles(directory=str(BASE_DIR / "src" / "frontend" / "assets")), name="dys_studio_assets")
 app.mount("/dys_studio/popups", StaticFiles(directory=str(BASE_DIR / "src" / "frontend" / "assets" / "popups")), name="dys_studio_popups")
 
