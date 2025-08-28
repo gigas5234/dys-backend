@@ -224,7 +224,7 @@ async def get_video(filename: str):
 def frontend_studio_calibration():
     """Frontend Studio 캘리브레이션 페이지 제공"""
     try:
-        return FileResponse("src/frontend/pages/studio_calibration.html", media_type="text/html")
+        return FileResponse(str(BASE_DIR / "src" / "frontend" / "pages" / "studio_calibration.html"), media_type="text/html")
     except FileNotFoundError:
         return Response(status_code=404, content="studio_calibration.html not found")
 
@@ -232,7 +232,7 @@ def frontend_studio_calibration():
 def frontend_studio_calibration_html():
     """Frontend Studio 캘리브레이션 페이지 제공 (.html 확장자 포함)"""
     try:
-        return FileResponse("src/frontend/pages/studio_calibration.html", media_type="text/html")
+        return FileResponse(str(BASE_DIR / "src" / "frontend" / "pages" / "studio_calibration.html"), media_type="text/html")
     except FileNotFoundError:
         return Response(status_code=404, content="studio_calibration.html not found")
 
@@ -240,7 +240,7 @@ def frontend_studio_calibration_html():
 def dys_studio_calibration():
     """DYS Studio 캘리브레이션 페이지 제공 (기존 경로 호환성)"""
     try:
-        return FileResponse("src/frontend/pages/studio_calibration.html", media_type="text/html")
+        return FileResponse(str(BASE_DIR / "src" / "frontend" / "pages" / "studio_calibration.html"), media_type="text/html")
     except FileNotFoundError:
         return Response(status_code=404, content="studio_calibration.html not found")
 
@@ -248,7 +248,7 @@ def dys_studio_calibration():
 def dys_studio_calibration_html():
     """DYS Studio 캘리브레이션 페이지 제공 (.html 확장자 포함, 기존 경로 호환성)"""
     try:
-        return FileResponse("src/frontend/pages/studio_calibration.html", media_type="text/html")
+        return FileResponse(str(BASE_DIR / "src" / "frontend" / "pages" / "studio_calibration.html"), media_type="text/html")
     except FileNotFoundError:
         return Response(status_code=404, content="studio_calibration.html not found")
 
@@ -256,7 +256,7 @@ def dys_studio_calibration_html():
 def api_gke_dys_studio_calibration():
     """API GKE DYS Studio 캘리브레이션 페이지 제공 (Vercel 프록시 호환성)"""
     try:
-        return FileResponse("src/frontend/pages/studio_calibration.html", media_type="text/html")
+        return FileResponse(str(BASE_DIR / "src" / "frontend" / "pages" / "studio_calibration.html"), media_type="text/html")
     except FileNotFoundError:
         return Response(status_code=404, content="studio_calibration.html not found")
 
@@ -264,7 +264,7 @@ def api_gke_dys_studio_calibration():
 def api_gke_dys_studio_calibration_html():
     """API GKE DYS Studio 캘리브레이션 페이지 제공 (.html 확장자 포함, Vercel 프록시 호환성)"""
     try:
-        return FileResponse("src/frontend/pages/studio_calibration.html", media_type="text/html")
+        return FileResponse(str(BASE_DIR / "src" / "frontend" / "pages" / "studio_calibration.html"), media_type="text/html")
     except FileNotFoundError:
         return Response(status_code=404, content="studio_calibration.html not found")
 
