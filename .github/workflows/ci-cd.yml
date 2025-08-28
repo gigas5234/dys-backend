@@ -87,26 +87,15 @@ jobs:
           gcloud config set project ${{ secrets.GCP_PROJECT_ID }}
           gcloud container clusters get-credentials dys-cluster --region asia-northeast3
 
-      - name: Pre-scale down deployment to avoid race during rollout
+      - name: Deploy with Recreate strategy
         run: |
           set -e
-          echo "Scaling dys-deployment down to 0 to avoid conflicts during long builds..."
-          kubectl scale deployment/dys-deployment --replicas=0
-          echo "Waiting for pods to terminate..."
-          # wait until no pods for this deployment remain
-          for i in {1..60}; do
-            COUNT=$(kubectl get pods -l app=dys-backend --no-headers 2>/dev/null | wc -l)
-            if [ "$COUNT" = "0" ]; then echo "All pods terminated"; break; fi; sleep 5; done
-
-      - name: Deploy (set image) and scale up
-        run: |
-          set -e
+          echo "Deploying with Recreate strategy..."
           kubectl set image deployment/dys-deployment dys-backend-container=asia-northeast3-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/dys-backend/dys-backend:${{ github.sha }}
-          kubectl scale deployment/dys-deployment --replicas=2
-
+          
       - name: Wait for rollout (extended)
         run: |
-          kubectl rollout status deployment/dys-deployment --timeout=600s
+          kubectl rollout status deployment/dys-deployment --timeout=900s
 
       - name: Debug on failure
         if: ${{ always() }}

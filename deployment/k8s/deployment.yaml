@@ -6,10 +6,7 @@ spec:
   # 안정성을 위해 동일한 앱을 2개 실행시킵니다.
   replicas: 2
   strategy:
-    type: RollingUpdate
-    rollingUpdate:
-      maxSurge: 1
-      maxUnavailable: 1
+    type: Recreate
   selector:
     matchLabels:
       app: dys-backend
@@ -37,26 +34,26 @@ spec:
           httpGet:
             path: /health
             port: 8000
-          initialDelaySeconds: 60
-          periodSeconds: 15
-          timeoutSeconds: 10
-          failureThreshold: 20
+          initialDelaySeconds: 120
+          periodSeconds: 30
+          timeoutSeconds: 15
+          failureThreshold: 15
         livenessProbe:
           httpGet:
             path: /health
             port: 8000
-          initialDelaySeconds: 90
-          periodSeconds: 20
-          timeoutSeconds: 10
-          failureThreshold: 6
+          initialDelaySeconds: 180
+          periodSeconds: 30
+          timeoutSeconds: 15
+          failureThreshold: 5
         readinessProbe:
           httpGet:
             path: /health
             port: 8000
-          initialDelaySeconds: 45
-          periodSeconds: 10
-          timeoutSeconds: 5
-          failureThreshold: 6
+          initialDelaySeconds: 120
+          periodSeconds: 20
+          timeoutSeconds: 10
+          failureThreshold: 5
         env:
         - name: MONGODB_URI
           valueFrom:
