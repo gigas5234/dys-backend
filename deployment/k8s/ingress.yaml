@@ -23,7 +23,7 @@ spec:
         pathType: Prefix
         backend:
           service:
-            name: dys-backend-service
+            name: dys-backend
             port:
               number: 80
       - path: /ws
