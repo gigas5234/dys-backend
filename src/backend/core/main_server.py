@@ -141,6 +141,8 @@ app = FastAPI(title=APP_NAME)
 # 정적 파일 서빙 설정
 app.mount("/frontend", StaticFiles(directory=str(BASE_DIR / "src" / "frontend")), name="frontend")
 app.mount("/dys_studio", StaticFiles(directory=str(BASE_DIR / "src" / "frontend")), name="dys_studio")
+app.mount("/dys_studio/pages", StaticFiles(directory=str(BASE_DIR / "src" / "frontend" / "pages")), name="dys_studio_pages")
+app.mount("/dys_studio/assets", StaticFiles(directory=str(BASE_DIR / "src" / "frontend" / "assets")), name="dys_studio_assets")
 
 # CORS 허용 도메인 설정 - 환경변수에서 가져오기
 CORS_ORIGINS = os.getenv("CORS_ORIGINS", "*").split(",")
@@ -272,7 +274,7 @@ def api_gke_dys_studio_calibration_html():
 def runpod_studio():
     """RunPod Studio iframe 페이지 제공"""
     try:
-        return FileResponse("templates/runpod_studio.html", media_type="text/html")
+        return FileResponse(str(BASE_DIR / "templates" / "runpod_studio.html"), media_type="text/html")
     except FileNotFoundError:
         return Response(status_code=404, content="runpod_studio.html not found")
 
@@ -280,7 +282,7 @@ def runpod_studio():
 def serve_studio_image(filename: str):
     """studio 이미지 파일 제공"""
     try:
-        return FileResponse(f"studio/img/{filename}", media_type="image/svg+xml" if filename.endswith('.svg') else "image/*")
+        return FileResponse(str(BASE_DIR / "src" / "frontend" / "assets" / "images" / filename), media_type="image/svg+xml" if filename.endswith('.svg') else "image/*")
     except FileNotFoundError:
         return Response(status_code=404, content=f"Image {filename} not found")
 
@@ -290,7 +292,7 @@ def serve_studio_image(filename: str):
 def serve_dys_logo():
     """데연소 로고 파일 제공"""
     try:
-        return FileResponse("dys_logo.png", media_type="image/png")
+        return FileResponse(str(BASE_DIR / "src" / "frontend" / "assets" / "images" / "dys_logo.png"), media_type="image/png")
     except FileNotFoundError:
         return Response(status_code=404, content="dys_logo.png not found")
 

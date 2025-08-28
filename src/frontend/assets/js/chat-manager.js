@@ -142,8 +142,8 @@
             
             // 이미지 경로 수정
             const imagePath = this.personaImage ? 
-                `${this.apiBase}/frontend/img/persona/${this.personaImage.split('/').pop()}` : 
-                '/img/default-avatar.png';
+                `${this.apiBase}/frontend/assets/images/persona/${this.personaImage.split('/').pop()}` : 
+                '/frontend/assets/images/default-avatar.png';
             
             personaCard.innerHTML = `
                 <div class="persona-header">
