@@ -43,61 +43,25 @@ except ImportError as e:
 
 # analyzers 모듈 제거됨 - 클라이언트 측에서 처리
 
-# 음성 분석 모듈 import (새로운 voice 모듈 사용)
+# 음성 분석 모듈 import (지연 로딩으로 메모리 최적화)
 VOICE_ANALYSIS_AVAILABLE = False
-try:
-    from ..services.voice.voice_api import preload_voice_models, process_audio_simple
-    VOICE_ANALYSIS_AVAILABLE = True
-    print("✅ 새로운 음성 분석 모듈 로드 성공")
-except ImportError as e:
-    print(f"⚠️ 새로운 음성 분석 모듈 로드 실패: {e}")
-    # 강제 활성화 시도
-    try:
-        import sys
-        import os
-        sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'services'))
-        from voice.voice_api import preload_voice_models, process_audio_simple
-        VOICE_ANALYSIS_AVAILABLE = True
-        print("✅ 새로운 음성 분석 모듈 강제 활성화 성공")
-    except Exception as e2:
-        print(f"❌ 새로운 음성 분석 모듈 강제 활성화 실패: {e2}")
-        VOICE_ANALYSIS_AVAILABLE = False
-except Exception as e:
-    print(f"⚠️ 새로운 음성 분석 모듈 초기화 실패: {e}")
-    VOICE_ANALYSIS_AVAILABLE = False
+_voice_models_loaded = False
 
-# GKE 환경에서 음성 분석 모듈 강제 활성화
-if not VOICE_ANALYSIS_AVAILABLE:
-    print("🔄 GKE 환경에서 음성 분석 모듈 강제 활성화 시도...")
+def load_voice_models():
+    """지연 로딩으로 음성 모델 로드"""
+    global VOICE_ANALYSIS_AVAILABLE, _voice_models_loaded
+    if _voice_models_loaded:
+        return VOICE_ANALYSIS_AVAILABLE
+    
     try:
-        import sys
-        import os
-        sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'services'))
-        from voice.voice_api import preload_voice_models, process_audio_simple
+        from ..services.voice.voice_api import preload_voice_models, process_audio_simple
         VOICE_ANALYSIS_AVAILABLE = True
-        print("✅ GKE 환경에서 음성 분석 모듈 강제 활성화 성공")
+        _voice_models_loaded = True
+        print("✅ 음성 분석 모듈 지연 로딩 성공")
+        return True
     except Exception as e:
-        print(f"❌ GKE 환경에서 음성 분석 모듈 강제 활성화 실패: {e}")
-        # 대안 STT 방법 확인
-        print("🔄 대안 STT 방법 확인 중...")
-        
-        # OpenAI Whisper API 확인
-        try:
-            from openai import OpenAI
-            if os.getenv('OPENAI_API_KEY'):
-                print("✅ OpenAI Whisper API 사용 가능")
-                VOICE_ANALYSIS_AVAILABLE = True
-            else:
-                print("⚠️ OpenAI API 키가 설정되지 않음")
-        except ImportError:
-            print("⚠️ OpenAI 라이브러리 미설치")
-        
-        # Google Speech-to-Text API 확인
-        if not VOICE_ANALYSIS_AVAILABLE:
-            try:
-                from google.cloud import speech
-                print("✅ Google Speech-to-Text API 사용 가능")
-                VOICE_ANALYSIS_AVAILABLE = True
+        print(f"⚠️ 음성 분석 모듈 지연 로딩 실패: {e}")
+        return False
             except ImportError:
                 print("⚠️ Google Speech-to-Text API 미설치")
             except Exception as e:
@@ -1985,8 +1949,17 @@ async def analyze_voice(audio: UploadFile = File(...)):
                     }
                 }
             
+            # 지연 로딩으로 음성 모델 로드
+            if not load_voice_models():
+                return {
+                    "success": False,
+                    "error": "음성 분석 모델을 로드할 수 없습니다.",
+                    "analysis": None
+                }
+            
             # faster-whisper로 음성 분석 수행
             print("🔄 [VOICE_ANALYZE] faster-whisper로 음성 분석 시작...")
+            from ..services.voice.voice_api import process_audio_simple
             analysis_result = await asyncio.to_thread(process_audio_simple, audio_array)
             print(f"✅ [VOICE_ANALYZE] 음성 분석 완료")
             
