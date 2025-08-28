@@ -1131,6 +1131,7 @@ class UserCalibrationUpdateRequest(BaseModel):
     cam_calibration: bool
 
 @app.post("/api/user/check")
+@app.post("/user/check")
 async def check_user_calibration(request: UserCheckRequest):
     """사용자 캘리브레이션 상태 확인 (사용자가 없으면 자동 생성)"""
     try:
@@ -1199,6 +1200,7 @@ async def check_user_calibration(request: UserCheckRequest):
         }
 
 @app.post("/api/user/update-calibration")
+@app.post("/user/update-calibration")
 async def update_user_calibration_status(request: UserCalibrationUpdateRequest):
     """Supabase users 테이블의 cam_calibration 필드 업데이트"""
     try:
@@ -1314,6 +1316,7 @@ async def save_calibration(request: CalibrationRequest):
         }
 
 @app.get("/api/calibration/user/{user_id}")
+@app.get("/calibration/user/{user_id}")
 async def get_user_calibration(user_id: str):
     """사용자의 개인 캘리브레이션 데이터 조회"""
     try:

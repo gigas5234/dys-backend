@@ -12,7 +12,7 @@ const EXPRESSION_UPDATE_INTERVAL = 2000; // 2초마다 업데이트
 // 팝업 로더 함수
 async function loadPopup(popupName) {
     try {
-        const response = await fetch(`popups/${popupName}.html`);
+        const response = await fetch(`assets/popups/${popupName}.html`);
         if (response.ok) {
             const html = await response.text();
             return html;
