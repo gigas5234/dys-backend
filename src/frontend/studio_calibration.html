@@ -1,0 +1,2256 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>데연소 · Love Glass UI (피드백 고도화)</title>
+    <link rel="stylesheet" href="assets/styles/studio_calibration.css?v=20241223-24">
+<!-- MediaPipe 관련 로딩/검사 로직 제거됨 -->
+<!-- 기본 캘리브레이션 설정 모듈 -->
+<script src="assets/js/default-calibration.js?v=20241223"></script>
+<!-- 캘리브레이션 모듈 -->
+<script src="assets/js/calibration.js?v=20241222"></script>
+<!-- 성능 모니터링 (개발용) -->
+<script src="assets/js/performance-monitor.js?v=20241222"></script>
+<!-- 공통 메트릭 유틸리티 -->
+<script src="assets/js/metrics/metrics-utils.js?v=20241226-1"></script>
+
+
+<!-- MediaPipe 직접 모듈 제거됨 -->
+<!-- 카메라 분석/MediaPipe 로더 제거됨 -->
+    <!-- 음성 입력 모듈 -->
+    <script src="assets/js/voice-input.js?v=20241222-2"></script>
+    <!-- TTS 관리 모듈 -->
+    <script src="assets/js/tts-manager.js?v=20241223-2"></script>
+    <!-- TTS 유틸리티 함수들 -->
+    <script src="assets/js/tts-utils.js?v=20241226-1"></script>
+    <!-- 팝업 관리 모듈 -->
+    <script src="assets/js/popup-manager.js?v=20241223-2"></script>
+    <!-- 대화 주도권 분석 모듈 -->
+    <script src="assets/js/conversation-analyzer.js?v=20241223"></script>
+    <!-- 종합 점수 계산 모듈 -->
+    <script src="assets/js/comprehensive-score-calculator.js?v=20241223"></script>
+    <!-- 팝업 로더 모듈 -->
+    <script src="assets/js/popup-loader.js?v=20241226-1"></script>
+    <!-- UI 유틸리티 모듈 -->
+    <script src="assets/js/ui-utils.js?v=20241226-1"></script>
+    <!-- 채팅 매니저 모듈 -->
+    <script src="assets/js/chat-manager.js?v=20241226-1"></script>
+    
+    <!-- 전역 함수 노출 -->
+    <script>
+        // UI 유틸리티 함수들을 전역 스코프에 노출
+        window.showInitialGuidePopup = window.showInitialGuidePopup || function() {
+            console.log('[UI] 초기 안내 팝업 표시 (stub)');
+        };
+        window.showConfirmDialog = window.showConfirmDialog || function() {
+            console.log('[UI] 확인 팝업 표시 (stub)');
+        };
+        window.hideConfirmDialog = window.hideConfirmDialog || function() {
+            console.log('[UI] 확인 팝업 숨김 (stub)');
+        };
+    </script>
+</head>
+<body>
+
+
+
+<!-- 팝업 컨테이너들 -->
+<div id="calibration-popup-container"></div>
+<div id="initial-guide-popup-container"></div>
+<div id="confirm-popup-container"></div>
+<div id="camera-warning-popup-container"></div>
+
+<!-- 캘리브레이션 팝업은 popup-loader.js에서 동적으로 로드됨 -->
+ 
+ <!-- 상단 헤더 -->
+ <header class="top-header">
+   <div class="logo">
+     <div class="logo-icon">🎬</div>
+     <span>데이트 장소</span>
+   </div>
+   <div class="user-info">
+     <div class="action-buttons">
+       <button id="recalibrate-btn" class="action-btn">자세 다시 측정하기</button>
+       <button id="end-session-btn" class="action-btn primary">데이트 끝내기</button>
+     </div>
+   </div>
+ </header>
+
+<div class="main-content" id="main-content">
+
+  <div id="feedbackPanel" class="feedback-panel">
+      <div class="card">
+        <header>
+          <span>💡 AI 종합 피드백</span>
+          <button id="closeBtn" class="close-btn">&times;</button>
+        </header>
+        <section class="body">
+          <!-- 호감도 섹션 (개선된 메인) -->
+          <div class="likability-section-enhanced">
+            <div class="likability-header">
+              <h3 class="likability-main-title">💝 호감도</h3>
+              <div class="likability-subtitle">AI가 느끼는 당신의 매력</div>
+            </div>
+            <div class="likability-content">
+              <div class="likability-circle-enhanced">
+                <svg viewBox="0 0 120 120">
+                  <defs>
+                    <linearGradient id="likability-gradient-enhanced" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stop-color="#667eea" />
+                      <stop offset="50%" stop-color="#764ba2" />
+                      <stop offset="100%" stop-color="#f093fb" />
+                    </linearGradient>
+                    <filter id="glow">
+                      <fegaussianblur stdDeviation="3" result="coloredBlur"/>
+                      <femerge> 
+                        <femergenode in="coloredBlur"/>
+                        <femergenode in="SourceGraphic"/>
+                      </femerge>
+                    </filter>
+                  </defs>
+                  <circle class="circle-bg-enhanced" cx="60" cy="60" r="50" stroke="rgba(255,255,255,0.1)" stroke-width="8" fill="none"/>
+                  <circle id="likability-progress-enhanced" class="circle-progress-enhanced" cx="60" cy="60" r="50" stroke="url(#likability-gradient-enhanced)" stroke-width="8" fill="none" stroke-linecap="round" filter="url(#glow)" transform="rotate(-90 60 60)"/>
+                </svg>
+                <div class="likability-inner">
+                  <div id="likability-score-enhanced" class="likability-score-enhanced">-<span class="score-unit">%</span></div>
+                  <div class="likability-status" id="likability-status">측정 중</div>
+              </div>
+              </div>
+              <div class="likability-factors">
+                <div class="factor-item">
+                  <span class="factor-icon">😊</span>
+                  <span class="factor-text">표정</span>
+                  <span class="factor-score" id="factor-expression">-</span>
+                </div>
+                <div class="factor-item">
+                  <span class="factor-icon">🎵</span>
+                  <span class="factor-text">음성</span>
+                  <span class="factor-score" id="factor-voice">-</span>
+                </div>
+                <div class="factor-item">
+                  <span class="factor-icon">💬</span>
+                  <span class="factor-text">대화</span>
+                  <span class="factor-score" id="factor-conversation">-</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 대화 품질 섹션 -->
+          <div class="feedback-section">
+            <h3 class="section-title">💬 대화 품질</h3>
+            <div class="metrics-grid">
+              <div class="metric-card" onclick="showInitiativeDetails()" style="cursor: pointer;">
+                <div class="metric-icon">🎭</div>
+                <div class="metric-content">
+                  <div class="metric-title">대화 주도권</div>
+                  <div class="initiative-container">
+                    <div class="initiative-labels">
+                      <span class="user-label">나</span>
+                      <span class="ai-label">AI</span>
+                    </div>
+                    <div class="initiative-bar">
+                      <div id="user-initiative-bar" class="user-bar" style="width: 50%;"></div>
+                      <div id="ai-initiative-bar" class="ai-bar" style="width: 50%;"></div>
+                    </div>
+                    <div id="initiative-status" class="initiative-status">균형적</div>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="metric-card" onclick="showExpressionDetails()" style="cursor: pointer;">
+                <div class="metric-icon">😊</div>
+                <div class="metric-content">
+                  <div class="metric-title">표정</div>
+                  <div id="expression-score" class="metric-value">-%</div>
+                  <div id="expression-status" class="metric-status" style="font-size: 10px; color: #6b7280; margin-top: 2px;">분석 대기 중</div>
+                </div>
+              </div>
+              
+              <div class="metric-card">
+                <div class="metric-icon">🗣️</div>
+                <div class="metric-content">
+                  <div class="metric-title">말투</div>
+                  <div id="tone-score" class="metric-value">-%</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 신체 언어 섹션 -->
+          <div class="feedback-section">
+            <h3 class="section-title">🎯 신체 언어</h3>
+            <div class="metrics-grid">
+              <div class="metric-card" onclick="showGazeDetails()" style="cursor: pointer;">
+                <div class="metric-icon">👁️</div>
+                <div class="metric-content">
+                  <div class="metric-title">시선 안정성</div>
+                  <div id="gaze-score" class="metric-value">-%</div>
+                  <div id="gaze-status" class="metric-status" style="font-size: 10px; color: #6b7280; margin-top: 2px;">분석 대기 중</div>
+                </div>
+              </div>
+              
+              <div class="metric-card" onclick="showConcentrationDetails()" style="cursor: pointer;">
+                <div class="metric-icon">🎯</div>
+                <div class="metric-content">
+                  <div class="metric-title">집중도</div>
+                  <div id="concentration-score" class="metric-value">-%</div>
+                  <div id="concentration-status" class="metric-status" style="font-size: 10px; color: #6b7280; margin-top: 2px;">분석 대기 중</div>
+                </div>
+              </div>
+              
+              <div class="metric-card" onclick="showPostureDetails()" style="cursor: pointer;">
+                <div class="metric-icon">✨</div>
+                <div class="metric-content">
+                  <div class="metric-title">자세</div>
+                  <div id="posture-score" class="metric-value">-%</div>
+                  <div id="posture-status" class="metric-status" style="font-size: 10px; color: #6b7280; margin-top: 2px;">분석 대기 중</div>
+                </div>
+              </div>
+              
+              <div class="metric-card" onclick="showBlinkingDetails()" style="cursor: pointer;">
+                <div class="metric-icon">😉</div>
+                <div class="metric-content">
+                  <div class="metric-title">깜빡임</div>
+                  <div id="blinking-score" class="metric-value">-%</div>
+                  <div id="blinking-status" class="metric-status" style="font-size: 10px; color: #6b7280; margin-top: 2px;">분석 대기 중</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 종합 점수 섹션 -->
+          <div class="total-score-section">
+            <div class="total-score-card" onclick="showComprehensiveScoreDetails()" style="cursor: pointer;">
+              <div class="total-score-icon">🏆</div>
+              <div class="total-score-content">
+                <div class="total-score-title">종합 점수</div>
+                <div id="total-score" class="total-score-value">-%</div>
+                <div class="total-score-subtitle">시각 55% + 청각 38% + 대화 7%</div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- AI 피드백 섹션 -->
+          <div id="ai-feedback-summary" class="ai-feedback-section">
+            <div class="ai-feedback-header">
+              <span class="ai-feedback-icon">🍯</span>
+              <span class="ai-feedback-title">실시간 꿀팁!</span>
+            </div>
+            <ol class="ai-feedback-list">
+                <li>상대방의 말에 긍정적으로 반응해보세요.</li>
+                <li>대화가 끊기지 않게 질문을 던져보세요.</li>
+                <li>자신감 있는 목소리로 말하는 것을 잊지 마세요!</li>
+            </ol>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <!-- 깜빡임 상세 정보 팝업 -->
+    <div id="blinking-popup-container"></div>
+
+    <button id="feedbackToggleBtn" class="feedback-toggle-btn">피드백</button>
+
+    <!-- 대화 주도권 상세 정보 팝업 -->
+    <div id="initiative-popup-container"></div>
+
+    <!-- 표정 상세 정보 팝업 -->
+    <div id="expression-popup-container"></div>
+
+
+    <!-- 시선 안정성 상세 정보 팝업 -->
+    <div id="gaze-popup-container"></div>
+
+    <!-- 집중도 상세 정보 팝업 -->
+    <div id="concentration-popup-container"></div>
+
+    <!-- 자세 상세 정보 팝업 -->
+    <div id="posture-popup-container"></div>
+
+         <div class="card video-container">
+       <header>❤️ 데이트 중</header>
+               <div class="video-wrapper">
+           <div id="video-loading" class="video-loading">
+             <div class="loading-spinner"></div>
+             <p>비디오 로딩 중...</p>
+           </div>
+           <video id="video" poster="https://placehold.co/1280x720/e0e8ff/ffffff?text=Video+Stream" playsinline loop></video>
+        </div>
+       <section class="body">
+         <div class="suggestion-container">
+             <h4>이런 주제로 물어보세요</h4>
+             <div class="suggestion-tags">
+                 <button class="tag">최근에 본 영화</button>
+                 <button class="tag">주말 계획</button>
+                 <button class="tag">가장 좋아하는 음식</button>
+                 <button class="tag">요즘 즐겨듣는 노래</button>
+             </div>
+         </div>
+       </section>
+     </div>
+
+     <div class="card">
+       <header>💬 대화 중</header>
+       <div class="chat-log" id="chatLog"></div>
+       <div class="persona-info-section" id="personaInfoSection">
+         <!-- Persona 카드가 여기에 동적으로 추가됩니다 -->
+       </div>
+       <div class="chat-input">
+           <input type="text" id="chatInput" placeholder="메시지를 입력하세요...">
+           <button id="inputBtn" class="input-btn" title="메시지 전송">
+                               <img src="" alt="전송" id="inputIcon">
+           </button>
+         </div>
+    </div>
+</div>
+
+<script>
+// --- 서버/엔드포인트 설정 (Vercel 프록시 사용) ---
+const serverUrl = window.__API_BASE__ || "https://dys-phi.vercel.app/api/gke";
+const apiEndpoints = {
+  chat: `${serverUrl}/api/chat`,
+  feedback: `${serverUrl}/api/feedback`,
+  calibration: `${serverUrl}/api/calibration`,
+  user_check: `${serverUrl}/api/user/check`,
+  frame: `${serverUrl}/api/frame`,          // 프레임 업로드
+  landmarks: `${serverUrl}/api/landmarks`,
+};
+// 전역 스코프에 노출하여 모듈에서 접근 가능하도록 설정 (UI 전용)
+window.serverUrl = serverUrl;
+window.apiEndpoints = apiEndpoints;
+
+// 이미지 경로 동적 설정
+document.addEventListener('DOMContentLoaded', function() {
+    const cameraIcon = document.getElementById('cameraIcon');
+    const inputIcon = document.getElementById('inputIcon');
+    
+    if (cameraIcon) {
+        cameraIcon.src = `${window.serverUrl}/frontend/img/icon/camera.webp`;
+    }
+    
+    if (inputIcon) {
+        inputIcon.src = `${window.serverUrl}/frontend/img/icon/enter_icon.webp`;
+    }
+});
+
+// 분석 파이프라인 제거됨 (UI 전용)
+
+// --- 보안 강화: URL 파라미터를 세션 스토리지에 저장하고 URL 정리 ---
+function secureUserData() {
+    // URL에서 사용자 정보 추출
+const urlParams = new URLSearchParams(window.location.search);
+    const userData = {
+        user_id: urlParams.get('user_id'),
+        email: urlParams.get('email'),
+        token: urlParams.get('token'),
+        persona_name: urlParams.get('persona_name'),
+        persona_age: urlParams.get('persona_age'),
+        persona_mbti: urlParams.get('persona_mbti'),
+        persona_job: urlParams.get('persona_job'),
+        persona_personality: urlParams.get('persona_personality'),
+        persona_image: urlParams.get('persona_image')
+    };
+
+    // 세션 스토리지에 안전하게 저장
+    sessionStorage.setItem('userData', JSON.stringify(userData));
+
+    // URL에서 민감한 정보 제거 (히스토리 변경 없이)
+    const cleanUrl = new URL(window.location.href);
+    cleanUrl.search = '';
+    window.history.replaceState({}, document.title, cleanUrl.pathname);
+}
+
+// --- 세션 스토리지에서 사용자 정보 가져오기 ---
+function getUserData() {
+    const userDataStr = sessionStorage.getItem('userData');
+    if (!userDataStr) {
+        console.error('사용자 정보를 찾을 수 없습니다.');
+        return null;
+    }
+    return JSON.parse(userDataStr);
+}
+
+// --- 전역 변수로 사용자 정보 설정 ---
+let userId, email, token, personaName, personaAge, personaMbti, personaJob, personaPersonality, personaImage;
+
+// 전역 스코프에 노출하여 모듈에서 접근 가능하도록 설정
+window.userId = userId;
+window.email = email;
+window.token = token;
+window.personaName = personaName;
+window.personaAge = personaAge;
+window.personaMbti = personaMbti;
+window.personaJob = personaJob;
+window.personaPersonality = personaPersonality;
+window.personaImage = personaImage;
+
+// --- 사용자 정보 초기화 ---
+function initializeUserData() {
+    const userData = getUserData();
+    if (userData) {
+        userId = userData.user_id;
+        email = userData.email;
+        token = userData.token;
+        personaName = userData.persona_name;
+        personaAge = userData.persona_age;
+        personaMbti = userData.persona_mbti;
+        personaJob = userData.persona_job;
+        personaPersonality = userData.persona_personality;
+        personaImage = userData.persona_image;
+        
+        // 전역 스코프에 업데이트
+        window.userId = userId;
+        window.email = email;
+        window.token = token;
+        window.personaName = personaName;
+        window.personaAge = personaAge;
+        window.personaMbti = personaMbti;
+        window.personaJob = personaJob;
+        window.personaPersonality = personaPersonality;
+        window.personaImage = personaImage;
+        
+        console.log('✅ 사용자 정보 초기화 완료');
+        return true;
+    } else {
+        console.error('❌ 사용자 정보를 찾을 수 없습니다.');
+        return false;
+    }
+}
+
+// --- 기본 Persona 정보 설정 (사용자 정보가 없을 때) ---
+function setDefaultPersonaInfo() {
+    if (!window.personaName) {
+        window.personaName = '이서아';
+        window.personaAge = '28';
+        window.personaMbti = 'ENFP';
+        window.personaJob = '마케팅 담당자';
+        window.personaPersonality = '밝고 친근한';
+        window.personaImage = 'woman1.webp';
+        
+        console.log('✅ 기본 Persona 정보 설정 완료:', window.personaName);
+    }
+}
+
+// --- 페이지 새로고침 시 사용자 정보 복구 ---
+function restoreUserDataOnRefresh() {
+    // URL에 파라미터가 있으면 세션 스토리지에 저장
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('user_id')) {
+        secureUserData();
+        
+        // 에러 파라미터 체크 및 처리
+        const error = urlParams.get('error');
+        if (error) {
+            handlePageError(error);
+            return false; // 에러가 있으면 초기화 중단
+        }
+        
+        // 세션 종료 성공 파라미터 체크 및 처리
+        const sessionEnded = urlParams.get('session_ended');
+        if (sessionEnded === 'true') {
+            handleSessionEnded();
+        }
+        
+        // 캘리브레이션 건너뛰기 파라미터 체크
+        const skipCalibration = urlParams.get('skip_calibration');
+        if (skipCalibration === 'true') {
+            // 캘리브레이션 건너뛰기 플래그를 세션 스토리지에 저장
+            sessionStorage.setItem('skipCalibration', 'true');
+        }
+        
+        return true;
+    }
+    
+    // URL에 파라미터가 없으면 세션 스토리지에서 복구 시도
+    const userData = getUserData();
+    if (userData) {
+        initializeUserData();
+        return true;
+    }
+    
+    return false;
+}
+
+// --- 페이지 에러 처리 ---
+function handlePageError(error) {
+    console.error('❌ 페이지 에러 발생:', error);
+    
+    let errorMessage = '';
+    let errorTitle = '';
+    
+    switch (error) {
+        case 'session_end_failed':
+            errorTitle = '세션 종료 실패';
+            errorMessage = '데이트 세션을 종료하는 중 문제가 발생했습니다. 다시 시도해주세요.';
+            break;
+        case 'user_not_found':
+            errorTitle = '사용자 정보 없음';
+            errorMessage = '사용자 정보를 찾을 수 없습니다. 다시 로그인해주세요.';
+            break;
+        default:
+            errorTitle = '오류 발생';
+            errorMessage = '알 수 없는 오류가 발생했습니다. 페이지를 새로고침해주세요.';
+    }
+    
+    // 에러 팝업 표시
+    showErrorPopup(errorTitle, errorMessage);
+}
+
+// --- 에러 팝업 표시 ---
+function showErrorPopup(title, message) {
+    // 기존 에러 팝업이 있으면 제거
+    const existingError = document.getElementById('error-popup');
+    if (existingError) {
+        existingError.remove();
+    }
+    
+    // 에러 팝업 생성
+    const errorPopup = document.createElement('div');
+    errorPopup.id = 'error-popup';
+    errorPopup.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.8);
+        z-index: 5000;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    `;
+    
+    errorPopup.innerHTML = `
+        <div style="
+            background: white;
+            border-radius: 16px;
+            padding: 32px;
+            max-width: 400px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        ">
+            <div style="
+                width: 60px;
+                height: 60px;
+                background: #ef4444;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                margin: 0 auto 20px;
+                font-size: 24px;
+                color: white;
+            ">⚠️</div>
+            <h3 style="margin: 0 0 16px; color: #1f2937; font-size: 20px;">${title}</h3>
+            <p style="margin: 0 0 24px; color: #6b7280; line-height: 1.5;">${message}</p>
+            <div style="display: flex; gap: 12px; justify-content: center;">
+                <button onclick="retrySession()" style="
+                    padding: 12px 24px;
+                    background: #6c7cff;
+                    color: white;
+                    border: none;
+                    border-radius: 8px;
+                    font-weight: 600;
+                    cursor: pointer;
+                ">다시 시도</button>
+                <button onclick="goToHome()" style="
+                    padding: 12px 24px;
+                    background: #e5e7eb;
+                    color: #374151;
+                    border: none;
+                    border-radius: 8px;
+                    font-weight: 600;
+                    cursor: pointer;
+                ">홈으로</button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(errorPopup);
+}
+
+// --- 다시 시도 함수 ---
+function retrySession() {
+    const errorPopup = document.getElementById('error-popup');
+    if (errorPopup) {
+        errorPopup.remove();
+    }
+    
+    // 페이지 새로고침
+    window.location.reload();
+}
+
+// --- 홈으로 이동 함수 ---
+function goToHome() {
+    // 세션 스토리지 정리
+    sessionStorage.clear();
+    
+    // 홈페이지로 이동 (실제 홈페이지 URL로 변경 필요)
+    window.location.href = '/';
+}
+
+// --- 세션 종료 성공 처리 ---
+function handleSessionEnded() {
+    console.log('✅ 세션이 성공적으로 종료되었습니다.');
+    
+    // 성공 메시지 표시
+    showSuccessMessage();
+    
+    // URL에서 session_ended 파라미터 제거
+    const url = new URL(window.location.href);
+    url.searchParams.delete('session_ended');
+    url.searchParams.delete('session_id');
+    window.history.replaceState({}, document.title, url.toString());
+}
+
+// --- 성공 메시지 표시 ---
+function showSuccessMessage() {
+    // 기존 성공 메시지가 있으면 제거
+    const existingSuccess = document.getElementById('success-message');
+    if (existingSuccess) {
+        existingSuccess.remove();
+    }
+    
+    // 성공 메시지 생성
+    const successMessage = document.createElement('div');
+    successMessage.id = 'success-message';
+    successMessage.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: linear-gradient(135deg, #10b981, #059669);
+        color: white;
+        padding: 16px 20px;
+        border-radius: 12px;
+        box-shadow: 0 8px 25px rgba(16, 185, 129, 0.3);
+        z-index: 4000;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        animation: slideInRight 0.3s ease-out;
+        max-width: 300px;
+    `;
+    
+    successMessage.innerHTML = `
+        <div style="font-size: 20px;">✅</div>
+        <div>
+            <div style="font-weight: 600; margin-bottom: 4px;">데이트 완료!</div>
+            <div style="font-size: 14px; opacity: 0.9;">세션이 성공적으로 종료되었습니다.</div>
+        </div>
+        <button onclick="closeSuccessMessage()" style="
+            background: none;
+            border: none;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            opacity: 0.7;
+            padding: 4px;
+            border-radius: 4px;
+        ">×</button>
+    `;
+    
+    document.body.appendChild(successMessage);
+    
+    // 5초 후 자동으로 숨기기
+    setTimeout(() => {
+        closeSuccessMessage();
+    }, 5000);
+}
+
+// --- 성공 메시지 닫기 ---
+function closeSuccessMessage() {
+    const successMessage = document.getElementById('success-message');
+    if (successMessage) {
+        successMessage.style.animation = 'slideOutRight 0.3s ease-out';
+        setTimeout(() => {
+            successMessage.remove();
+        }, 300);
+    }
+}
+
+// --- 애니메이션 스타일 추가 ---
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes slideInRight {
+        from {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+    
+    @keyframes slideOutRight {
+        from {
+            transform: translateX(0);
+            opacity: 1;
+        }
+        to {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+    }
+`;
+document.head.appendChild(style);
+
+// --- 모듈 로딩 유틸리티 ---
+/**
+ * 캘리브레이션 모듈이 로드될 때까지 대기
+ * @param {number} timeout - 타임아웃 (ms)
+ * @returns {Promise<void>}
+ */
+async function waitForCalibrationModule(timeout = 5000) {
+    const startTime = Date.now();
+    
+    while (typeof window.CalibrationModule === 'undefined') {
+        if (Date.now() - startTime > timeout) {
+            console.error('[CALIBRATION] 모듈 로딩 타임아웃');
+            throw new Error('캘리브레이션 모듈 로딩 실패');
+        }
+        // 10ms마다 체크 (non-blocking)
+        await new Promise(resolve => setTimeout(resolve, 10));
+    }
+}
+
+// --- 캘리브레이션 로직 (별도 파일로 분리됨) ---
+document.addEventListener('DOMContentLoaded', async () => {
+    // 팝업 로드
+    await loadAllPopups();
+    
+    // 채팅 매니저 초기화
+    if (window.ChatManager) {
+        window.chatManager = new window.ChatManager({ chatLog, chatInput, inputBtn });
+    }
+    
+    // 페이지 로드 시 모든 메트릭 초기화
+    setTimeout(() => {
+        resetAllMetrics();
+    }, 100);
+    
+    // 사용자 데이터 보안 처리 및 초기화
+    const userDataRestored = restoreUserDataOnRefresh();
+    if (!userDataRestored) {
+        console.error('사용자 정보를 복구할 수 없습니다. 페이지를 다시 로드해주세요.');
+        // 사용자에게 알림 표시
+        alert('사용자 정보를 찾을 수 없습니다. 이전 페이지로 돌아가서 다시 시도해주세요.');
+        window.history.back();
+        return;
+    }
+    
+    // 사용자 정보 초기화 (이 부분이 누락되어 있었음)
+    const userDataInitialized = initializeUserData();
+    if (!userDataInitialized) {
+        console.error('사용자 정보 초기화에 실패했습니다.');
+        alert('사용자 정보 초기화에 실패했습니다. 페이지를 새로고침해주세요.');
+        window.location.reload();
+        return;
+    }
+    
+    // 기본 Persona 정보 설정 (사용자 정보가 없을 때)
+    setDefaultPersonaInfo();
+    
+    // 캘리브레이션 모듈 로딩 대기 및 초기화
+    await waitForCalibrationModule();
+    console.log('[CALIBRATION] 캘리브레이션 모듈 로드 완료 - 초기화 시작');
+    
+    // 사용자 정보가 초기화된 후 캘리브레이션 모듈 초기화
+    if (window.CalibrationModule && typeof window.CalibrationModule.initializeCalibration === 'function') {
+        console.log('[CALIBRATION] 사용자 정보 초기화 완료 - 캘리브레이션 모듈 초기화 시작');
+        
+        // 캘리브레이션 모듈 초기화 (이벤트 리스너 설정 포함)
+        if (typeof window.initializeCalibrationModule === 'function') {
+            window.initializeCalibrationModule();
+        }
+        
+        // 캘리브레이션 상태 확인 및 초기화
+        window.CalibrationModule.initializeCalibration();
+        
+        // 캘리브레이션 모듈 초기화 완료 - 사용자 선택 대기
+        console.log('[APP] 캘리브레이션 모듈 초기화 완료 - 사용자 선택 대기 중');
+        // 사용자가 "건너뛰기"를 누르거나 캘리브레이션을 완료한 후에만 앱 시작됨
+        
+        // 앱 시작 플래그 감지
+        const checkAppStart = () => {
+            if (window.__readyToStartApp) {
+                console.log('[APP] 사용자 선택 감지 - 앱 시작');
+                initializeApp();
+            } else {
+                setTimeout(checkAppStart, 100); // 100ms마다 확인
+            }
+        };
+        checkAppStart();
+    } else {
+        console.error('[CALIBRATION] 캘리브레이션 모듈 초기화 함수를 찾을 수 없습니다');
+        // 캘리브레이션 모듈이 없어도 사용자 선택을 기다림
+        console.log('[APP] 캘리브레이션 모듈 없음 - 사용자 선택 대기 중');
+    }
+    
+    // 성능 리포트 생성 (개발 모드에서만)
+    if (window.PerformanceMonitor && window.location.hostname === 'localhost') {
+        window.PerformanceMonitor.generateReport();
+    }
+    
+    // 음성 입력 관리자 초기화 (지연 실행)
+    setTimeout(() => {
+        if (window.VoiceInputManager) {
+            window.voiceManager = new VoiceInputManager();
+            console.log('[VOICE] 음성 입력 관리자 초기화 완료');
+        } else {
+            console.warn('[VOICE] VoiceInputManager를 찾을 수 없습니다');
+        }
+        
+        // TTS 관리자 초기화
+        if (window.TTSManager) {
+            window.ttsManager = new TTSManager();
+            console.log('[TTS] TTS 관리자 초기화 완료');
+        } else {
+            console.warn('[TTS] TTSManager를 찾을 수 없습니다');
+        }
+    }, 500);
+});
+
+// --- DOM 요소 가져오기 ---
+const feedbackPanel = document.getElementById('feedbackPanel');
+const feedbackToggleBtn = document.getElementById('feedbackToggleBtn');
+const closeBtn = document.getElementById('closeBtn');
+const chatLog = document.getElementById('chatLog');
+const chatInput = document.getElementById('chatInput');
+const inputBtn = document.getElementById('inputBtn');
+const inputIcon = document.getElementById('inputIcon');
+
+// 모든 메트릭 초기화 함수
+function resetAllMetrics() {
+  console.log('[UI] 🔄 모든 메트릭 초기화 시작');
+  
+  // DOM 요소들 초기화
+  const elements = {
+    posture: document.getElementById('posture-score'),
+    gaze: document.getElementById('gaze-score'),
+    concentration: document.getElementById('concentration-score'),
+    blink: document.getElementById('blinking-score'),
+    expression: document.getElementById('expression-score'),
+    total: document.getElementById('total-score')
+  };
+  
+  // 점수 초기화
+  Object.values(elements).forEach(element => {
+    if (element) {
+      element.textContent = '0%';
+      element.style.color = '#6b7280'; // 회색으로 변경
+    }
+  });
+  
+  // 상태 표시 초기화
+  const statusElements = {
+    expression: document.getElementById('expression-status'),
+    gaze: document.getElementById('gaze-status'),
+    concentration: document.getElementById('concentration-status'),
+    posture: document.getElementById('posture-status'),
+    blinking: document.getElementById('blinking-status')
+  };
+  
+  Object.values(statusElements).forEach(element => {
+    if (element) {
+      element.textContent = '분석 대기 중';
+      element.style.color = '#6b7280';
+    }
+  });
+  
+  // 전역 데이터 초기화 (UI-only mode)
+  if (window.PopupManager) {
+      window.PopupManager.currentExpressionData = null;
+  }
+  
+  // 표정 분석 데이터 초기화 (초기에는 점수 미표시)
+  lastExpressionScore = null;
+  lastExpressionText = '-';
+  lastExpressionUpdate = 0;
+  
+  // 종합 점수 계산기 초기화
+  if (window.ComprehensiveScoreCalculator) {
+      window.ComprehensiveScoreCalculator.resetAllScores();
+  }
+  
+  // 대화 주도권 분석기 초기화
+  if (window.ConversationAnalyzer) {
+        window.ConversationAnalyzer.chatHistory = window.chatManager ? window.chatManager.chatHistory : [];
+      window.ConversationAnalyzer.analyzeConversation();
+  }
+  
+  console.log('[UI] ✅ 모든 메트릭 초기화 완료');
+}
+
+function updateCameraMetrics(metrics) {
+  // 스로틀링: 500ms마다 한 번씩만 업데이트
+  const now = Date.now();
+  if (window.__lastUIUpdate__ && (now - window.__lastUIUpdate__) < 500) {
+    return; // 너무 빠른 업데이트 방지
+  }
+  window.__lastUIUpdate__ = now;
+  
+  // 카메라 연결 상태 확인
+  const isCameraConnected = metrics && Object.keys(metrics).length > 0;
+  if (!isCameraConnected) {
+    console.log('[UI] ⚠️ 카메라 데이터 없음 - UI 초기화');
+    resetAllMetrics();
+    return;
+  }
+  
+      // metrics: {scores:{attention, stability, blink, posture}, labels:{expression}}
+    console.log(`[UI] 🖥️ updateCameraMetrics 호출됨 (UI-only mode):`, {
+      timestamp: new Date().toISOString()
+    });
+  
+      try {
+      // DOM 요소 존재 확인
+      const postureElement = document.getElementById('posture-score');
+      const gazeElement = document.getElementById('gaze-score');
+      const concentrationElement = document.getElementById('concentration-score');
+      const blinkElement = document.getElementById('blinking-score');
+      const expressionElement = document.getElementById('expression-score');
+      
+      console.log('[UI] 🔍 DOM 요소 확인:', {
+        postureElement: !!postureElement,
+        gazeElement: !!gazeElement,
+        concentrationElement: !!concentrationElement,
+        blinkElement: !!blinkElement,
+        expressionElement: !!expressionElement
+      });
+      
+      if (!postureElement || !gazeElement || !concentrationElement || !blinkElement || !expressionElement) {
+        console.warn('[UI] ⚠️ 필요한 DOM 요소를 찾을 수 없습니다');
+        return;
+      }
+    
+    // 얼굴 인식 상태 확인 (완화)
+    const cameraBlocked = metrics?.coaching_message === '카메라가 보이지 않아서 피드백을 할 수 없습니다.';
+    const noFace = metrics?.status === 'no-face';
+    const isFaceDetected = !(cameraBlocked || noFace);
+    
+    console.log('[UI] 👤 얼굴 인식 상태:', {
+      cameraBlocked,
+      noFace,
+      isFaceDetected,
+      coaching_message: metrics?.coaching_message,
+      status: metrics?.status
+    });
+    
+    if (!isFaceDetected) {
+      console.log('[UI] ⚠️ 얼굴이 감지되지 않음 - UI 초기화');
+      postureElement.textContent = '-';
+      gazeElement.textContent = '-';
+      concentrationElement.textContent = '-';
+      blinkElement.textContent = '-';
+      expressionElement.textContent = '-';
+      
+      // 카메라 위치/정보 부족 경고 표시
+      showCameraWarningInline();
+      
+      // 상태 표시도 초기화
+      const expressionStatusElement = document.getElementById('expression-status');
+      const gazeStatusElement = document.getElementById('gaze-status');
+      const concentrationStatusElement = document.getElementById('concentration-status');
+      
+      if (expressionStatusElement) {
+        expressionStatusElement.textContent = '분석 대기 중';
+        expressionStatusElement.style.color = '#6b7280';
+      }
+      if (gazeStatusElement) {
+        gazeStatusElement.textContent = '분석 대기 중';
+        gazeStatusElement.style.color = '#6b7280';
+      }
+      if (concentrationStatusElement) {
+        concentrationStatusElement.textContent = '분석 대기 중';
+        concentrationStatusElement.style.color = '#6b7280';
+      }
+      
+      // 전역 데이터도 초기화 (UI-only mode)
+      currentExpressionData = null;
+      
+      // 표정 분석 데이터 초기화
+      lastExpressionScore = null;
+      lastExpressionText = '-';
+      lastExpressionUpdate = 0;
+      
+      return;
+    } else {
+      // 얼굴이 감지되면 카메라 경고 숨기기
+      hideCameraWarningInline();
+    }
+    
+    // 자세 점수 계산 (통일된 scores 객체 우선 사용)
+    let postureScore = null;
+    
+    // 우선순위 1: 통일된 scores 객체 사용
+    if (metrics?.scores?.posture != null) {
+        postureScore = Math.round(metrics.scores.posture);
+        console.log('[UI] ✅ scores.posture 사용:', postureScore);
+    } else if (metrics?.neckAnalysis && metrics?.shoulderAnalysis) {
+            // UI-only mode: MediaPipe 직접 분석 데이터 처리 비활성화
+    console.log('[UI] (noop) MediaPipe 직접 분석 데이터 처리 비활성화됨');
+    } else if (metrics?.neckScore !== undefined && metrics?.shoulderScore !== undefined) {
+        // 우선순위 3: 워커 데이터 구조 (직접 점수)
+        const neckScore = metrics.neckScore || 0;
+        const shoulderScore = metrics.shoulderScore || 0;
+        postureScore = Math.round((neckScore + shoulderScore) / 2);
+        console.log('[UI] 워커 데이터 자세 점수 계산:', { neckScore, shoulderScore, postureScore });
+    } else if (metrics?.neckAnalysis) {
+        // 우선순위 4: 목 분석만 사용
+        postureScore = metrics.neckAnalysis.postureScore ?? null;
+        console.log('[UI] 목 분석만 사용:', postureScore);
+    } else {
+        postureScore = null;
+        console.log('[UI] ⚠️ 자세 분석 데이터 없음, 점수 미표시');
+    }
+    
+    if (postureScore == null) {
+      postureElement.textContent = '-';
+    } else {
+    postureScore = Math.min(100, Math.max(0, Math.round(postureScore)));
+    postureElement.textContent = `${postureScore}%`;
+    }
+    
+    // 종합 점수 계산기에 자세 점수 업데이트
+    if (window.ComprehensiveScoreCalculator && postureScore != null) {
+      window.ComprehensiveScoreCalculator.updateVisualScore('posture', postureScore);
+    }
+    
+    // 자세 분석 데이터 저장 (팝업용)
+    if (metrics?.neckAnalysis || metrics?.shoulderAnalysis) {
+      currentPostureData = {
+        neckAnalysis: metrics.neckAnalysis,
+        shoulderAnalysis: metrics.shoulderAnalysis,
+        score: postureScore,
+        timestamp: Date.now()
+      };
+      // 전역 변수로도 노출 (팝업에서 접근용)
+      window.currentPostureData = currentPostureData;
+      console.log('[UI] 자세 데이터 저장:', currentPostureData);
+    } else {
+      console.warn('[UI] ⚠️ 자세 분석 데이터 없음:', { 
+        hasNeckAnalysis: !!metrics?.neckAnalysis,
+        hasShoulderAnalysis: !!metrics?.shoulderAnalysis 
+      });
+    }
+    
+    // 자세 분석 상태 업데이트
+    const postureStatusElement = document.getElementById('posture-status');
+    if (postureStatusElement) {
+      if (postureScore != null) {
+        if (postureScore >= 85) {
+          postureStatusElement.textContent = '매우 우수';
+          postureStatusElement.style.color = '#10b981';
+        } else if (postureScore >= 70) {
+          postureStatusElement.textContent = '우수';
+          postureStatusElement.style.color = '#10b981';
+        } else if (postureScore >= 55) {
+          postureStatusElement.textContent = '양호';
+          postureStatusElement.style.color = '#3b82f6';
+        } else if (postureScore >= 40) {
+          postureStatusElement.textContent = '보통';
+          postureStatusElement.style.color = '#f59e0b';
+        } else {
+          postureStatusElement.textContent = '개선 필요';
+          postureStatusElement.style.color = '#ef4444';
+        }
+      } else {
+        postureStatusElement.textContent = '분석 대기 중';
+        postureStatusElement.style.color = '#6b7280';
+      }
+    }
+    
+    console.log(`[UI] 💪 자세 점수 업데이트 (UI-only mode):`, { 
+      rawScore: postureScore, 
+      timestamp: new Date().toISOString()
+    });
+    
+    // 시선 안정성 점수 계산 (통일된 scores 객체 우선 사용)
+    let gazeStabilityScore = null;
+    
+    // 우선순위 1: 통일된 scores 객체 사용
+    if (metrics?.scores?.gaze != null) {
+        gazeStabilityScore = Math.round(metrics.scores.gaze);
+        console.log('[UI] ✅ scores.gaze 사용:', gazeStabilityScore);
+    } else if (metrics?.gazeAnalysis?.stabilityScore != null) {
+        // 우선순위 2: 기존 gazeAnalysis 구조 사용
+        gazeStabilityScore = Math.round(metrics.gazeAnalysis.stabilityScore);
+        console.log('[UI] gazeAnalysis.stabilityScore 사용:', gazeStabilityScore);
+    } else {
+        gazeStabilityScore = null;
+        console.log('[UI] ⚠️ 시선 분석 데이터 없음, 점수 미표시');
+    }
+    
+    if (gazeStabilityScore != null) {
+        gazeElement.textContent = `${gazeStabilityScore}%`;
+        updateScoreColor(gazeElement, gazeStabilityScore);
+        
+        // 종합 점수 계산기에 시선 점수 업데이트
+        if (window.ComprehensiveScoreCalculator) {
+            window.ComprehensiveScoreCalculator.updateVisualScore('gaze_stability', gazeStabilityScore);
+        }
+    } else {
+        gazeElement.textContent = '-';
+    }
+    
+    // 집중도 점수 계산 (통일된 scores 객체 우선 사용)
+    let concentrationScore = null;
+    
+    // 우선순위 1: 통일된 scores 객체 사용
+    if (metrics?.scores?.concentration != null) {
+        concentrationScore = Math.round(metrics.scores.concentration);
+        console.log('[UI] ✅ scores.concentration 사용:', concentrationScore);
+    } else {
+        concentrationScore = null;
+        console.log('[UI] ⚠️ 집중도 분석 데이터 없음, 점수 미표시');
+    }
+    
+    if (concentrationScore != null) {
+        concentrationScore = Math.min(100, Math.max(0, Math.round(concentrationScore)));
+        concentrationElement.textContent = `${concentrationScore}%`;
+        updateScoreColor(concentrationElement, concentrationScore);
+        
+        // 종합 점수 계산기에 집중도 점수 업데이트
+        if (window.ComprehensiveScoreCalculator) {
+            window.ComprehensiveScoreCalculator.updateAuditoryScore('concentration', concentrationScore);
+        }
+    } else {
+        concentrationElement.textContent = '-';
+    }
+    
+    // 집중도 분석 데이터 저장 (UI-only mode)
+    console.log('[UI] (noop) 집중도 분석 데이터 저장 비활성화됨');
+    
+    // 집중도 분석 상태 업데이트
+    const concentrationStatusElement = document.getElementById('concentration-status');
+    if (concentrationStatusElement) {
+      if (metrics?.gazeAnalysis && concentrationScore != null) {
+        const isFocused = metrics.gazeAnalysis.isFocused;
+        const gazeDirection = metrics.gazeAnalysis.gazeDirection;
+        
+        if (isFocused && gazeDirection === 'center') {
+          concentrationStatusElement.textContent = '집중 중';
+          concentrationStatusElement.style.color = '#10b981';
+        } else if (concentrationScore > 80) {
+          concentrationStatusElement.textContent = '매우 집중';
+          concentrationStatusElement.style.color = '#10b981';
+        } else if (concentrationScore > 60) {
+          concentrationStatusElement.textContent = '집중';
+          concentrationStatusElement.style.color = '#3b82f6';
+        } else if (concentrationScore > 40) {
+          concentrationStatusElement.textContent = '보통';
+          concentrationStatusElement.style.color = '#f59e0b';
+        } else {
+          concentrationStatusElement.textContent = '분산됨';
+          concentrationStatusElement.style.color = '#ef4444';
+        }
+      } else {
+        concentrationStatusElement.textContent = '분석 대기 중';
+        concentrationStatusElement.style.color = '#6b7280';
+      }
+    }
+    
+    console.log(`[UI] 집중도 점수 업데이트 (UI-only mode):`, concentrationScore);
+    
+    // 시선 안정성 점수 (워커 데이터와 HTTP 분석 데이터 모두 지원)
+    // 이미 위에서 계산된 gazeStabilityScore 사용
+    let gazeScore = gazeStabilityScore;
+    
+    if (gazeScore != null) {
+        gazeScore = Math.min(100, Math.max(0, Math.round(gazeScore)));
+        gazeElement.textContent = `${gazeScore}%`;
+        updateScoreColor(gazeElement, gazeScore);
+    } else {
+        gazeElement.textContent = '-';
+    }
+    
+    // 시선 분석 데이터 저장 (UI-only mode)
+    console.log('[UI] (noop) 시선 분석 데이터 저장 비활성화됨');
+    
+    // 시선 분석 상태 업데이트
+    const gazeStatusElement = document.getElementById('gaze-status');
+    if (gazeStatusElement) {
+      if (metrics?.gazeAnalysis && gazeScore != null) {
+        const isFocused = metrics.gazeAnalysis.isFocused;
+        const gazeDirection = metrics.gazeAnalysis.gazeDirection;
+        const stabilityScore = metrics.gazeAnalysis.stabilityScore;
+        
+        if (isFocused && gazeDirection === 'center') {
+          gazeStatusElement.textContent = '집중 중';
+          gazeStatusElement.style.color = '#10b981';
+        } else if (stabilityScore > 70) {
+          gazeStatusElement.textContent = '안정적';
+          gazeStatusElement.style.color = '#3b82f6';
+        } else if (stabilityScore > 50) {
+          gazeStatusElement.textContent = '보통';
+          gazeStatusElement.style.color = '#f59e0b';
+        } else {
+          gazeStatusElement.textContent = '불안정';
+          gazeStatusElement.style.color = '#ef4444';
+        }
+      } else {
+        gazeStatusElement.textContent = '분석 대기 중';
+        gazeStatusElement.style.color = '#6b7280';
+      }
+    }
+    
+    console.log(`[UI] 시선 안정성 점수 업데이트 (UI-only mode):`, gazeScore);
+    
+    // 깜빡임 점수 계산 (통일된 scores 객체 우선 사용)
+    let blinkScore = null;
+    
+    // 우선순위 1: 통일된 scores 객체 사용
+    if (metrics?.scores?.blink != null) {
+        blinkScore = Math.round(metrics.scores.blink);
+        console.log('[UI] ✅ scores.blink 사용:', blinkScore);
+    } else {
+        blinkScore = null;
+        console.log('[UI] ⚠️ 깜빡임 분석 데이터 없음, 점수 미표시');
+    }
+    
+    if (blinkScore != null) {
+        blinkScore = Math.min(100, Math.max(0, Math.round(blinkScore)));
+        blinkElement.textContent = `${blinkScore}%`;
+        updateScoreColor(blinkElement, blinkScore);
+        
+        // 종합 점수 계산기에 깜빡임 점수 업데이트
+        if (window.ComprehensiveScoreCalculator) {
+            window.ComprehensiveScoreCalculator.updateVisualScore('blinking', blinkScore);
+        }
+    } else {
+        blinkElement.textContent = '-';
+    }
+    
+    // 깜빡임 분석 데이터 저장 (팝업용)
+    if (metrics?.earResult) {
+      currentBlinkingData = {
+        earResult: metrics.earResult,
+        score: blinkScore,
+        blinkRatePerMinute: metrics.earResult.blinkRatePerMinute,
+        avgBlinkDuration: metrics.earResult.avgBlinkDuration,
+        totalBlinkCount: metrics.earResult.totalBlinkCount,
+        blinkStatus: metrics.earResult.blinkStatus,
+        timestamp: Date.now()
+      };
+      // 전역 변수로도 노출 (팝업에서 접근용)
+      window.currentBlinkingData = currentBlinkingData;
+      console.log('[UI] 깜빡임 데이터 저장:', currentBlinkingData);
+    } else {
+      console.warn('[UI] ⚠️ 깜빡임 분석 데이터(earResult) 없음:', metrics);
+    }
+    
+    // 깜빡임 분석 상태 업데이트
+    const blinkStatusElement = document.getElementById('blinking-status');
+    if (blinkStatusElement) {
+      if (metrics?.earResult && blinkScore != null) {
+        const blinkStatus = metrics.earResult.blinkStatus;
+        const blinkRate = metrics.earResult.blinkRatePerMinute;
+        
+        if (blinkStatus === 'closed') {
+          blinkStatusElement.textContent = '눈 감음';
+          blinkStatusElement.style.color = '#ef4444';
+        } else if (blinkRate > 20) {
+          blinkStatusElement.textContent = '과도한 깜빡임';
+          blinkStatusElement.style.color = '#f59e0b';
+        } else if (blinkRate < 8) {
+          blinkStatusElement.textContent = '부족한 깜빡임';
+          blinkStatusElement.style.color = '#f59e0b';
+        } else {
+          blinkStatusElement.textContent = '정상';
+          blinkStatusElement.style.color = '#10b981';
+        }
+      } else {
+        blinkStatusElement.textContent = '분석 대기 중';
+        blinkStatusElement.style.color = '#6b7280';
+      }
+    }
+    
+    console.log(`[UI] 깜빡임 점수 업데이트 (UI-only mode):`, blinkScore);
+    
+    // 표정 분석 결과 처리 (PyTorch 모델 기반)
+    let expressionScore = null;
+    let expressionText = '-';
+    const currentTime = Date.now();
+    
+    // 서버에서 직접 반환하는 표정 분석 결과 처리
+    if (metrics?.success && metrics?.expression && metrics?.score) {
+      // 서버에서 직접 반환하는 구조
+      const expressionResult = {
+        success: metrics.success,
+        expression: metrics.expression,
+        confidence: metrics.confidence,
+        score: metrics.score
+      };
+      
+      if (expressionResult.score && typeof expressionResult.score.score === 'number') {
+        // 2초마다 업데이트하거나 신뢰도가 높을 때만 업데이트
+        if (currentTime - lastExpressionUpdate > EXPRESSION_UPDATE_INTERVAL || 
+            expressionResult.confidence > 0.6) {
+          expressionScore = expressionResult.score.score;
+          expressionText = expressionResult.score.label || '중립적';
+          lastExpressionScore = expressionScore;
+          lastExpressionText = expressionText;
+          lastExpressionUpdate = currentTime;
+        } else {
+          // 이전 값 유지
+          expressionScore = lastExpressionScore;
+          expressionText = lastExpressionText;
+        }
+        
+        // 표정 데이터를 전역 변수에 저장 (팝업용)
+        currentExpressionData = {
+          expression: expressionResult.expression,
+          confidence: expressionResult.confidence,
+          score: expressionResult.score,
+          probabilities: metrics.probabilities || {}, // 서버에서 직접 반환하는 probabilities 사용
+          timestamp: Date.now()
+        };
+        // 전역 변수로도 노출 (팝업 매니저에서 접근용)
+        window.currentExpressionData = currentExpressionData;
+        console.log('[UI] 표정 데이터 저장:', currentExpressionData);
+        
+        console.log('[UI] 🎭 서버 표정 분석 결과:', {
+          expression: expressionResult.expression,
+          confidence: expressionResult.confidence,
+          score: expressionScore,
+          label: expressionText
+        });
+      }
+    } else if (metrics?.expressionAnalysis?.success) {
+      // PyTorch 모델 분석 결과 사용
+      const expressionResult = metrics.expressionAnalysis;
+      const scoreResult = expressionResult.score;
+      
+      if (scoreResult && typeof scoreResult.score === 'number') {
+        // 2초마다 업데이트하거나 신뢰도가 높을 때만 업데이트
+        if (currentTime - lastExpressionUpdate > EXPRESSION_UPDATE_INTERVAL || 
+            expressionResult.confidence > 0.6) {
+          expressionScore = scoreResult.score;
+          expressionText = scoreResult.label || '중립적';
+          lastExpressionScore = expressionScore;
+          lastExpressionText = expressionText;
+          lastExpressionUpdate = currentTime;
+        } else {
+          // 이전 값 유지
+          expressionScore = lastExpressionScore;
+          expressionText = lastExpressionText;
+        }
+        
+        // 표정 데이터를 전역 변수에 저장 (팝업용)
+        currentExpressionData = {
+          expression: expressionResult.expression,
+          confidence: expressionResult.confidence,
+          probabilities: expressionResult.probabilities,
+          score: scoreResult,
+          timestamp: Date.now()
+        };
+        // 전역 변수로도 노출 (팝업 매니저에서 접근용)
+        window.currentExpressionData = currentExpressionData;
+        console.log('[UI] 표정 데이터 저장:', currentExpressionData);
+        
+        console.log('[UI] 🎭 PyTorch 표정 분석 결과:', {
+          expression: expressionResult.expression,
+          confidence: expressionResult.confidence,
+          score: expressionScore,
+          label: expressionText,
+          base_score: scoreResult.base_score,
+          confidence_bonus: scoreResult.confidence_bonus
+        });
+      }
+    } else if (metrics?.smileIntensity !== undefined) {
+      // UI-only mode: MediaPipe 미소 분석 비활성화
+      console.log('[UI] (noop) MediaPipe 미소 분석 비활성화됨');
+    } else if (metrics?.labels?.expression) {
+      expressionText = metrics.labels.expression;
+      // 기본값 제거 - 실제 분석 데이터가 없으면 null 유지
+      expressionScore = null;
+      console.log('[UI] ⚠️ labels.expression만 있음, 점수 미표시:', expressionText);
+    } else {
+      // 데이터가 없으면 이전 값 유지
+      expressionScore = lastExpressionScore;
+      expressionText = lastExpressionText;
+    }
+    
+    // 표정 점수 업데이트
+    const expressionScoreElement = document.getElementById('expression-score');
+    if (expressionScoreElement) {
+      if (expressionScore != null) {
+      expressionScoreElement.textContent = `${expressionScore}%`;
+      updateScoreColor(expressionScoreElement, expressionScore);
+      
+      // 종합 점수 계산기에 표정 점수 업데이트
+      if (window.ComprehensiveScoreCalculator) {
+        window.ComprehensiveScoreCalculator.updateVisualScore('expression', expressionScore);
+        }
+      } else {
+        expressionScoreElement.textContent = '-';
+        expressionScoreElement.style.color = '#6b7280';
+      }
+    }
+    
+    // 표정 분석 상태 업데이트 (평가 라벨 표시)
+    const expressionStatusElement = document.getElementById('expression-status');
+    if (expressionStatusElement) {
+      if ((metrics?.success && metrics?.score?.label) || (metrics?.expressionAnalysis?.success && metrics?.expressionAnalysis?.score?.label)) {
+        const scoreResult = metrics?.score || metrics?.expressionAnalysis?.score;
+        if (scoreResult && scoreResult.label) {
+          expressionStatusElement.textContent = scoreResult.label;
+          // 라벨에 따른 색상 설정
+          if (scoreResult.label.includes('긍정적')) {
+            expressionStatusElement.style.color = '#10b981'; // 초록색
+          } else if (scoreResult.label.includes('중립적')) {
+            expressionStatusElement.style.color = '#f59e0b'; // 주황색
+          } else {
+            expressionStatusElement.style.color = '#ef4444'; // 빨간색
+          }
+        } else {
+          expressionStatusElement.textContent = '분석 중';
+          expressionStatusElement.style.color = '#6b7280';
+        }
+      } else {
+        expressionStatusElement.textContent = '분석 대기 중';
+        expressionStatusElement.style.color = '#6b7280';
+      }
+    }
+    
+    console.log(`[UI] 표정 점수 업데이트 (UI-only mode):`, { expressionScore, expressionText });
+    
+    // 점수 색상 업데이트 함수 (ui-utils.js로 이동됨)
+    
+    // 개인화된 꿀팁 업데이트
+    const tips = generatePersonalizedTips(metrics);
+    const tipsContainer = document.getElementById('ai-feedback-summary');
+    if (tipsContainer && tips.length > 0) {
+      tipsContainer.innerHTML = `
+        <div style="font-weight: 700; margin-bottom: 8px; color: #1a1a1a; font-size: 14px;">🍯 실시간 꿀팁!</div>
+        <ol style="padding-left: 20px; margin: 0; font-size: 13px; line-height: 1.7; color: #2d2d2d; font-weight: 500;">
+          ${tips.map(tip => `<li>${tip}</li>`).join('')}
+        </ol>
+      `;
+    }
+    
+  } catch (e) {
+    console.warn('[ANALYZER] UI update error', e);
+  }
+}
+
+// --- AI 피드백 분석 기능 (자동 실행) ---
+// ChatManager로 이동됨 - js/chat-manager.js에서 관리
+
+// --- 이벤트 리스너 설정 ---
+closeBtn.addEventListener('click', toggleFeedbackPanel);
+
+feedbackToggleBtn.addEventListener('click', () => {
+    toggleFeedbackPanel();
+    if (feedbackPanel.classList.contains('visible')) {
+        if (window.chatManager) {
+            window.chatManager.runAiAnalysis();
+        }
+    }
+});
+
+
+document.querySelectorAll('.suggestion-tags .tag').forEach(tag => {
+    tag.addEventListener('click', () => {
+        chatInput.value = `"${tag.textContent}"에 대해 이야기해볼까요?`;
+        chatInput.focus();
+    });
+});
+
+ // --- 비디오 재생 관리 ---
+ function initializeVideo() {
+     const video = document.getElementById('video');
+     const videoLoading = document.getElementById('video-loading');
+     
+     // 비디오 파일 경로 설정 (캐시 방지를 위한 타임스탬프 추가)
+     const timestamp = new Date().getTime();
+     const videoPath = `${window.serverUrl || 'https://dys-phi.vercel.app/api/gke'}/frontend/video/woman1_cafe.mp4?t=${timestamp}`;
+     
+     console.log('🎬 [VIDEO] 비디오 초기화 시작:', videoPath);
+     
+     // 로딩 화면 표시
+     videoLoading.classList.remove('hidden');
+    
+    // 비디오 이벤트 리스너 설정
+    video.addEventListener('loadstart', () => {
+        console.log('🎬 [VIDEO] 비디오 로딩 시작');
+    });
+    
+         video.addEventListener('canplay', () => {
+         console.log('✅ [VIDEO] 비디오 재생 준비 완료');
+         // 로딩 화면 숨기기
+         videoLoading.classList.add('hidden');
+         // 자동 재생 시도 (사용자 상호작용 후에만 성공)
+         video.play().catch(error => {
+             console.log('ℹ️ [VIDEO] 자동 재생 대기 중 (사용자 상호작용 필요)');
+             // 사용자 상호작용 시 재생 시작을 위한 이벤트 리스너 추가
+             const startPlayback = () => {
+                 video.play().then(() => {
+                     console.log('✅ [VIDEO] 사용자 상호작용 후 재생 시작');
+                     // 이벤트 리스너 제거
+                     document.removeEventListener('click', startPlayback);
+                     document.removeEventListener('keydown', startPlayback);
+                 }).catch(err => {
+                     console.error('❌ [VIDEO] 재생 실패:', err);
+                 });
+             };
+             document.addEventListener('click', startPlayback, { once: true });
+             document.addEventListener('keydown', startPlayback, { once: true });
+         });
+     });
+     
+     video.addEventListener('loadeddata', () => {
+         console.log('✅ [VIDEO] 비디오 데이터 로드 완료');
+     });
+    
+    video.addEventListener('ended', () => {
+        console.log('🔄 [VIDEO] 비디오 재생 완료, 반복 재생');
+        // loop 속성이 있지만 확실히 하기 위해 다시 재생
+        video.currentTime = 0;
+        video.play().catch(error => {
+            console.error('❌ [VIDEO] 반복 재생 실패:', error);
+        });
+    });
+    
+    video.addEventListener('error', (error) => {
+        console.error('❌ [VIDEO] 비디오 로딩 오류:', error);
+        console.error('❌ [VIDEO] 비디오 오류 코드:', video.error?.code);
+        console.error('❌ [VIDEO] 비디오 오류 메시지:', video.error?.message);
+        console.error('❌ [VIDEO] 비디오 소스:', video.src);
+        videoLoading.innerHTML = `
+            <div style="text-align: center;">
+                <p style="color: #e74c3c; margin-bottom: 8px;">비디오 로딩 실패</p>
+                <p style="color: #666; font-size: 12px; margin-bottom: 8px;">오류 코드: ${video.error?.code || 'unknown'}</p>
+                <button onclick="initializeVideo()" style="padding: 8px 16px; background: var(--brand2); color: white; border: none; border-radius: 8px; cursor: pointer;">다시 시도</button>
+            </div>
+        `;
+    });
+    
+         // 비디오 소스 설정 (캐시 방지를 위한 타임스탬프 추가)
+     const cacheBuster = new Date().getTime();
+     video.src = `${videoPath}?t=${cacheBuster}`;
+     video.load();
+}
+
+
+   // --- 카메라 경고 함수들 ---
+function showCameraWarning() {
+    console.log('[CAMERA] 카메라 경고 표시');
+    const warning = document.getElementById('camera-warning');
+    if (warning) {
+        warning.classList.remove('hidden');
+    }
+}
+
+function hideCameraWarning() {
+    console.log('[CAMERA] 카메라 경고 숨김');
+    const warning = document.getElementById('camera-warning');
+    if (warning) {
+        warning.classList.add('hidden');
+    }
+}
+
+function showCameraToast() {
+    console.log('[CAMERA] 카메라 토스트 경고 표시');
+    const toast = document.getElementById('camera-toast');
+    if (toast) {
+        toast.classList.remove('hidden');
+    }
+}
+
+function hideCameraToast() {
+    console.log('[CAMERA] 카메라 토스트 경고 숨김');
+    const toast = document.getElementById('camera-toast');
+    if (toast) {
+        toast.classList.add('hidden');
+    }
+}
+
+   // --- 카메라 상태 확인 함수 ---
+  async function checkCameraStatus() {
+      try {
+          const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+          // 카메라가 정상적으로 작동하면 스트림 정리
+          stream.getTracks().forEach(track => track.stop());
+          hideCameraWarning();
+          hideCameraToast();
+          return true;
+      } catch (err) {
+          console.error("카메라 상태 확인 실패:", err);
+          // 토스트 스타일 경고 메시지 표시 (더 깔끔함)
+          showCameraToast();
+          return false;
+      }
+  }
+
+// --- 카메라 및 음성 권한 요청 함수 ---
+async function requestCameraAndAudioPermissions() {
+    console.log('🎤 [PERMISSIONS] 카메라 및 음성 권한 요청 시작');
+    
+    try {
+        // 카메라와 음성 권한을 동시에 요청
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+            video: true, 
+            audio: true 
+        });
+        
+        console.log('✅ [PERMISSIONS] 카메라 및 음성 권한 획득 성공');
+        
+        // 스트림 정리
+        stream.getTracks().forEach(track => {
+            track.stop();
+            console.log(`🛑 [PERMISSIONS] ${track.kind} 트랙 정리 완료`);
+        });
+        
+        // 권한 상태 저장
+        sessionStorage.setItem('permissionsGranted', 'true');
+        
+        // 경고 메시지 숨기기
+        hideCameraWarning();
+        hideCameraToast();
+        
+        return true;
+        
+    } catch (err) {
+        console.error('❌ [PERMISSIONS] 권한 요청 실패:', err);
+        
+        // 권한 거부 상태 저장
+        sessionStorage.setItem('permissionsGranted', 'false');
+        
+        // 에러 타입에 따른 처리
+        if (err.name === 'NotAllowedError') {
+            console.warn('⚠️ [PERMISSIONS] 사용자가 권한을 거부했습니다');
+            showPermissionDeniedMessage();
+        } else if (err.name === 'NotFoundError') {
+            console.warn('⚠️ [PERMISSIONS] 카메라 또는 마이크를 찾을 수 없습니다');
+            showDeviceNotFoundMessage();
+        } else {
+            console.warn('⚠️ [PERMISSIONS] 기타 권한 오류:', err.name);
+            showCameraToast();
+        }
+        
+        return false;
+    }
+}
+
+// --- 권한 거부 메시지 표시 ---
+function showPermissionDeniedMessage() {
+    const message = document.createElement('div');
+    message.id = 'permission-denied-message';
+    message.style.cssText = `
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(0, 0, 0, 0.9);
+        color: white;
+        padding: 20px;
+        border-radius: 12px;
+        text-align: center;
+        z-index: 10000;
+        max-width: 400px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    `;
+    
+    message.innerHTML = `
+        <div style="font-size: 24px; margin-bottom: 15px;">🎤</div>
+        <h3 style="margin: 0 0 10px; color: #ff6b6b;">권한이 필요합니다</h3>
+        <p style="margin: 0 0 15px; line-height: 1.5;">
+            데이트 시뮬레이션을 위해<br>
+            <strong>카메라와 마이크 권한</strong>이 필요합니다.
+        </p>
+        <p style="margin: 0 0 20px; font-size: 14px; opacity: 0.8;">
+            브라우저 설정에서 권한을 허용해주세요.
+        </p>
+        <button onclick="retryPermissions()" style="
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+        ">다시 시도</button>
+        <button onclick="closePermissionMessage()" style="
+            background: #666;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-left: 10px;
+        ">나중에</button>
+    `;
+    
+    document.body.appendChild(message);
+}
+
+// --- 디바이스 없음 메시지 표시 ---
+function showDeviceNotFoundMessage() {
+    const message = document.createElement('div');
+    message.id = 'device-not-found-message';
+    message.style.cssText = `
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(0, 0, 0, 0.9);
+        color: white;
+        padding: 20px;
+        border-radius: 12px;
+        text-align: center;
+        z-index: 10000;
+        max-width: 400px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    `;
+    
+    message.innerHTML = `
+        <div style="font-size: 24px; margin-bottom: 15px;">📹</div>
+        <h3 style="margin: 0 0 10px; color: #ff6b6b;">디바이스를 찾을 수 없습니다</h3>
+        <p style="margin: 0 0 15px; line-height: 1.5;">
+            카메라 또는 마이크가<br>
+            연결되지 않았습니다.
+        </p>
+        <p style="margin: 0 0 20px; font-size: 14px; opacity: 0.8;">
+            디바이스를 연결하고 다시 시도해주세요.
+        </p>
+        <button onclick="retryPermissions()" style="
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+        ">다시 시도</button>
+        <button onclick="closePermissionMessage()" style="
+            background: #666;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-left: 10px;
+        ">나중에</button>
+    `;
+    
+    document.body.appendChild(message);
+}
+
+// --- 권한 재시도 함수 ---
+async function retryPermissions() {
+    console.log('🔄 [PERMISSIONS] 권한 재시도 시작');
+    
+    // 기존 메시지 제거
+    closePermissionMessage();
+    
+    // 잠시 대기 후 권한 재요청
+    setTimeout(async () => {
+        const success = await requestCameraAndAudioPermissions();
+        if (success) {
+            console.log('✅ [PERMISSIONS] 권한 재시도 성공');
+        }
+    }, 500);
+}
+
+// --- 권한 메시지 닫기 함수 ---
+function closePermissionMessage() {
+    const permissionMessage = document.getElementById('permission-denied-message');
+    const deviceMessage = document.getElementById('device-not-found-message');
+    
+    if (permissionMessage) {
+        permissionMessage.remove();
+    }
+    if (deviceMessage) {
+        deviceMessage.remove();
+    }
+}
+
+// --- 권한 상태 확인 함수 ---
+async function checkPermissionStatus() {
+    try {
+        // 권한 상태 확인
+        const permissions = await navigator.permissions.query({ name: 'camera' });
+        const audioPermissions = await navigator.permissions.query({ name: 'microphone' });
+        
+        console.log('🔍 [PERMISSIONS] 권한 상태 확인:', {
+            camera: permissions.state,
+            microphone: audioPermissions.state
+        });
+        
+        return {
+            camera: permissions.state,
+            microphone: audioPermissions.state,
+            allGranted: permissions.state === 'granted' && audioPermissions.state === 'granted'
+        };
+    } catch (err) {
+        console.warn('⚠️ [PERMISSIONS] 권한 상태 확인 실패:', err);
+        return {
+            camera: 'unknown',
+            microphone: 'unknown',
+            allGranted: false
+        };
+    }
+}
+ 
+ // --- 앱 초기화 ---
+ async function initializeApp() {
+     // MongoDB 세션 생성 (ChatManager 사용)
+     if (window.chatManager) {
+         const sessionCreated = await window.chatManager.createSession();
+     if (!sessionCreated) {
+         console.error('❌ [CHAT] 세션 생성에 실패했습니다.');
+         }
+     }
+     
+     // 권한 상태 확인 및 필요시 요청
+     console.log('🎤 [APP] 권한 상태 확인 시작');
+     const permissionStatus = await checkPermissionStatus();
+     
+     if (permissionStatus.allGranted) {
+         console.log('✅ [APP] 이미 모든 권한이 허용됨');
+         sessionStorage.setItem('permissionsGranted', 'true');
+     } else {
+         console.log('🔄 [APP] 권한 요청 필요:', permissionStatus);
+         const permissionsGranted = await requestCameraAndAudioPermissions();
+         
+         if (permissionsGranted) {
+             console.log('✅ [APP] 권한 획득 완료 - 앱 초기화 계속');
+         } else {
+             console.warn('⚠️ [APP] 권한 획득 실패 - 제한된 기능으로 계속');
+         }
+     }
+     
+     // 카메라 상태 확인 (권한 요청 후)
+     await checkCameraStatus();
+     
+     // 비디오 초기화
+     initializeVideo();
+     
+     // 카메라 분석기 시작 (UI-only mode)
+     console.log('[ANALYZER] 🔍 카메라 분석기 시작 준비... (UI-only mode)');
+     console.log('[ANALYZER] 📦 함수 확인:', {
+         scheduleAnalyzerStart: typeof scheduleAnalyzerStart,
+         CameraAnalyzer: typeof CameraAnalyzer
+     });
+     
+     // UI-only mode: 카메라 분석기 비활성화
+     console.log('[ANALYZER] (noop) 카메라 분석기 비활성화됨 - UI-only mode');
+     
+     // Persona 정보 카드 추가 (ChatManager 사용)
+     if (window.chatManager) {
+         window.chatManager.addPersonaCard();
+     }
+     
+          // 초기 안내 팝업 표시
+      showInitialGuidePopup();
+     
+     // 분석용 WebSocket/워커 연결 제거됨 (UI 전용)
+    
+         // 액션 버튼 이벤트 리스너 추가
+     const recalibrateBtn = document.getElementById('recalibrate-btn');
+     if (recalibrateBtn) {
+         recalibrateBtn.addEventListener('click', async () => {
+             try {
+                 // 카메라 권한 확인
+                 await navigator.mediaDevices.getUserMedia({ video: true });
+                 // 카메라 경고 숨기기
+                 hideCameraWarning();
+                 // 캘리브레이션 팝업 다시 표시
+                 const calibrationOverlay = document.getElementById('calibration-overlay');
+                 const mainContent = document.getElementById('main-content');
+                 if (calibrationOverlay) calibrationOverlay.classList.remove('hidden');
+                 if (mainContent) mainContent.classList.remove('visible');
+             } catch (err) {
+                 console.error("카메라 권한 실패:", err);
+                 showCameraWarning();
+             }
+         });
+     }
+    
+    const endSessionBtn = document.getElementById('end-session-btn');
+    if (endSessionBtn) {
+        endSessionBtn.addEventListener('click', () => {
+            // 확인 팝업 표시
+            showConfirmDialog();
+        });
+    }
+    
+    // 확인 팝업 버튼 이벤트 리스너
+    const cancelEndBtn = document.getElementById('cancel-end-btn');
+    if (cancelEndBtn) {
+        cancelEndBtn.addEventListener('click', () => {
+            hideConfirmDialog();
+        });
+    }
+    
+    const confirmEndBtn = document.getElementById('confirm-end-btn');
+    if (confirmEndBtn) {
+        confirmEndBtn.addEventListener('click', async () => {
+        // 데이트 세션 종료 - 즉시 페이지 이동
+        hideConfirmDialog();
+        
+        // 로딩 상태 표시
+        const endBtn = document.getElementById('confirm-end-btn');
+        const originalText = endBtn.textContent;
+        endBtn.textContent = '종료 중...';
+        endBtn.disabled = true;
+        
+        try {
+            // 카메라 분석기 정리
+            if (window.cameraAnalyzer) {
+                console.log('🧹 [ANALYZER] 카메라 분석기 정리 시작');
+                window.cameraAnalyzer.cleanup();
+                window.cameraAnalyzer = null;
+            }
+            
+            // 세션 스토리지 정리 (ChatManager 사용)
+            if (window.chatManager) {
+                window.chatManager.cleanup();
+            }
+            console.log('🧹 [SESSION] 세션 데이터 정리 완료');
+            // 최종 피드백 데이터 수집
+            const finalFeedback = {
+                likability: parseInt(document.getElementById('likability-score').textContent) || 0,
+                initiative: parseInt(document.getElementById('user-initiative-bar').style.width) || 0,
+                tone: parseInt(document.getElementById('tone-score').textContent) || 0,
+                concentration: parseInt(document.getElementById('concentration-score').textContent) || 0,
+                gaze_stability: parseInt(document.getElementById('gaze-score').textContent) || 0,
+                blinking: parseInt(document.getElementById('blinking-score').textContent) || 0,
+                posture: parseInt(document.getElementById('posture-score').textContent) || 0,
+                expression: document.getElementById('expression-text').textContent || '분석 없음',
+                total_score: parseInt(document.getElementById('total-score').textContent) || 0,
+                summary: document.getElementById('ai-feedback-summary').textContent || '분석 없음'
+            };
+            
+            // 세션 스토리지에서 사용자 정보 가져오기
+            const userData = getUserData();
+            if (!userData) {
+                throw new Error('사용자 정보를 찾을 수 없습니다.');
+            }
+            
+            const externalUrl = 'https://dys-phi.vercel.app/persona';
+ 			
+ 			// 백엔드 API 호출 (백그라운드에서 처리, 응답 대기하지 않음)
+ 			fetch(`${serverUrl}/api/session/end`, {
+ 				method: 'POST',
+ 				headers: {
+ 					'Content-Type': 'application/json',
+ 					'Authorization': `Bearer ${userData.token || ''}`
+ 				},
+ 				body: JSON.stringify({
+ 					                session_id: window.chatManager ? window.chatManager.currentSessionId : null,
+ 					user_id: userData.user_id,
+ 					email: userData.email,
+ 					token: userData.token,
+ 					end_reason: 'user_request',
+ 					final_feedback: finalFeedback
+ 				})
+ 			}).then(response => {
+ 				if (response.ok) {
+ 					console.log('✅ [SESSION] 백그라운드 세션 종료 성공');
+ 				} else {
+ 					console.warn('⚠️ [SESSION] 백그라운드 세션 종료 실패:', response.status);
+ 				}
+ 			}).catch(error => {
+ 				console.warn('⚠️ [SESSION] 백그라운드 세션 종료 오류:', error);
+ 			});
+ 			
+ 			// 즉시 외부 페이지로 이동 (히스토리에 남기지 않음)
+ 			console.log('🚀 [SESSION] 즉시 페이지 이동:', externalUrl);
+ 			window.location.replace(externalUrl);
+ 			
+ 		} catch (error) {
+ 			console.error('❌ [SESSION] 세션 종료 준비 실패:', error);
+ 			
+ 			// 에러 발생 시에도 외부 페이지로 이동
+ 			window.location.replace('https://dys-phi.vercel.app/persona');
+ 		} finally {
+ 			// 버튼 상태 복원 (페이지 이동 전에 실행될 수 있음)
+ 			setTimeout(() => {
+ 				const endBtn = document.getElementById('confirm-end-btn');
+ 				if (endBtn) {
+ 					endBtn.textContent = '예';
+ 					endBtn.disabled = false;
+ 				}
+ 			}, 100);
+ 		}
+ 	    });
+    
+    // 페이지 언로드 시 정리
+    window.addEventListener('beforeunload', () => {
+        console.log('🧹 [CLEANUP] 페이지 언로드 시 정리 시작');
+        cleanupGlobalVariables();
+    });
+    
+    // 페이지 숨김 시 정리
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+            console.log('🧹 [CLEANUP] 페이지 숨김 시 정리');
+            cleanupGlobalVariables();
+        }
+    });
+}
+
+// --- 전역 변수 정리 함수 ---
+function cleanupGlobalVariables() {
+    // 워커 관리 시스템 정리
+    if (typeof cleanupWorker === 'function') {
+        cleanupWorker();
+    }
+    
+    
+    
+    // 분석기 정리
+    if (window.analyzerClient) {
+        try {
+            window.analyzerClient.cleanup();
+            window.analyzerClient = null;
+        } catch (e) {
+            console.warn('[CLEANUP] 분석기 정리 실패:', e);
+        }
+    }
+    
+    // TTS 관리자 정리
+    cleanupTTSManager();
+    
+    // UI 업데이트 타이머 정리
+    if (window.__UI_UPDATE_TIMER__) {
+        clearTimeout(window.__UI_UPDATE_TIMER__);
+        window.__UI_UPDATE_TIMER__ = null;
+    }
+    
+    // 애니메이션 프레임 정리
+    if (window.__PUMP_ANIMATION_ID__) {
+        cancelAnimationFrame(window.__PUMP_ANIMATION_ID__);
+        window.__PUMP_ANIMATION_ID__ = null;
+    }
+    
+    // 랜드마크 펌프 중지
+    __lmPumpStop = true;
+    
+    console.log('[CLEANUP] 전역 변수 정리 완료');
+}
+
+// WebSocket 연결은 initializeApp()에서 처리됨
+
+// 전역 스코프에 권한 관련 함수 노출
+window.requestCameraAndAudioPermissions = requestCameraAndAudioPermissions;
+window.retryPermissions = retryPermissions;
+window.closePermissionMessage = closePermissionMessage;
+window.checkPermissionStatus = checkPermissionStatus;
+}
+
+
+// 미소 통계 관리 (개선된 버전)
+let smileHistory = []; // 미소 히스토리 (안정화용)
+let personalBaseSmile = 50; // 개인별 기준 미소 강도 (동적 계산)
+const SMILE_HISTORY_SIZE = 20; // 최근 20개 미소 값으로 기준 계산
+const SMILE_SMOOTHING_WINDOW = 5000; // 5초 윈도우로 미소 안정화
+
+// 자세 통계 관리 (안정화용)
+let postureHistory = []; // 자세 히스토리 (안정화용)
+let smoothedPostureScore = 60; // 안정화된 자세 점수
+const POSTURE_HISTORY_SIZE = 15; // 최근 15개 자세 값으로 안정화
+const POSTURE_SMOOTHING_WINDOW = 8000; // 8초 윈도우로 자세 안정화
+const POSTURE_CHANGE_THRESHOLD = 15; // 급격한 변화 임계값 (15점 이상 변화 시 제한)
+
+// 워커로부터 받은 랜드마크를 배치에 적재 (UI-only mode)
+function onLandmarkFrame(lmBuffer, ear) {
+  // UI-only mode: 랜드마크 처리 비활성화
+  console.log('[LANDMARK] (noop) 랜드마크 처리 비활성화됨');
+}
+
+
+// --- 시선 안정성 상세 정보 팝업 함수들 ---
+function showGazeDetails() {
+    const popup = document.getElementById('gaze-details-popup');
+    if (popup) {
+        popup.classList.add('active');
+        updateGazePopupContent();
+    }
+}
+
+function closeGazeDetails() {
+    const popup = document.getElementById('gaze-details-popup');
+    if (popup) {
+        popup.classList.remove('active');
+    }
+}
+
+function updateGazePopupContent() {
+    // UI-only mode: 기본 데이터 표시
+    document.getElementById('gaze-main-value').textContent = 'UI 모드';
+    document.getElementById('gaze-stability-value').textContent = '0%';
+    document.getElementById('gaze-landmarks').innerHTML = '<div class="no-data">시선 분석 기능이 비활성화되어 있습니다.</div>';
+    document.getElementById('gaze-criteria-text').innerHTML = '시선 분석 기능이 비활성화되어 있습니다.';
+    document.getElementById('gaze-explanation-text').innerHTML = '시선 분석 기능이 비활성화되어 있습니다.';
+    
+    // 랜드마크 정보 업데이트
+    if (typeof updateGazeLandmarksInfo === 'function') {
+        updateGazeLandmarksInfo();
+    }
+    
+    // 평가 기준 업데이트
+    if (typeof updateGazeCriteriaInfo === 'function') {
+        updateGazeCriteriaInfo();
+    }
+    
+    // 점수 계산 근거 업데이트
+    if (typeof updateGazeExplanationInfo === 'function') {
+        updateGazeExplanationInfo();
+    }
+}
+
+
+
+// --- 집중도 상세 정보 팝업 함수들 ---
+function showConcentrationDetails() {
+    const popup = document.getElementById('concentration-details-popup');
+    if (popup) {
+        popup.classList.add('active');
+        updateConcentrationPopupContent();
+    }
+}
+
+function closeConcentrationDetails() {
+    const popup = document.getElementById('concentration-details-popup');
+    if (popup) {
+        popup.classList.remove('active');
+    }
+}
+
+function updateConcentrationPopupContent() {
+    // UI-only mode: 기본 데이터 표시
+    document.getElementById('concentration-main-value').textContent = 'UI 모드';
+    document.getElementById('concentration-score-value').textContent = '0%';
+    document.getElementById('concentration-factors').innerHTML = '<div class="no-data">집중도 분석 기능이 비활성화되어 있습니다.</div>';
+    document.getElementById('concentration-criteria-text').innerHTML = '집중도 분석 기능이 비활성화되어 있습니다.';
+    document.getElementById('concentration-explanation-text').innerHTML = '집중도 분석 기능이 비활성화되어 있습니다.';
+    
+    // 분석 요소 업데이트
+    if (typeof updateConcentrationFactorsInfo === 'function') {
+        updateConcentrationFactorsInfo();
+    }
+    
+    // 평가 기준 업데이트
+    if (typeof updateConcentrationCriteriaInfo === 'function') {
+        updateConcentrationCriteriaInfo();
+    }
+    
+    // 점수 계산 근거 업데이트
+    if (typeof updateConcentrationExplanationInfo === 'function') {
+        updateConcentrationExplanationInfo();
+    }
+}
+
+// 팝업 외부 클릭 시 닫기
+document.addEventListener('click', function(event) {
+    const expressionPopup = document.getElementById('expression-details-popup');
+    const gazePopup = document.getElementById('gaze-details-popup');
+    const concentrationPopup = document.getElementById('concentration-details-popup');
+    
+    if (expressionPopup && event.target === expressionPopup) {
+        closeExpressionDetails();
+    }
+    
+    if (gazePopup && event.target === gazePopup) {
+        closeGazeDetails();
+    }
+    
+    if (concentrationPopup && event.target === concentrationPopup) {
+        closeConcentrationDetails();
+    }
+});
+
+// ====== 캘리브레이션 초기화 ======
+document.addEventListener('DOMContentLoaded', async function() {
+    console.log('🚀 스튜디오 캘리브레이션 페이지 초기화 시작');
+    
+    // 사용자 정보 확인 (URL 파라미터에서 추출)
+    const urlParams = new URLSearchParams(window.location.search);
+    window.userId = urlParams.get('user_id') || 'default_user';
+    window.email = urlParams.get('email') || 'user@example.com';
+    window.token = urlParams.get('token') || 'default_token';
+    
+    console.log('👤 사용자 정보:', {
+        userId: window.userId,
+        email: window.email,
+        token: window.token
+    });
+    
+    // 서버 URL 설정
+    window.serverUrl = window.location.origin;
+    window.apiEndpoints = {
+        user_check: `${window.serverUrl}/api/user/check`,
+        user_update: `${window.serverUrl}/api/user/update-calibration`,
+        calibration: `${window.serverUrl}/api/calibration`,
+        calibration_user: `${window.serverUrl}/api/calibration/user`
+    };
+    
+    console.log('🔗 API 엔드포인트 설정:', window.apiEndpoints);
+    
+    // 캘리브레이션 모듈 초기화
+    if (window.CalibrationModule && window.CalibrationModule.initializeCalibration) {
+        try {
+            await window.CalibrationModule.initializeCalibration();
+            console.log('✅ 캘리브레이션 모듈 초기화 완료');
+        } catch (error) {
+            console.error('❌ 캘리브레이션 모듈 초기화 실패:', error);
+        }
+    } else {
+        console.warn('⚠️ CalibrationModule을 찾을 수 없음');
+    }
+    
+    // 캘리브레이션 모듈 초기화 (DOM 요소 설정)
+    if (window.CalibrationModule && window.CalibrationModule.initializeCalibrationModule) {
+        try {
+            window.CalibrationModule.initializeCalibrationModule();
+            console.log('✅ 캘리브레이션 DOM 요소 초기화 완료');
+        } catch (error) {
+            console.error('❌ 캘리브레이션 DOM 요소 초기화 실패:', error);
+        }
+    }
+    
+    // 캘리브레이션 팝업 로드
+    if (window.loadCalibrationPopup) {
+        try {
+            await window.loadCalibrationPopup();
+            console.log('✅ 캘리브레이션 팝업 로드 완료');
+        } catch (error) {
+            console.error('❌ 캘리브레이션 팝업 로드 실패:', error);
+        }
+    }
+    
+    // 앱 시작 준비 완료 체크
+    const checkAppReady = () => {
+        if (window.__readyToStartApp) {
+            console.log('🎉 앱 시작 준비 완료');
+            // 메인 콘텐츠 표시
+            const mainContent = document.getElementById('main-content');
+            if (mainContent) {
+                mainContent.classList.add('visible');
+            }
+            
+            // 캘리브레이션 오버레이 숨김
+            const calibrationOverlay = document.getElementById('calibration-overlay');
+            if (calibrationOverlay) {
+                calibrationOverlay.classList.add('hidden');
+            }
+        } else {
+            // 100ms 후 다시 체크
+            setTimeout(checkAppReady, 100);
+        }
+    };
+    
+    // 앱 시작 준비 체크 시작
+    setTimeout(checkAppReady, 500);
+});
+
+</script>
+</body>
+</html>
