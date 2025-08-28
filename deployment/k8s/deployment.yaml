@@ -9,7 +9,7 @@ spec:
     type: RollingUpdate
     rollingUpdate:
       maxSurge: 1
-      maxUnavailable: 0
+      maxUnavailable: 1
   selector:
     matchLabels:
       app: dys-backend
@@ -33,22 +33,30 @@ spec:
           limits:
             memory: "2Gi"
             cpu: "1000m"
-        livenessProbe:
-          httpGet:
-            path: /health
-            port: 8000
-          initialDelaySeconds: 120
-          periodSeconds: 20
-          timeoutSeconds: 15
-          failureThreshold: 5
-        readinessProbe:
+        startupProbe:
           httpGet:
             path: /health
             port: 8000
           initialDelaySeconds: 60
           periodSeconds: 15
           timeoutSeconds: 10
-          failureThreshold: 4
+          failureThreshold: 20
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 90
+          periodSeconds: 20
+          timeoutSeconds: 10
+          failureThreshold: 6
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 45
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 6
         env:
         - name: MONGODB_URI
           valueFrom:
