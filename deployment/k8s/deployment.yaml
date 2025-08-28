@@ -8,8 +8,8 @@ spec:
   strategy:
     type: RollingUpdate
     rollingUpdate:
-      maxSurge: 0
-      maxUnavailable: 1
+      maxSurge: 1
+      maxUnavailable: 0
   selector:
     matchLabels:
       app: dys-backend
@@ -37,18 +37,18 @@ spec:
           httpGet:
             path: /health
             port: 8000
-          initialDelaySeconds: 180
-          periodSeconds: 30
-          timeoutSeconds: 20
-          failureThreshold: 8
+          initialDelaySeconds: 120
+          periodSeconds: 20
+          timeoutSeconds: 15
+          failureThreshold: 5
         readinessProbe:
           httpGet:
             path: /health
             port: 8000
-          initialDelaySeconds: 120
-          periodSeconds: 20
-          timeoutSeconds: 15
-          failureThreshold: 6
+          initialDelaySeconds: 60
+          periodSeconds: 15
+          timeoutSeconds: 10
+          failureThreshold: 4
         env:
         - name: MONGODB_URI
           valueFrom:
