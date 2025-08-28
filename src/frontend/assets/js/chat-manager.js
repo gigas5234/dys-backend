@@ -25,7 +25,7 @@
             
             // Server configuration
             this.serverUrl = window.serverUrl || 'https://dys-phi.vercel.app/api/gke';
-            this.apiBase = (this.serverUrl && this.serverUrl.replace(/\/$/, '')) || 'https://dys-phi.vercel.app';
+            this.apiBase = (this.serverUrl && this.serverUrl.replace(/\/$/, '')) || 'https://dys-phi.vercel.app/api/gke';
             
             // User data (from global scope)
             this.userId = window.userId;
