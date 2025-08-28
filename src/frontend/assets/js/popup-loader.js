@@ -12,7 +12,9 @@ const EXPRESSION_UPDATE_INTERVAL = 2000; // 2초마다 업데이트
 // 팝업 로더 함수
 async function loadPopup(popupName) {
     try {
-        const response = await fetch(`assets/popups/${popupName}.html`);
+        // Vercel 프록시를 통한 접근을 위해 경로 수정
+        const baseUrl = window.serverUrl || "https://dys-phi.vercel.app/api/gke";
+        const response = await fetch(`${baseUrl}/assets/popups/${popupName}.html`);
         if (response.ok) {
             const html = await response.text();
             return html;
