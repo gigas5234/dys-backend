@@ -1,0 +1,146 @@
+<!-- 자세 상세 정보 팝업 -->
+<div id="posture-details-popup" class="details-popup">
+  <div class="details-popup-content">
+    <div class="details-popup-header">
+      <h3>✨ 자세 분석 상세</h3>
+      <button class="details-popup-close" onclick="closePostureDetails()">×</button>
+    </div>
+    <div class="details-popup-body">
+      <div class="posture-summary">
+        <div class="posture-main">
+          <div class="posture-label">자세 상태</div>
+          <div id="posture-main-value" class="posture-main-value">-</div>
+        </div>
+        <div class="posture-score">
+          <div class="posture-label">자세 점수</div>
+          <div id="posture-score-value" class="posture-score-value">-%</div>
+        </div>
+      </div>
+      <div class="posture-breakdown">
+        <div class="posture-label">분석 요소</div>
+        <div id="posture-factors" class="posture-factors">
+          <!-- 동적으로 생성됨 -->
+        </div>
+      </div>
+      <div class="posture-criteria">
+        <div class="posture-label">평가 기준</div>
+        <div id="posture-criteria-text" class="posture-criteria-text">
+          자세 분석 데이터가 없습니다.
+        </div>
+      </div>
+      <div class="posture-explanation">
+        <div class="posture-label">점수 계산 근거</div>
+        <div id="posture-explanation-text" class="posture-explanation-text">
+          자세 분석 데이터가 없습니다.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// 자세 상세 정보 팝업 관련 함수들
+function updatePostureFactorsInfo() {
+    const factorsDiv = document.getElementById('posture-factors');
+    
+    // 자세 분석에 사용되는 요소들
+    const factorInfo = [
+        { name: '목 각도', value: '0-15도', description: '목이 앞으로 기울어진 각도' },
+        { name: '거북목 정도', value: '0-30%', description: '목이 앞으로 나온 비율' },
+        { name: '어깨 균형', value: '좌우 대칭', description: '어깨의 높이와 기울기' },
+        { name: '정면 자세', value: '90도', description: '얼굴이 정면을 향하는 각도' },
+        { name: '자세 안정성', value: '지속적', description: '자세의 지속적 유지 정도' },
+        { name: '목 근육 긴장', value: '적정', description: '목 근육의 긴장도' }
+    ];
+    
+    let html = '';
+    factorInfo.forEach(item => {
+        html += `
+            <div class="factor-item">
+                <div class="factor-name">${item.name}</div>
+                <div class="factor-value">${item.value}</div>
+                <div class="factor-description">${item.description}</div>
+            </div>
+        `;
+    });
+    
+    factorsDiv.innerHTML = html;
+}
+
+function updatePostureCriteriaInfo() {
+    const criteriaDiv = document.getElementById('posture-criteria-text');
+    
+    const criteria = `
+        <div class="criteria-section">
+            <h4>✨ 자세 평가 기준</h4>
+            <ul>
+                <li><strong>목 자세 (40%)</strong>: 목의 각도와 거북목 정도</li>
+                <li><strong>어깨 균형 (30%)</strong>: 어깨의 높이와 기울기</li>
+                <li><strong>정면 자세 (20%)</strong>: 얼굴이 정면을 향하는 정도</li>
+                <li><strong>자세 안정성 (10%)</strong>: 자세의 지속적 유지</li>
+            </ul>
+            
+            <h4>✨ 자세 분석 방법</h4>
+            <ul>
+                <li><strong>목 각도 측정</strong>: 코와 귀 중심점을 이용한 목 각도 계산</li>
+                <li><strong>거북목 감지</strong>: 앞으로 내민 머리 비율 계산</li>
+                <li><strong>어깨 기울기</strong>: 얼굴 측면 랜드마크로 어깨 위치 추정</li>
+                <li><strong>정면성 판단</strong>: 얼굴이 화면 중앙을 향하는 정도</li>
+            </ul>
+            
+            <h4>📊 점수 기준</h4>
+            <ul>
+                <li><strong>90-100점</strong>: 매우 우수한 자세 (완벽한 자세)</li>
+                <li><strong>70-89점</strong>: 우수한 자세 (좋은 자세)</li>
+                <li><strong>50-69점</strong>: 보통 자세 (일반적인 자세)</li>
+                <li><strong>30-49점</strong>: 개선이 필요한 자세 (자세 교정 필요)</li>
+                <li><strong>0-29점</strong>: 매우 개선이 필요한 자세 (심각한 자세 문제)</li>
+            </ul>
+        </div>
+    `;
+    
+    criteriaDiv.innerHTML = criteria;
+}
+
+function updatePostureExplanationInfo() {
+    const explanationDiv = document.getElementById('posture-explanation-text');
+    
+    if (!currentPostureData) {
+        explanationDiv.innerHTML = '자세 분석 데이터가 없습니다.';
+        return;
+    }
+    
+    const { neckAngle, forwardHead, shoulderBalance, score } = currentPostureData;
+    
+    let explanation = `<div class="explanation-section">`;
+    explanation += `<h4>📈 현재 분석 결과</h4>`;
+    explanation += `<ul>`;
+    explanation += `<li><strong>목 각도</strong>: ${neckAngle.toFixed(1)}도</li>`;
+    explanation += `<li><strong>거북목 정도</strong>: ${(forwardHead * 100).toFixed(1)}%</li>`;
+    explanation += `<li><strong>어깨 균형</strong>: ${shoulderBalance ? '좋음' : '개선 필요'}</li>`;
+    explanation += `<li><strong>최종 점수</strong>: ${score}점</li>`;
+    explanation += `</ul>`;
+    
+    // 점수 해석
+    if (score >= 90) {
+        explanation += `<p>🎯 <strong>완벽한 자세</strong>: 매우 우수하고 건강한 자세를 유지하고 있습니다.</p>`;
+    } else if (score >= 70) {
+        explanation += `<p>🎯 <strong>우수한 자세</strong>: 좋은 자세를 유지하고 있습니다.</p>`;
+    } else if (score >= 50) {
+        explanation += `<p>🎯 <strong>보통 자세</strong>: 일반적인 수준의 자세를 보이고 있습니다.</p>`;
+    } else if (score >= 30) {
+        explanation += `<p>🎯 <strong>개선이 필요한 자세</strong>: 자세 교정이 필요합니다.</p>`;
+    } else {
+        explanation += `<p>🎯 <strong>매우 개선이 필요한 자세</strong>: 심각한 자세 문제가 있습니다.</p>`;
+    }
+    
+    explanation += `</div>`;
+    
+    explanationDiv.innerHTML = explanation;
+}
+
+// 전역 스코프에 함수들 노출
+window.updatePostureFactorsInfo = updatePostureFactorsInfo;
+window.updatePostureCriteriaInfo = updatePostureCriteriaInfo;
+window.updatePostureExplanationInfo = updatePostureExplanationInfo;
+</script>
