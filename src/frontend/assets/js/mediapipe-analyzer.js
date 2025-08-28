@@ -10,14 +10,9 @@ class MediaPipeAnalyzer {
         this.analysisWs = null;
         this.isConnected = false;
         this.isAnalysisConnected = false;
-        // 웹소켓 베이스 URL 동적 구성
-        // 우선순위: window.WS_BASE_URL > (protocol + WEBSOCKET_HOST:WEBSOCKET_PORT) > localhost 대체
-        const fallbackHost = '34.64.136.237';
-        const protocol = (window.WS_PROTOCOL) ? window.WS_PROTOCOL : (location.protocol === 'https:' ? 'wss' : 'ws');
-        const host = window.WS_HOST || window.WEBSOCKET_HOST || fallbackHost;
-        const port = window.WS_PORT || window.WEBSOCKET_PORT || 8001;
-        const computedBase = `${protocol}://${host}:${port}`;
-        this.baseUrl = window.WS_BASE_URL || computedBase;
+        
+        // DOM이 로드된 후 URL 설정을 위해 지연 초기화
+        this.initializeBaseUrl();
         
         // 분석 결과 저장
         this.currentAnalysis = {
@@ -39,6 +34,24 @@ class MediaPipeAnalyzer {
         
         console.log("🎭 MediaPipe 분석기 초기화됨");
     }
+    
+    /**
+     * 웹소켓 베이스 URL 초기화
+     */
+    initializeBaseUrl() {
+        // 웹소켓 베이스 URL 동적 구성
+        // 우선순위: window.WS_BASE_URL > (protocol + WEBSOCKET_HOST:WEBSOCKET_PORT) > localhost 대체
+        const fallbackHost = '34.64.136.237';
+        const protocol = (window.WS_PROTOCOL) ? window.WS_PROTOCOL : (location.protocol === 'https:' ? 'wss' : 'ws');
+        const host = window.WS_HOST || window.WEBSOCKET_HOST || fallbackHost;
+        const port = window.WS_PORT || window.WEBSOCKET_PORT || 8001;
+        const computedBase = `${protocol}://${host}:${port}`;
+        this.baseUrl = window.WS_BASE_URL || computedBase;
+        
+        console.log("🔗 MediaPipe WebSocket URL:", this.baseUrl);
+        console.log("🔗 window.WS_BASE_URL:", window.WS_BASE_URL);
+        console.log("🔗 computedBase:", computedBase);
+
     
     /**
      * 웹소켓 연결 설정
