@@ -28,12 +28,20 @@ spec:
         - containerPort: 8001 # WebSocket 서버 포트
         resources:
           requests:
-            memory: "512Mi"
-            cpu: "250m"
-          limits:
             memory: "1Gi"
             cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "1000m"
         livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 180
+          periodSeconds: 30
+          timeoutSeconds: 20
+          failureThreshold: 8
+        readinessProbe:
           httpGet:
             path: /health
             port: 8000
@@ -41,14 +49,6 @@ spec:
           periodSeconds: 20
           timeoutSeconds: 15
           failureThreshold: 6
-        readinessProbe:
-          httpGet:
-            path: /health
-            port: 8000
-          initialDelaySeconds: 90
-          periodSeconds: 15
-          timeoutSeconds: 10
-          failureThreshold: 5
         env:
         - name: MONGODB_URI
           valueFrom:
