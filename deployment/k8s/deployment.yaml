@@ -82,3 +82,12 @@ spec:
             secretKeyRef:
               name: dys-secrets
               key: supabase-anon-key
+        - name: PINECONE_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: dys-secrets
+              key: pinecone-api-key
+        - name: PINECONE_ENVIRONMENT
+          value: "gcp-starter"
+        - name: PINECONE_HOST
+          value: "https://deyeonso-if637zn.svc.aped-4627-b74a.pinecone.io"
