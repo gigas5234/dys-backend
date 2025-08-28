@@ -2,6 +2,8 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: dys-deployment
+  annotations:
+    autopilot.gke.io/disable-pod-autoscaling: "true"
 spec:
   # 안정성을 위해 동일한 앱을 1개 실행시킵니다.
   replicas: 1
@@ -17,8 +19,23 @@ spec:
         # 이 라벨(app: my-backend)을 보고 service.yaml이 찾아옵니다.
         app: dys-backend
     spec:
+      # Autopilot 클러스터에 최적화된 설정
+      nodeSelector:
+        cloud.google.com/gke-nodepool: default-pool
+      tolerations:
+      - key: "kubernetes.io/arch"
+        operator: "Equal"
+        value: "amd64"
+        effect: "NoSchedule"
       containers:
       - name: dys-backend-container
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsNonRoot: true
+          runAsUser: 1000
+          capabilities:
+            drop:
+            - ALL
         # 💡 중요: CI/CD 파이프라인에서 빌드한 본인의 이미지 주소를 넣어야 합니다.
         image: asia-northeast3-docker.pkg.dev/deyeonso10/dys-backend/dys-backend:latest
         ports:
@@ -26,11 +43,11 @@ spec:
         - containerPort: 8001 # WebSocket 서버 포트
         resources:
           requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
             memory: "512Mi"
             cpu: "250m"
-          limits:
-            memory: "1Gi"
-            cpu: "500m"
         # 프로브 완전 비활성화 - 애플리케이션 안정화 후 활성화 예정
         env:
         - name: MONGODB_URI

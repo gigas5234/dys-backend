@@ -64,6 +64,11 @@ RUN chmod +x ./start.py && \
     chmod +x ./start.sh && \
     chmod +x ./deployment/scripts/start_integrated.py
 
+# Autopilot 클러스터를 위한 사용자 생성
+RUN groupadd -r appuser && useradd -r -g appuser appuser
+RUN chown -R appuser:appuser /usr/src/app
+USER appuser
+
 # 컨테이너가 8000번 포트와 8001번 포트를 외부에 노출
 EXPOSE 8000 8001
 
