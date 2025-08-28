@@ -324,9 +324,32 @@ function startApp() {
     // 앱 시작 플래그 설정
     window.__readyToStartApp = true;
     
-    // UI 전환만 처리 (앱 초기화는 메인 HTML에서 처리)
-    calibrationOverlay.classList.add('hidden');
-    calibrationMainContent.classList.add('visible');
+    // DOM 요소 존재 확인 후 UI 전환
+    if (calibrationOverlay) {
+        calibrationOverlay.classList.add('hidden');
+        console.log("[UI] 캘리브레이션 오버레이 숨김 완료");
+    } else {
+        console.warn("[UI] calibrationOverlay 요소를 찾을 수 없음");
+        // 대안: ID로 직접 찾기
+        const overlay = document.getElementById('calibration-overlay');
+        if (overlay) {
+            overlay.classList.add('hidden');
+            console.log("[UI] 대안으로 캘리브레이션 오버레이 숨김 완료");
+        }
+    }
+    
+    if (calibrationMainContent) {
+        calibrationMainContent.classList.add('visible');
+        console.log("[UI] 메인 콘텐츠 표시 완료");
+    } else {
+        console.warn("[UI] calibrationMainContent 요소를 찾을 수 없음");
+        // 대안: ID로 직접 찾기
+        const mainContent = document.getElementById('main-content');
+        if (mainContent) {
+            mainContent.classList.add('visible');
+            console.log("[UI] 대안으로 메인 콘텐츠 표시 완료");
+        }
+    }
 }
 
 /**

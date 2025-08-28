@@ -2205,25 +2205,35 @@ document.addEventListener('DOMContentLoaded', async function() {
         console.warn('⚠️ CalibrationModule을 찾을 수 없음');
     }
     
-    // 캘리브레이션 모듈 초기화 (DOM 요소 설정)
-    if (window.CalibrationModule && window.CalibrationModule.initializeCalibrationModule) {
-        try {
-            window.CalibrationModule.initializeCalibrationModule();
-            console.log('✅ 캘리브레이션 DOM 요소 초기화 완료');
-        } catch (error) {
-            console.error('❌ 캘리브레이션 DOM 요소 초기화 실패:', error);
-        }
-    }
-    
     // 캘리브레이션 팝업 로드
     if (window.loadCalibrationPopup) {
         try {
             await window.loadCalibrationPopup();
             console.log('✅ 캘리브레이션 팝업 로드 완료');
+            
+            // 팝업 로드 후 DOM 요소 초기화
+            if (window.CalibrationModule && window.CalibrationModule.initializeCalibrationModule) {
+                try {
+                    window.CalibrationModule.initializeCalibrationModule();
+                    console.log('✅ 캘리브레이션 DOM 요소 초기화 완료');
+                } catch (error) {
+                    console.error('❌ 캘리브레이션 DOM 요소 초기화 실패:', error);
+                }
+            }
         } catch (error) {
             console.error('❌ 캘리브레이션 팝업 로드 실패:', error);
         }
     }
+    
+    // 캘리브레이션 모듈 초기화 (DOM 요소 설정) - 팝업 로드 후로 이동
+    // if (window.CalibrationModule && window.CalibrationModule.initializeCalibrationModule) {
+    //     try {
+    //         window.CalibrationModule.initializeCalibrationModule();
+    //         console.log('✅ 캘리브레이션 DOM 요소 초기화 완료');
+    //     } catch (error) {
+    //         console.error('❌ 캘리브레이션 DOM 요소 초기화 실패:', error);
+    //     }
+    // }
     
     // 앱 시작 준비 완료 체크
     const checkAppReady = () => {
