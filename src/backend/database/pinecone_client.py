@@ -124,8 +124,16 @@ class PineconeClient:
                 })
             
             if upsert_data:
-                self.index.upsert(vectors=upsert_data)
-                logger.info(f"✅ {len(upsert_data)}개 벡터 업서트 완료")
+                logger.info(f"💾 [PINECONE] {len(upsert_data)}개 벡터 업서트 시작...")
+                try:
+                    result = self.index.upsert(vectors=upsert_data)
+                    logger.info(f"✅ [PINECONE] 업서트 완료 - 결과: {result}")
+                    logger.info(f"📊 [PINECONE] 벡터 ID들: {[v['id'] for v in upsert_data[:3]]}")  # 처음 3개만
+                except Exception as upsert_error:
+                    logger.error(f"❌ [PINECONE] 업서트 실행 실패: {upsert_error}")
+                    import traceback
+                    traceback.print_exc()
+                    return False
             
             return True
             
