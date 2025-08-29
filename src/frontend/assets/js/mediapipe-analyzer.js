@@ -55,9 +55,17 @@ class MediaPipeAnalyzer {
     }
     
     /**
-     * 웹소켓 연결 설정
+     * 웹소켓 연결 설정 (임시 비활성화 - 하이브리드 방식 구현 중)
      */
     connect() {
+        console.log("🚧 WebSocket 연결 비활성화됨 - 하이브리드 HTTP 방식으로 전환");
+        this.isConnected = false;
+        this.isAnalysisConnected = false;
+        
+        // 하이브리드 모드 초기화
+        this.initializeHybridMode();
+        return; // 임시 비활성화
+        
         try {
             // 랜드마크 데이터용 웹소켓 (ws-proxy를 통한 라우팅)
             const landmarksUrl = `${this.baseUrl}/ws/landmarks`;
@@ -393,10 +401,306 @@ class MediaPipeAnalyzer {
     }
     
     /**
+     * 하이브리드 모드 초기화
+     */
+    initializeHybridMode() {
+        console.log("🎯 하이브리드 모드 초기화: MediaPipe(실시간) + HTTP(모델 분석)");
+        
+        // 서버 분석 관련 변수들
+        this.lastServerAnalysis = 0;
+        this.serverAnalysisInterval = 2000; // 2초마다
+        this.currentMediaPipeScores = {};
+        this.serverAnalysisResults = {};
+        this.isServerAnalysisRunning = false;
+        
+        // 실시간 UI 업데이트 콜백들
+        this.realtimeCallbacks = {
+            expression: [],
+            concentration: [],
+            gaze: [],
+            blinking: [],
+            posture: [],
+            initiative: []
+        };
+        
+        console.log("✅ 하이브리드 모드 준비 완료");
+    }
+    
+    /**
+     * MediaPipe 실시간 점수 계산
+     */
+    calculateRealtimeScores(landmarks) {
+        const scores = {
+            expression: this.calculateExpressionScore(landmarks),
+            concentration: this.calculateConcentrationScore(landmarks),
+            gaze: this.calculateGazeScore(landmarks),
+            blinking: this.calculateBlinkingScore(landmarks),
+            posture: this.calculatePostureScore(landmarks),
+            initiative: this.calculateInitiativeScore(landmarks)
+        };
+        
+        this.currentMediaPipeScores = scores;
+        return scores;
+    }
+    
+    /**
+     * 실시간 UI 업데이트
+     */
+    updateRealtimeUI(scores) {
+        // 표정 점수 업데이트
+        this.updateExpressionScore(scores.expression);
+        this.updateConcentrationScore(scores.concentration);
+        this.updateGazeScore(scores.gaze);
+        this.updateBlinkingScore(scores.blinking);
+        this.updatePostureScore(scores.initiative);
+        
+        console.log("📊 실시간 점수 업데이트:", scores);
+    }
+    
+    /**
+     * 서버 분석 스케줄링 (2초마다)
+     */
+    async scheduleServerAnalysis(video, mediapipeScores) {
+        const now = Date.now();
+        
+        if (this.isServerAnalysisRunning || 
+            (now - this.lastServerAnalysis) < this.serverAnalysisInterval) {
+            return; // 아직 시간 안됨
+        }
+        
+        this.lastServerAnalysis = now;
+        this.isServerAnalysisRunning = true;
+        
+        try {
+            await this.sendFrameToServer(video, mediapipeScores);
+        } catch (error) {
+            console.warn("⚠️ 서버 분석 실패, MediaPipe로만 계속 진행:", error);
+        } finally {
+            this.isServerAnalysisRunning = false;
+        }
+    }
+    
+    /**
+     * 서버로 프레임 및 MediaPipe 점수 전송
+     */
+    async sendFrameToServer(video, mediapipeScores) {
+        // 캔버스에 현재 프레임 캡처
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        ctx.drawImage(video, 0, 0);
+        
+        // 이미지를 base64로 변환
+        const imageData = canvas.toDataURL('image/jpeg', 0.8);
+        
+        try {
+            console.log("🧠 서버 표정 분석 요청...");
+            
+            const response = await fetch('/api/expression/analyze', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    image: imageData,
+                    mediapipe_scores: mediapipeScores,
+                    timestamp: Date.now(),
+                    user_id: window.userId || 'anonymous'
+                })
+            });
+            
+            if (response.ok) {
+                const result = await response.json();
+                this.handleServerAnalysisResult(result);
+            } else {
+                console.warn("⚠️ 서버 분석 응답 오류:", response.status);
+            }
+            
+        } catch (error) {
+            console.warn("⚠️ 서버 분석 요청 실패:", error);
+        }
+    }
+    
+    /**
+     * 서버 분석 결과 처리
+     */
+    handleServerAnalysisResult(result) {
+        console.log("🎯 서버 분석 결과:", result);
+        
+        this.serverAnalysisResults = result;
+        
+        // 모델 vs MediaPipe 점수 비교
+        if (result.is_anomaly) {
+            console.warn("⚠️ 점수 불일치 감지:", {
+                model: result.model_scores,
+                mediapipe: result.mediapipe_scores,
+                difference: result.score_differences
+            });
+            
+            // 이상 감지시 UI에 알림
+            this.showAnomalyAlert(result);
+        }
+        
+        // 피드백 UI 업데이트
+        this.updateFeedbackUI(result);
+        
+        // 정확한 모델 기반 점수로 UI 조정
+        this.adjustUIWithModelScores(result.model_scores);
+    }
+    
+    /**
+     * 실시간 UI 클리어
+     */
+    clearRealtimeUI() {
+        // 얼굴이 감지되지 않았을 때 점수들 초기화
+        this.updateRealtimeUI({
+            expression: 0,
+            concentration: 0, 
+            gaze: 0,
+            blinking: 0,
+            posture: 0,
+            initiative: 0
+        });
+    }
+    
+    /**
      * 현재 분석 결과 반환
      */
     getCurrentAnalysis() {
-        return this.currentAnalysis;
+        return {
+            realtime: this.currentMediaPipeScores,
+            server: this.serverAnalysisResults,
+            timestamp: Date.now()
+        };
+    }
+    
+    /**
+     * 피드백 UI 업데이트
+     */
+    updateFeedbackUI(serverResult) {
+        console.log("🎨 피드백 UI 업데이트:", serverResult);
+        
+        // 표정 분석 결과를 전역 변수로 저장 (팝업에서 사용)
+        window.currentExpressionAnalysis = serverResult;
+        
+        // 감정 표시 업데이트
+        this.updateEmotionDisplay(serverResult.model_emotion, serverResult.feedback?.confidence || 0);
+        
+        // 이상 감지 알림
+        if (serverResult.is_anomaly) {
+            this.showAnomalyNotification(serverResult);
+        }
+        
+        // 팝업 데이터 업데이트 (기존 팝업들과 연동)
+        this.updatePopupData(serverResult);
+    }
+    
+    /**
+     * 이상 감지 알림 표시
+     */
+    showAnomalyAlert(result) {
+        console.warn("🚨 이상 감지 알림:", result);
+        
+        // 간단한 알림 표시 (나중에 더 정교한 UI로 대체 가능)
+        const alertDiv = document.createElement('div');
+        alertDiv.className = 'anomaly-alert';
+        alertDiv.style.cssText = `
+            position: fixed; top: 20px; right: 20px; 
+            background: #ff9800; color: white; 
+            padding: 10px 15px; border-radius: 8px; 
+            font-size: 14px; z-index: 9999;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        `;
+        alertDiv.innerHTML = `
+            <strong>⚠️ 분석 정확도 확인</strong><br/>
+            모델-MediaPipe 점수 차이: ${Math.max(...Object.values(result.score_differences || {})).toFixed(2)}
+        `;
+        
+        document.body.appendChild(alertDiv);
+        
+        // 5초 후 자동 제거
+        setTimeout(() => {
+            if (alertDiv.parentNode) {
+                alertDiv.parentNode.removeChild(alertDiv);
+            }
+        }, 5000);
+    }
+    
+    /**
+     * 감정 표시 업데이트
+     */
+    updateEmotionDisplay(emotion, confidence) {
+        // 메인 감정 표시 업데이트
+        const emotionElement = document.querySelector('.current-emotion, [data-emotion]');
+        if (emotionElement) {
+            emotionElement.textContent = emotion || 'neutral';
+            emotionElement.setAttribute('data-confidence', confidence.toFixed(2));
+        }
+        
+        // 신뢰도 표시
+        const confidenceElement = document.querySelector('.emotion-confidence, [data-confidence-display]');
+        if (confidenceElement) {
+            confidenceElement.textContent = `${(confidence * 100).toFixed(1)}%`;
+        }
+    }
+    
+    /**
+     * 팝업 데이터 업데이트
+     */
+    updatePopupData(serverResult) {
+        // 표정 상세 팝업 데이터 업데이트
+        if (window.currentExpressionData) {
+            window.currentExpressionData = {
+                ...window.currentExpressionData,
+                serverAnalysis: serverResult,
+                lastUpdate: new Date().toISOString()
+            };
+        }
+        
+        // 집중도 팝업 데이터 업데이트  
+        if (window.currentConcentrationData) {
+            window.currentConcentrationData = {
+                ...window.currentConcentrationData,
+                modelScore: serverResult.model_scores?.concentration || 0,
+                mediapipeScore: serverResult.mediapipe_scores?.concentration || 0,
+                scoreDifference: serverResult.score_differences?.concentration || 0,
+                isAnomaly: serverResult.is_anomaly
+            };
+        }
+    }
+    
+    /**
+     * 모델 점수로 UI 조정
+     */
+    adjustUIWithModelScores(modelScores) {
+        console.log("🔧 모델 점수로 UI 조정:", modelScores);
+        
+        // 모델 기반 정확한 점수로 UI 미세 조정
+        // (MediaPipe 실시간 점수는 유지하되, 2초마다 모델 점수로 보정)
+        
+        if (modelScores.happiness !== undefined) {
+            this.adjustExpressionUI(modelScores.happiness, 'happiness');
+        }
+        
+        if (modelScores.concentration !== undefined) {
+            this.adjustConcentrationUI(modelScores.concentration);
+        }
+    }
+    
+    /**
+     * 표정 UI 미세 조정
+     */
+    adjustExpressionUI(modelScore, emotion) {
+        // 모델 점수가 MediaPipe와 크게 다른 경우 점진적 조정
+        const currentScore = this.currentMediaPipeScores.expression || 0;
+        const diff = Math.abs(modelScore - currentScore);
+        
+        if (diff > 0.2) { // 20% 이상 차이시 조정
+            const adjustedScore = (currentScore + modelScore) / 2; // 평균값 사용
+            console.log(`🔧 표정 점수 조정: ${currentScore.toFixed(2)} → ${adjustedScore.toFixed(2)} (모델: ${modelScore.toFixed(2)})`);
+            this.updateExpressionScore(adjustedScore);
+        }
     }
     
     /**
