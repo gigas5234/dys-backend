@@ -10,31 +10,21 @@ from typing import Optional
 def make_httpx_client(proxy_url: Optional[str] = None, timeout: float = 60.0) -> httpx.Client:
     """
     httpx 버전 호환 클라이언트 생성
-    httpx>=0.28: proxy= 사용
-    httpx<0.28: proxies= 사용
+    httpx>=0.26: proxy= 사용 (권장)
     """
     kwargs = {"timeout": timeout}
     if proxy_url:
-        try:
-            # httpx>=0.28
-            return httpx.Client(proxy=proxy_url, **kwargs)
-        except TypeError:
-            # httpx<0.28
-            return httpx.Client(proxies={"http": proxy_url, "https": proxy_url}, **kwargs)
+        # httpx 0.26+ 에서는 proxy= 파라미터만 사용
+        kwargs["proxy"] = proxy_url
     return httpx.Client(**kwargs)
 
 def make_httpx_async_client(proxy_url: Optional[str] = None, timeout: float = 60.0) -> httpx.AsyncClient:
     """
     httpx 버전 호환 비동기 클라이언트 생성
-    httpx>=0.28: proxy= 사용
-    httpx<0.28: proxies= 사용
+    httpx>=0.26: proxy= 사용 (권장)
     """
     kwargs = {"timeout": timeout}
     if proxy_url:
-        try:
-            # httpx>=0.28
-            return httpx.AsyncClient(proxy=proxy_url, **kwargs)
-        except TypeError:
-            # httpx<0.28
-            return httpx.AsyncClient(proxies={"http": proxy_url, "https": proxy_url}, **kwargs)
+        # httpx 0.26+ 에서는 proxy= 파라미터만 사용
+        kwargs["proxy"] = proxy_url
     return httpx.AsyncClient(**kwargs)

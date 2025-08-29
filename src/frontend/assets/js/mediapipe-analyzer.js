@@ -42,8 +42,8 @@ class MediaPipeAnalyzer {
         // ws-proxy 서비스를 통한 직접 연결 (우선 시도)
         const protocol = 'wss';  // ws-proxy는 HTTPS/WSS 지원
         
-        // ws-proxy 서비스 엔드포인트 (이미지에서 확인된 서비스)
-        const host = 'ws-proxy.deyeonso10.com';  // 또는 실제 ws-proxy 도메인
+        // ws-proxy 서비스 엔드포인트 (실제 Cloud Run URL)
+        const host = 'ws-proxy-44060495462.asia-northeast3.run.app';  // 실제 Cloud Run URL
         
         this.baseUrl = `${protocol}://${host}`;
         
@@ -59,8 +59,8 @@ class MediaPipeAnalyzer {
      */
     connect() {
         try {
-            // 랜드마크 데이터용 웹소켓 (Ingress를 통한 경로 기반 라우팅)
-            const landmarksUrl = `${this.baseUrl}/landmarks`;
+            // 랜드마크 데이터용 웹소켓 (ws-proxy를 통한 라우팅)
+            const landmarksUrl = `${this.baseUrl}/ws/landmarks`;
             console.log("🔗 연결 시도:", landmarksUrl);
             this.ws = new WebSocket(landmarksUrl);
             
@@ -83,8 +83,8 @@ class MediaPipeAnalyzer {
                 console.error("❌ 연결 시도 URL:", landmarksUrl);
             };
             
-            // 분석 결과용 웹소켓 (Ingress를 통한 경로 기반 라우팅)
-            const analysisUrl = `${this.baseUrl}/analysis`;
+            // 분석 결과용 웹소켓 (ws-proxy를 통한 라우팅)
+            const analysisUrl = `${this.baseUrl}/ws/analysis`;
             console.log("🔗 연결 시도:", analysisUrl);
             this.analysisWs = new WebSocket(analysisUrl);
             

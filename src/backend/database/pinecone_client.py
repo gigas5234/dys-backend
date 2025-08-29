@@ -9,7 +9,7 @@ import os
 import logging
 import asyncio
 from typing import List, Dict, Any, Optional, Tuple
-from pinecone import Pinecone
+import pinecone
 from datetime import datetime
 
 # 로깅 설정
@@ -20,16 +20,15 @@ class PineconeClient:
     """Pinecone Vector Database 클라이언트"""
     
     def __init__(self):
-        self.pc = None
         self.index = None
         self.index_name = "deyeonso"
-        self.dimension = 1024  # llama-text-embed-v2 모델의 차원
+        self.dimension = 1536  # text-embedding-3-small 모델의 차원
         self.metric = "cosine"
         self.is_initialized = False
         
         # Pinecone 설정
         self.api_key = os.getenv("PINECONE_API_KEY")
-        self.host = os.getenv("PINECONE_HOST", "https://deyeonso-if637zn.svc.aped-4627-b74a.pinecone.io")
+        self.environment = os.getenv("PINECONE_ENVIRONMENT", "gcp-starter")  # v2.2.4에서는 environment 필요
         
         logger.info("🎯 Pinecone 클라이언트 초기화됨")
     
@@ -49,30 +48,25 @@ class PineconeClient:
                     original_proxy_values[var] = os.environ.pop(var)
             
             try:
-                # 새로운 Pinecone 클라이언트 초기화
-                self.pc = Pinecone(api_key=self.api_key)
+                # Pinecone v2.2.4 초기화
+                pinecone.init(api_key=self.api_key, environment=self.environment)
                 
                 # 인덱스 확인 및 생성
-                existing_indexes = [index.name for index in self.pc.list_indexes()]
+                existing_indexes = pinecone.list_indexes()
                 
                 if self.index_name not in existing_indexes:
                     logger.info(f"🔄 인덱스 '{self.index_name}' 생성 중...")
-                    from pinecone import ServerlessSpec
-                    self.pc.create_index(
+                    pinecone.create_index(
                         name=self.index_name,
                         dimension=self.dimension,
-                        metric=self.metric,
-                        spec=ServerlessSpec(
-                            cloud="aws", 
-                            region="us-east-1"
-                        )
+                        metric=self.metric
                     )
                     logger.info(f"✅ 인덱스 '{self.index_name}' 생성 완료")
                 else:
                     logger.info(f"✅ 인덱스 '{self.index_name}' 이미 존재함")
                 
                 # 인덱스 연결
-                self.index = self.pc.Index(self.index_name)
+                self.index = pinecone.Index(self.index_name)
                 self.is_initialized = True
                 
                 # 인덱스 통계 확인

@@ -12,10 +12,16 @@ from typing import Dict, Any, Optional
 import asyncio
 import time
 
-# matplotlib 경고 해결을 위한 임시 디렉토리 설정
+# matplotlib 경고 해결을 위한 설정 디렉토리 설정
 import tempfile
-matplotlib_config_dir = tempfile.mkdtemp(prefix='matplotlib_')
-os.environ['MPLCONFIGDIR'] = matplotlib_config_dir
+
+# Docker/K8s 환경변수가 설정되어 있으면 사용, 없으면 임시 디렉토리 생성
+if not os.getenv('MPLCONFIGDIR'):
+    matplotlib_config_dir = tempfile.mkdtemp(prefix='matplotlib_')
+    os.environ['MPLCONFIGDIR'] = matplotlib_config_dir
+    print(f"📁 matplotlib 임시 디렉토리 생성: {matplotlib_config_dir}")
+else:
+    print(f"📁 matplotlib 설정 디렉토리 사용: {os.getenv('MPLCONFIGDIR')}")
 
 # 프로젝트 루트 경로 설정
 BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent
