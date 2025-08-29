@@ -3044,6 +3044,8 @@ class ExpressionAnalysisRequest(BaseModel):
 
 class ExpressionAnalysisResponse(BaseModel):
     """표정 분석 응답 모델"""
+    model_config = {"protected_namespaces": ()}  # Pydantic model_ namespace 경고 해결
+    
     success: bool
     model_emotion: Optional[str] = None
     model_scores: Optional[Dict[str, float]] = None

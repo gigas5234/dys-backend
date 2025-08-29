@@ -64,7 +64,8 @@ class MediaPipeAnalyzer {
         
         // 하이브리드 모드 초기화
         this.initializeHybridMode();
-        return; // 임시 비활성화
+        this.initializeMediaPipe(); // MediaPipe 실제 초기화
+        return; // WebSocket 비활성화
         
         try {
             // 랜드마크 데이터용 웹소켓 (ws-proxy를 통한 라우팅)
@@ -427,6 +428,97 @@ class MediaPipeAnalyzer {
     }
     
     /**
+     * MediaPipe 초기화
+     */
+    async initializeMediaPipe() {
+        try {
+            console.log("🎯 [MediaPipe] 초기화 시작...");
+            
+            // MediaPipe Tasks Vision 라이브러리 로드
+            if (typeof window.MediaPipeTasksVision === 'undefined') {
+                console.log("📦 [MediaPipe] 라이브러리 로딩 중...");
+                
+                // CDN에서 MediaPipe 라이브러리 로드
+                const script = document.createElement('script');
+                script.src = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0';
+                script.async = true;
+                
+                const loadPromise = new Promise((resolve, reject) => {
+                    script.onload = resolve;
+                    script.onerror = reject;
+                });
+                
+                document.head.appendChild(script);
+                await loadPromise;
+                
+                console.log("✅ [MediaPipe] 라이브러리 로드 완료");
+            }
+            
+            // FaceLandmarker 초기화
+            const vision = await window.MediaPipeTasksVision;
+            const FaceLandmarker = vision.FaceLandmarker;
+            const FilesetResolver = vision.FilesetResolver;
+            
+            console.log("🔧 [MediaPipe] FaceLandmarker 생성 중...");
+            
+            const filesetResolver = await FilesetResolver.forVisionTasks(
+                'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/wasm'
+            );
+            
+            this.faceLandmarker = await FaceLandmarker.createFromOptions(filesetResolver, {
+                baseOptions: {
+                    modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',
+                    delegate: 'GPU'
+                },
+                outputFaceBlendshapes: false,
+                outputFacialTransformationMatrixes: false,
+                runningMode: 'VIDEO',
+                numFaces: 1
+            });
+            
+            this.isMediaPipeReady = true;
+            console.log("✅ [MediaPipe] FaceLandmarker 초기화 완료!");
+            
+            return true;
+            
+        } catch (error) {
+            console.error("❌ [MediaPipe] 초기화 실패:", error);
+            console.warn("⚠️ [MediaPipe] CPU 모드로 재시도...");
+            
+            // GPU 실패시 CPU로 재시도
+            try {
+                const vision = window.MediaPipeTasksVision;
+                const FaceLandmarker = vision.FaceLandmarker;
+                const FilesetResolver = vision.FilesetResolver;
+                
+                const filesetResolver = await FilesetResolver.forVisionTasks(
+                    'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/wasm'
+                );
+                
+                this.faceLandmarker = await FaceLandmarker.createFromOptions(filesetResolver, {
+                    baseOptions: {
+                        modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',
+                        delegate: 'CPU'
+                    },
+                    outputFaceBlendshapes: false,
+                    outputFacialTransformationMatrixes: false,
+                    runningMode: 'VIDEO',
+                    numFaces: 1
+                });
+                
+                this.isMediaPipeReady = true;
+                console.log("✅ [MediaPipe] CPU 모드로 초기화 완료!");
+                return true;
+                
+            } catch (cpuError) {
+                console.error("❌ [MediaPipe] CPU 모드도 실패:", cpuError);
+                this.isMediaPipeReady = false;
+                return false;
+            }
+        }
+    }
+    
+    /**
      * MediaPipe 실시간 점수 계산
      */
     calculateRealtimeScores(landmarks) {
@@ -707,7 +799,250 @@ class MediaPipeAnalyzer {
      * 연결 상태 확인
      */
     isConnected() {
-        return this.isConnected && this.isAnalysisConnected;
+        return true; // 하이브리드 모드에서는 항상 true
+    }
+    
+    // === MediaPipe 점수 계산 함수들 (실제 구현) ===
+    
+    /**
+     * 표정 점수 계산
+     */
+    calculateExpressionScore(landmarks) {
+        try {
+            if (!landmarks || landmarks.length < 468) {
+                return 0;
+            }
+            
+            // 입술 곡률 계산 (미소 감지)
+            const mouthLeft = landmarks[61];  // 입 왼쪽
+            const mouthRight = landmarks[291]; // 입 오른쪽  
+            const mouthTop = landmarks[13];    // 입 위
+            const mouthBottom = landmarks[14]; // 입 아래
+            
+            // 미소 정도 계산
+            const mouthWidth = Math.abs(mouthRight.x - mouthLeft.x);
+            const mouthHeight = Math.abs(mouthTop.y - mouthBottom.y);
+            const smileRatio = mouthWidth / (mouthHeight + 0.001); // 0으로 나누기 방지
+            
+            // 눈 표정 계산 (눈썹 위치)
+            const leftEyebrow = landmarks[70];   // 왼쪽 눈썹
+            const rightEyebrow = landmarks[300]; // 오른쪽 눈썹
+            const leftEye = landmarks[159];      // 왼쪽 눈
+            const rightEye = landmarks[386];     // 오른쪽 눈
+            
+            const eyebrowDistance = (
+                Math.abs(leftEyebrow.y - leftEye.y) + 
+                Math.abs(rightEyebrow.y - rightEye.y)
+            ) / 2;
+            
+            // 종합 표정 점수 (0-100)
+            const expressionScore = Math.min(100, Math.max(0, 
+                (smileRatio * 30 + eyebrowDistance * 70) * 100
+            ));
+            
+            console.log(`📊 [MediaPipe] 표정 점수: ${expressionScore.toFixed(1)} (미소: ${smileRatio.toFixed(2)}, 눈썹: ${eyebrowDistance.toFixed(2)})`);
+            return Math.round(expressionScore);
+            
+        } catch (error) {
+            console.error("❌ 표정 점수 계산 실패:", error);
+            return 0;
+        }
+    }
+    
+    /**
+     * 집중도 점수 계산
+     */
+    calculateConcentrationScore(landmarks) {
+        try {
+            if (!landmarks || landmarks.length < 468) {
+                return 0;
+            }
+            
+            // 시선 안정성
+            const gazeScore = this.calculateGazeScore(landmarks);
+            
+            // 눈꺼풀 안정성 (너무 많이 깜빡이면 집중도 낮음)
+            const blinkScore = 100 - this.calculateBlinkingScore(landmarks);
+            
+            // 머리 기울기 (너무 기울어지면 집중도 낮음)  
+            const nose = landmarks[1];   // 코끝
+            const forehead = landmarks[10]; // 이마
+            const headTilt = Math.abs(nose.x - forehead.x) * 200; // 기울기
+            const headScore = Math.max(0, 100 - headTilt);
+            
+            // 종합 집중도 점수
+            const concentrationScore = Math.round(
+                (gazeScore * 0.5 + blinkScore * 0.3 + headScore * 0.2)
+            );
+            
+            console.log(`📊 [MediaPipe] 집중도 점수: ${concentrationScore} (시선: ${gazeScore}, 깜빡임: ${blinkScore}, 머리: ${headScore.toFixed(1)})`);
+            return concentrationScore;
+            
+        } catch (error) {
+            console.error("❌ 집중도 점수 계산 실패:", error);
+            return 0;
+        }
+    }
+    
+    /**
+     * 시선 점수 계산
+     */
+    calculateGazeScore(landmarks) {
+        try {
+            if (!landmarks || landmarks.length < 468) {
+                return 0;
+            }
+            
+            // 눈동자 중심점 계산
+            const leftEyeCenter = this.getEyeCenter(landmarks, 'left');
+            const rightEyeCenter = this.getEyeCenter(landmarks, 'right');
+            
+            // 화면 중앙을 향한 시선 계산 (0.5, 0.5가 중앙)
+            const targetX = 0.5, targetY = 0.5;
+            
+            const leftDistance = Math.sqrt(
+                Math.pow(leftEyeCenter.x - targetX, 2) + 
+                Math.pow(leftEyeCenter.y - targetY, 2)
+            );
+            
+            const rightDistance = Math.sqrt(
+                Math.pow(rightEyeCenter.x - targetX, 2) + 
+                Math.pow(rightEyeCenter.y - targetY, 2)
+            );
+            
+            const avgDistance = (leftDistance + rightDistance) / 2;
+            const gazeScore = Math.max(0, 100 - (avgDistance * 200));
+            
+            console.log(`📊 [MediaPipe] 시선 점수: ${gazeScore.toFixed(1)} (거리: ${avgDistance.toFixed(3)})`);
+            return Math.round(gazeScore);
+            
+        } catch (error) {
+            console.error("❌ 시선 점수 계산 실패:", error);
+            return 0;
+        }
+    }
+    
+    /**
+     * 깜빡임 점수 계산
+     */
+    calculateBlinkingScore(landmarks) {
+        try {
+            if (!landmarks || landmarks.length < 468) {
+                return 0;
+            }
+            
+            // 왼쪽 눈 개방도
+            const leftEyeTop = landmarks[159];    // 왼쪽 눈 위
+            const leftEyeBottom = landmarks[145]; // 왼쪽 눈 아래
+            const leftEyeOpen = Math.abs(leftEyeTop.y - leftEyeBottom.y);
+            
+            // 오른쪽 눈 개방도  
+            const rightEyeTop = landmarks[386];   // 오른쪽 눈 위
+            const rightEyeBottom = landmarks[374]; // 오른쪽 눈 아래
+            const rightEyeOpen = Math.abs(rightEyeTop.y - rightEyeBottom.y);
+            
+            // 평균 눈 개방도
+            const avgEyeOpen = (leftEyeOpen + rightEyeOpen) / 2;
+            
+            // 깜빡임 점수 (눈이 많이 열려있을수록 높은 점수)
+            const blinkingScore = Math.min(100, avgEyeOpen * 2000); // 스케일링
+            
+            console.log(`📊 [MediaPipe] 깜빡임 점수: ${blinkingScore.toFixed(1)} (개방도: ${avgEyeOpen.toFixed(4)})`);
+            return Math.round(blinkingScore);
+            
+        } catch (error) {
+            console.error("❌ 깜빡임 점수 계산 실패:", error);
+            return 0;
+        }
+    }
+    
+    /**
+     * 자세 점수 계산
+     */
+    calculatePostureScore(landmarks) {
+        try {
+            if (!landmarks || landmarks.length < 468) {
+                return 0;
+            }
+            
+            // 얼굴 기울기 계산
+            const leftEar = landmarks[234];  // 왼쪽 귀
+            const rightEar = landmarks[454]; // 오른쪽 귀
+            const faceTilt = Math.abs(leftEar.y - rightEar.y);
+            
+            // 코와 이마의 수직성
+            const nose = landmarks[1];       // 코끝
+            const forehead = landmarks[10];  // 이마
+            const faceVertical = Math.abs(nose.x - forehead.x);
+            
+            // 자세 점수 (기울기가 적을수록 높은 점수)
+            const postureScore = Math.max(0, 100 - (faceTilt + faceVertical) * 200);
+            
+            console.log(`📊 [MediaPipe] 자세 점수: ${postureScore.toFixed(1)} (기울기: ${faceTilt.toFixed(4)}, 수직성: ${faceVertical.toFixed(4)})`);
+            return Math.round(postureScore);
+            
+        } catch (error) {
+            console.error("❌ 자세 점수 계산 실패:", error);
+            return 0;
+        }
+    }
+    
+    /**
+     * 주도권 점수 계산
+     */
+    calculateInitiativeScore(landmarks) {
+        try {
+            if (!landmarks || landmarks.length < 468) {
+                return 0;
+            }
+            
+            // 표정과 시선의 조합으로 주도권 계산
+            const expressionScore = this.calculateExpressionScore(landmarks);
+            const gazeScore = this.calculateGazeScore(landmarks);
+            const postureScore = this.calculatePostureScore(landmarks);
+            
+            // 주도권 점수 (표정 + 시선 + 자세의 가중 평균)
+            const initiativeScore = Math.round(
+                expressionScore * 0.4 + gazeScore * 0.4 + postureScore * 0.2
+            );
+            
+            console.log(`📊 [MediaPipe] 주도권 점수: ${initiativeScore} (표정: ${expressionScore}, 시선: ${gazeScore}, 자세: ${postureScore})`);
+            return initiativeScore;
+            
+        } catch (error) {
+            console.error("❌ 주도권 점수 계산 실패:", error);
+            return 0;
+        }
+    }
+    
+    /**
+     * 눈동자 중심점 계산
+     */
+    getEyeCenter(landmarks, eye) {
+        try {
+            if (eye === 'left') {
+                // 왼쪽 눈 랜드마크들의 중심
+                const eyeLandmarks = [33, 7, 163, 144, 145, 153];
+                let x = 0, y = 0;
+                for (const idx of eyeLandmarks) {
+                    x += landmarks[idx].x;
+                    y += landmarks[idx].y;
+                }
+                return { x: x / eyeLandmarks.length, y: y / eyeLandmarks.length };
+            } else {
+                // 오른쪽 눈 랜드마크들의 중심
+                const eyeLandmarks = [362, 382, 381, 380, 374, 373];
+                let x = 0, y = 0;
+                for (const idx of eyeLandmarks) {
+                    x += landmarks[idx].x;
+                    y += landmarks[idx].y;
+                }
+                return { x: x / eyeLandmarks.length, y: y / eyeLandmarks.length };
+            }
+        } catch (error) {
+            console.error(`❌ ${eye} 눈동자 중심 계산 실패:`, error);
+            return { x: 0.5, y: 0.5 };
+        }
     }
 }
 

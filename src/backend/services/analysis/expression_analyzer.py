@@ -502,6 +502,113 @@ class ExpressionAnalyzer:
                 'error': str(e),
                 'summary': {}
             }
+    
+    def analyze_expression_sync(self, image) -> Dict[str, Any]:
+        """
+        동기식 표정 분석 (하이브리드 모드용)
+        
+        Args:
+            image: OpenCV 형식 이미지 (BGR)
+            
+        Returns:
+            Dict: 분석 결과 {'success': bool, 'emotion': str, 'confidence': float, ...}
+        """
+        try:
+            self.logger.info("🧠 [EXPRESSION_SYNC] 동기식 표정 분석 시작")
+            
+            if not self.is_initialized or not self.model:
+                self.logger.warning("⚠️ [EXPRESSION_SYNC] 모델이 초기화되지 않음")
+                return {
+                    "success": False,
+                    "error": "모델이 초기화되지 않음",
+                    "emotion": "neutral",
+                    "confidence": 0.0,
+                    "happiness": 0.0,
+                    "sadness": 0.0,
+                    "anger": 0.0,
+                    "surprise": 0.0
+                }
+            
+            # 이미지 전처리
+            processed_image = self._preprocess_image(image)
+            if processed_image is None:
+                return {
+                    "success": False,
+                    "error": "이미지 전처리 실패",
+                    "emotion": "neutral", 
+                    "confidence": 0.0,
+                    "happiness": 0.0,
+                    "sadness": 0.0,
+                    "anger": 0.0,
+                    "surprise": 0.0
+                }
+            
+            # 모델 추론
+            self.model.eval()
+            with torch.no_grad():
+                if processed_image.dim() == 3:
+                    processed_image = processed_image.unsqueeze(0)  # 배치 차원 추가
+                
+                # GPU 사용 가능하면 GPU로, 아니면 CPU로
+                processed_image = processed_image.to(self.device)
+                
+                outputs = self.model(processed_image)
+                
+                # 결과 처리 (모델 타입에 따라 다르게)
+                if hasattr(outputs, 'logits'):
+                    logits = outputs.logits
+                else:
+                    logits = outputs
+                
+                # 소프트맥스로 확률 계산
+                probabilities = torch.softmax(logits, dim=1)
+                predicted_class = torch.argmax(probabilities, dim=1).item()
+                confidence = torch.max(probabilities).item()
+                
+                # 감정 레이블 매핑
+                emotion = self.expression_categories[predicted_class] if predicted_class < len(self.expression_categories) else "neutral"
+                
+                # 각 감정별 확률 계산
+                emotion_scores = {}
+                for i, category in enumerate(self.expression_categories):
+                    if i < probabilities.shape[1]:
+                        emotion_scores[category] = probabilities[0][i].item()
+                
+                self.logger.info(f"✅ [EXPRESSION_SYNC] 분석 완료: {emotion} (신뢰도: {confidence:.3f})")
+                
+                return {
+                    "success": True,
+                    "emotion": emotion,
+                    "confidence": confidence,
+                    "expression": confidence * 100,  # UI에서 사용하는 형식
+                    "concentration": emotion_scores.get('neutral', 0.5) * 100,  # 중립일 때 집중도 높음
+                    "happiness": emotion_scores.get('happy', 0.0) * 100,
+                    "sadness": emotion_scores.get('sad', 0.0) * 100,
+                    "anger": emotion_scores.get('angry', 0.0) * 100,
+                    "surprise": emotion_scores.get('surprised', 0.0) * 100,
+                    "fear": emotion_scores.get('fearful', 0.0) * 100,
+                    "disgust": emotion_scores.get('disgusted', 0.0) * 100,
+                    "neutral": emotion_scores.get('neutral', 0.0) * 100,
+                    "all_scores": emotion_scores,
+                    "predicted_class": predicted_class,
+                    "processing_device": str(self.device)
+                }
+                
+        except Exception as e:
+            self.logger.error(f"❌ [EXPRESSION_SYNC] 동기식 분석 실패: {e}")
+            import traceback
+            traceback.print_exc()
+            
+            return {
+                "success": False,
+                "error": str(e),
+                "emotion": "neutral",
+                "confidence": 0.0,
+                "happiness": 0.0,
+                "sadness": 0.0,
+                "anger": 0.0,
+                "surprise": 0.0
+            }
 
 # 전역 인스턴스
 expression_analyzer = ExpressionAnalyzer()
