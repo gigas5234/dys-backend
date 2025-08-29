@@ -125,7 +125,7 @@ from ..services.calibration_service import calibration_service
 ### 프론트엔드로 이동된 파일들
 - ✅ `src/dys_studio/js/*` → `src/frontend/assets/js/`
 - ✅ `src/dys_studio/styles/*` → `src/frontend/assets/styles/`
-- ✅ `src/dys_studio/popups/*` → `src/frontend/components/popups/`
+- ✅ `src/dys_studio/popups/*` → `src/frontend/assets/popups/`
 - ✅ `src/dys_studio/video/*` → `src/frontend/assets/videos/`
 - ✅ `src/dys_studio/img/*` → `src/frontend/assets/images/`
 

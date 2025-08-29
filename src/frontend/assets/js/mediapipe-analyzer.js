@@ -39,16 +39,19 @@ class MediaPipeAnalyzer {
      * 웹소켓 베이스 URL 초기화
      */
     initializeBaseUrl() {
-        // 웹소켓 베이스 URL 동적 구성
-        const protocol = 'wss';
+        // ws-proxy 서비스를 통한 직접 연결 (우선 시도)
+        const protocol = 'wss';  // ws-proxy는 HTTPS/WSS 지원
         
-        // Vercel을 통한 WebSocket 연결이 어려우므로 직접 GKE IP 사용
-        const host = '34.64.136.237:8001';
+        // ws-proxy 서비스 엔드포인트 (이미지에서 확인된 서비스)
+        const host = 'ws-proxy.deyeonso10.com';  // 또는 실제 ws-proxy 도메인
         
-        this.baseUrl = `${protocol}://${host}/ws`;
+        this.baseUrl = `${protocol}://${host}`;
         
         console.log("🔗 MediaPipe WebSocket URL:", this.baseUrl);
-        console.log("🔗 Location:", { protocol: location.protocol, host: location.host });
+        console.log("🔗 ws-proxy 서비스 연결 시도");
+        
+        // ws-proxy가 실패하면 GKE 직접 연결로 폴백
+        this.fallbackUrl = 'ws://34.64.136.237:8001/ws';
     }
     
     /**

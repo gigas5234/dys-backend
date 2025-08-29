@@ -10,7 +10,7 @@ class PersonaManager:
         if personas_dir is None:
             # 현재 파일의 디렉토리를 기준으로 절대 경로 설정
             current_dir = os.path.dirname(os.path.abspath(__file__))
-            self.personas_dir = os.path.join(current_dir, "personas")
+            self.personas_dir = current_dir  # personas 서브폴더가 아닌 현재 폴더
         else:
             self.personas_dir = personas_dir
         self.config_file = os.path.join(self.personas_dir, "personas_config.json")

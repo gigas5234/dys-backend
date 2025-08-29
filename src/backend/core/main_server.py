@@ -34,21 +34,15 @@ from ..monitoring.monitoring import monitoring, get_metrics, start_timer, record
 
 # 데이터베이스 및 인증 모듈 import (선택적)
 try:
-    from ..database.database import init_database, create_chat_session, create_chat_session_with_persona, get_user_sessions, save_message, get_session_messages, get_session_info, get_user_by_email, users_collection, chat_sessions_collection, diagnose_database, supabase_uuid_to_objectid
     from ..auth.auth import get_current_user, get_current_user_id
     MONGODB_AVAILABLE = True
 except ImportError as e:
     print(f"⚠️ MongoDB 모듈 로드 실패: {e}")
     MONGODB_AVAILABLE = False
 
-# 모니터링 모듈 import (선택적)
-try:
-    from ..monitoring.monitoring import monitoring, get_metrics, start_timer, record_request_metrics
-    MONITORING_AVAILABLE = True
-    print("✅ 모니터링 모듈 로드됨")
-except ImportError as e:
-    print(f"⚠️ 모니터링 모듈 로드 실패: {e}")
-    MONITORING_AVAILABLE = False
+# 모니터링 모듈 import (이미 위에서 import됨)
+MONITORING_AVAILABLE = True
+print("✅ 모니터링 모듈 로드됨")
 
 
 # MediaPipe 전면 제거: 환경변수/임포트/초기화 모두 삭제
@@ -73,14 +67,9 @@ except ImportError as e:
     print(f"⚠️ MediaPipe 분석 모듈 로드 실패: {e}")
     MEDIAPIPE_ANALYSIS_AVAILABLE = False
 
-# 벡터 서비스 모듈 import
-try:
-    from ..services.vector_service import vector_service
-    VECTOR_SERVICE_AVAILABLE = True
-    print("✅ 벡터 서비스 모듈 로드됨")
-except ImportError as e:
-    print(f"⚠️ 벡터 서비스 모듈 로드 실패: {e}")
-    VECTOR_SERVICE_AVAILABLE = False
+# 벡터 서비스 모듈 import (이미 위에서 import됨)
+VECTOR_SERVICE_AVAILABLE = True
+print("✅ 벡터 서비스 모듈 로드됨")
 
 # 벡터 서비스 초기화 (실패해도 전체 시스템에 영향 없음)
 async def initialize_vector_service():
@@ -1246,7 +1235,7 @@ async def check_user_calibration(request: UserCheckRequest):
                 else:
                     # 사용자가 없으면 자동 생성
                     print(f"⚠️ [USER_CHECK] 사용자 없음 - 자동 생성 시작")
-                    from database import create_user
+                    from ..database.database import create_user
                     from datetime import datetime
                     
                     new_user_data = {
@@ -2281,7 +2270,7 @@ async def _cleanup_session_background(request: SessionEndRequest):
         # 1. 세션 상태 업데이트 (MongoDB가 있는 경우)
         if MONGODB_AVAILABLE:
             try:
-                from database import update_session_end_time
+                from ..database.database import update_session_end_time
                 await update_session_end_time(request.session_id)
                 print(f"✅ [CLEANUP] 세션 종료 시간 기록 완료")
             except Exception as e:
