@@ -254,7 +254,7 @@ class PineconeClient:
                 "dimension": self.dimension,
                 "metric": self.metric,
                 "stats": stats,
-                "host": self.host
+                "environment": self.environment
             }
             
         except Exception as e:
