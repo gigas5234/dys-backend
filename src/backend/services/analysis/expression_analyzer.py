@@ -141,6 +141,7 @@ class ExpressionAnalyzer:
             # PyTorch 직접 로드 시도 (.pth 파일)
             if not model_loaded:
                 model_file_paths = [
+                    os.environ.get('MODEL_PATH'),  # 환경변수에서 먼저 확인
                     os.path.join(os.path.dirname(__file__), "models", "data", "model.pth"),
                     os.path.join(os.getcwd(), "src", "backend", "models", "ml_models", "data", "model.pth"),
                     os.path.join(os.getcwd(), "backend", "models", "ml_models", "data", "model.pth"),
