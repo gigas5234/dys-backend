@@ -10,6 +10,7 @@ import logging
 from pathlib import Path
 from typing import Dict, Any, Optional
 import asyncio
+import time
 
 # matplotlib 경고 해결을 위한 임시 디렉토리 설정
 import tempfile
