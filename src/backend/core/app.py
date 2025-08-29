@@ -2,8 +2,11 @@ import os
 import requests
 
 def download_model_if_not_exists():
-    model_path = "src/backend/models/ml_models/data/model.pth"
-    model_url = "https://storage.googleapis.com/dys-model-storage/model.pth"
+    # 임시 디렉토리 사용 (GKE 권한 문제 해결)
+import tempfile
+temp_dir = tempfile.gettempdir()
+model_path = os.path.join(temp_dir, "model.pth")
+model_url = "https://storage.googleapis.com/dys-model-storage/model.pth"
 
     if not os.path.exists(model_path):
         print(f"'{model_path}'를 찾을 수 없습니다. GCS에서 모델을 다운로드합니다...")

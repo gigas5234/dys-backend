@@ -25,6 +25,7 @@ from fastapi import FastAPI, Request, HTTPException, WebSocket, WebSocketDisconn
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 import uvicorn
 
 # 로컬 모듈 import

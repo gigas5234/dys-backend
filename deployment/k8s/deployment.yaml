@@ -35,7 +35,7 @@ spec:
             drop:
             - ALL
         # 💡 중요: CI/CD 파이프라인에서 빌드한 본인의 이미지 주소를 넣어야 합니다.
-        image: asia-northeast3-docker.pkg.dev/deyeonso10/dys-backend/dys-backend:dec4234
+        image: asia-northeast3-docker.pkg.dev/deyeonso10/dys-backend/dys-backend:78a8014a8d7837f6c3aab48170d28f6bf1c92411
         ports:
         - containerPort: 8000 # 메인 서버 포트
         - containerPort: 8001 # WebSocket 서버 포트
@@ -46,7 +46,23 @@ spec:
           limits:
             memory: "512Mi"
             cpu: "250m"
-        # 프로브 완전 비활성화 - 애플리케이션 안정화 후 활성화 예정
+        # 헬스체크 설정 - 서버 시작 시간 고려
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 60  # 서버 시작 대기
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 45  # 서버 시작 대기
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
         env:
         - name: MONGODB_URI
           valueFrom:

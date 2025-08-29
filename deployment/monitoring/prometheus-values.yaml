@@ -89,6 +89,11 @@ prometheus:
       metrics_path: '/metrics'
       scrape_interval: 15s
 
+  # Prometheus 서비스를 LoadBalancer로 변경
+  service:
+    type: LoadBalancer
+    port: 9090
+
 grafana:
   enabled: true
   adminPassword: "dys-monitoring-2024"

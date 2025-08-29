@@ -22,12 +22,14 @@ logger = logging.getLogger(__name__)
 
 def download_model_if_not_exists():
     """필요한 모델 파일 다운로드"""
-    model_path = "src/backend/models/ml_models/data/model.pth"
+    # 임시 디렉토리 사용 (GKE 권한 문제 해결)
+    import tempfile
+    temp_dir = tempfile.gettempdir()
+    model_path = os.path.join(temp_dir, "model.pth")
     model_url = "https://storage.googleapis.com/dys-model-storage/model.pth"
 
     if not os.path.exists(model_path):
-        logger.info(f"'{model_path}'를 찾을 수 없습니다. GCS에서 모델을 다운로드합니다...")
-        os.makedirs(os.path.dirname(model_path), exist_ok=True)
+        logger.info(f"모델을 임시 디렉토리에 다운로드합니다: {model_path}")
         
         try:
             import requests
@@ -38,11 +40,16 @@ def download_model_if_not_exists():
                 for chunk in response.iter_content(chunk_size=8192):
                     f.write(chunk)
             logger.info("✅ 모델 다운로드 완료.")
+            
+            # 환경변수로 모델 경로 설정
+            os.environ['MODEL_PATH'] = model_path
+            
         except Exception as e:
             logger.error(f"❌ 모델 다운로드 실패: {e}")
             logger.warning("⚠️ 서버는 계속 실행되지만 일부 기능이 제한될 수 있습니다.")
     else:
         logger.info("✅ 모델이 이미 존재합니다.")
+        os.environ['MODEL_PATH'] = model_path
 
 def check_environment():
     """환경 설정 확인"""
