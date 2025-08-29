@@ -54,25 +54,29 @@ class PineconeClient:
             os.environ.pop('CURL_CA_BUNDLE', None)
             
             try:
-                # Pinecone v2.2.4 초기화
-                pinecone.init(api_key=self.api_key, environment=self.environment)
+                # Pinecone v7+ 초기화 (최신 API)
+                from pinecone import Pinecone
+                self.pc = Pinecone(api_key=self.api_key)
+                logger.info("✅ Pinecone v7+ 클라이언트 초기화 완료")
                 
-                # 인덱스 확인 및 생성
-                existing_indexes = pinecone.list_indexes()
+                # 인덱스 확인 및 생성 (v7+ API)
+                existing_indexes = [idx.name for idx in self.pc.list_indexes()]
                 
                 if self.index_name not in existing_indexes:
                     logger.info(f"🔄 인덱스 '{self.index_name}' 생성 중...")
-                    pinecone.create_index(
+                    from pinecone import ServerlessSpec
+                    self.pc.create_index(
                         name=self.index_name,
                         dimension=self.dimension,
-                        metric=self.metric
+                        metric=self.metric,
+                        spec=ServerlessSpec(cloud='gcp', region='us-central1')
                     )
                     logger.info(f"✅ 인덱스 '{self.index_name}' 생성 완료")
                 else:
                     logger.info(f"✅ 인덱스 '{self.index_name}' 이미 존재함")
                 
-                # 인덱스 연결
-                self.index = pinecone.Index(self.index_name)
+                # 인덱스 연결 (v7+ API)
+                self.index = self.pc.Index(self.index_name)
                 self.is_initialized = True
                 
                 # 인덱스 통계 확인

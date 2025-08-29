@@ -6,7 +6,7 @@ starlette==0.27.0
 # Database
 motor==3.3.2
 pymongo==4.6.0
-pinecone>=3.0.0  # Pinecone Vector Database (새 API 호환)
+pinecone>=4.0.0,<8.0.0  # Pinecone Vector Database (안정된 v4-v7 범위)
 
 # Authentication & Security
 python-jose[cryptography]==3.3.0
