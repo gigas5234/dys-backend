@@ -1926,8 +1926,8 @@ async def generate_ai_response(user_message: str, session_id: str) -> str:
         print(f"✅ [AI_RESPONSE] OpenAI 응답 생성 완료: {len(ai_response)}자")
         print(f"💬 [AI_RESPONSE] AI 응답: {ai_response}")
         
-        # TTS 최적화 적용
-        final_response = apply_style_constraints(user_message, ai_response)
+        # TTS 최적화 적용 (더 긴 응답 허용)
+        final_response = apply_style_constraints(user_message, ai_response, ratio=0.8, hard_cap_tokens=200)
         print(f"🎤 [AI_RESPONSE] TTS 최적화 완료: {final_response}")
         
         return final_response
