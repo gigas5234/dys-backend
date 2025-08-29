@@ -593,7 +593,7 @@ class VoiceAnalyzer:
                     proxy_url = os.getenv("HTTPS_PROXY") or os.getenv("HTTP_PROXY")
                     if proxy_url:
                         http_client = httpx.Client(
-                            proxies=proxy_url,
+                            proxy=proxy_url,
                             timeout=60.0,
                         )
                         client = OpenAI(
