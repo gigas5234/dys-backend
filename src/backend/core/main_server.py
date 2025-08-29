@@ -37,7 +37,7 @@ import uvicorn
 
 # 로컬 모듈 import (선택적)
 try:
-    from ..database.database import get_database, init_database
+    from ..database.database import get_database, init_database, create_chat_session_with_persona, get_user_sessions, get_session_messages, save_message, create_chat_session, get_user_by_email, supabase_uuid_to_objectid, users_collection, chat_sessions_collection, diagnose_database
     DATABASE_AVAILABLE = True
 except ImportError as e:
     print(f"⚠️ 데이터베이스 모듈 로드 실패: {e}")
