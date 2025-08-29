@@ -130,12 +130,22 @@ def fallback_stt_analysis(audio_array: np.ndarray, sr: int = 16000, elapsed_sec:
                     # OpenAI API 호출 (새로운 클라이언트 방식)
                     from openai import OpenAI
                     
-                    # 환경 변수에서 proxies 제거 (OpenAI 클라이언트 오류 방지)
-                    original_proxies = os.environ.pop('HTTP_PROXY', None)
-                    original_https_proxies = os.environ.pop('HTTPS_PROXY', None)
-                    
                     try:
-                        client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+                        import httpx
+                        
+                        # httpx 클라이언트로 proxy 설정
+                        proxy_url = os.getenv("HTTPS_PROXY") or os.getenv("HTTP_PROXY")
+                        if proxy_url:
+                            http_client = httpx.Client(
+                                proxies=proxy_url,
+                                timeout=60.0,
+                            )
+                            client = OpenAI(
+                                api_key=os.getenv('OPENAI_API_KEY'),
+                                http_client=http_client
+                            )
+                        else:
+                            client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
                         
                         with open(temp_path, 'rb') as audio_file:
                             response = client.audio.transcriptions.create(
@@ -149,12 +159,21 @@ def fallback_stt_analysis(audio_array: np.ndarray, sr: int = 16000, elapsed_sec:
                             logger.info(f"✅ OpenAI Whisper fallback 성공: {transcript}")
                             return create_fallback_result(transcript, "openai-whisper")
                             
-                    finally:
-                        # 환경 변수 복원
-                        if original_proxies:
-                            os.environ['HTTP_PROXY'] = original_proxies
-                        if original_https_proxies:
-                            os.environ['HTTPS_PROXY'] = original_https_proxies
+                    except ImportError:
+                        # httpx가 없으면 기본 방식 사용
+                        client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+                        
+                        with open(temp_path, 'rb') as audio_file:
+                            response = client.audio.transcriptions.create(
+                                model="whisper-1",
+                                file=audio_file,
+                                language="ko"
+                            )
+                        
+                        transcript = response.text.strip()
+                        if transcript:
+                            logger.info(f"✅ OpenAI Whisper fallback 성공: {transcript}")
+                            return create_fallback_result(transcript, "openai-whisper")
                             
                 finally:
                     os.unlink(temp_path)
