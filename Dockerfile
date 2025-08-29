@@ -71,6 +71,8 @@ RUN groupadd -r appuser && useradd -r -g appuser appuser
 RUN mkdir -p /tmp/huggingface_cache && \
     mkdir -p /tmp/matplotlib_cache && \
     mkdir -p /tmp/app_cache && \
+    chmod 777 /tmp/matplotlib_cache && \
+    chmod 777 /tmp/app_cache && \
     chown -R appuser:appuser /tmp/huggingface_cache && \
     chown -R appuser:appuser /tmp/matplotlib_cache && \
     chown -R appuser:appuser /tmp/app_cache && \
