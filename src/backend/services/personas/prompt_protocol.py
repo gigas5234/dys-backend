@@ -57,7 +57,8 @@ def est_tokens(s: str) -> int:
 def clamp_length_by_ratio(user_text: str, assistant_text: str, ratio: float=0.2, hard_cap_tokens: int=80):
     """사용자 메시지 대비 응답 길이 제한"""
     user_tokens = est_tokens(user_text)
-    high = min(int(user_tokens * (1 + ratio)), hard_cap_tokens)
+    # ratio를 직접 사용 (1 + ratio가 아닌)
+    high = min(int(user_tokens * ratio), hard_cap_tokens)
 
     if est_tokens(assistant_text) <= high:
         return assistant_text
