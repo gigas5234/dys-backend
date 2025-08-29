@@ -1887,13 +1887,27 @@ async def generate_ai_response(user_message: str, session_id: str) -> str:
         from openai import OpenAI
         import os
         
-        print(f"🔗 [AI_RESPONSE] OpenAI 클라이언트 직접 연결 초기화...")
-        # 프록시 제거 - 직접 연결로 안정성 확보
-        client = OpenAI(
-            api_key=OPENAI_API_KEY,
-            timeout=60.0
-        )
-        print(f"✅ [AI_RESPONSE] OpenAI 클라이언트 직접 연결 완료")
+        print(f"🔗 [AI_RESPONSE] OpenAI 클라이언트 안전 초기화...")
+        
+        # OpenAI 클라이언트 생성 전 모든 proxy 환경변수 임시 제거
+        original_env = {}
+        proxy_vars = ['HTTP_PROXY', 'HTTPS_PROXY', 'http_proxy', 'https_proxy', 'ALL_PROXY', 'all_proxy']
+        
+        for var in proxy_vars:
+            if var in os.environ:
+                original_env[var] = os.environ.pop(var)
+        
+        try:
+            client = OpenAI(
+                api_key=OPENAI_API_KEY,
+                timeout=60.0
+            )
+            print(f"✅ [AI_RESPONSE] OpenAI 클라이언트 안전 연결 완료")
+            
+        finally:
+            # 환경변수 복원 (다른 시스템에 영향 방지)
+            for var, value in original_env.items():
+                os.environ[var] = value
         
         print(f"🚀 [AI_RESPONSE] OpenAI API 호출 시작...")
         print(f"📋 [AI_RESPONSE] 요청 파라미터: model=gpt-4o-mini, max_tokens=80, temperature=0.8")
