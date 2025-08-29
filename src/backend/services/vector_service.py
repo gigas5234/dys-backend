@@ -46,16 +46,22 @@ class VectorService:
             # 환경 변수에서 proxies 제거 (OpenAI 클라이언트 오류 방지)
             original_proxies = os.environ.pop('HTTP_PROXY', None)
             original_https_proxies = os.environ.pop('HTTPS_PROXY', None)
+            original_no_proxy = os.environ.pop('NO_PROXY', None)
             
             try:
-                # OpenAI 클라이언트 초기화
-                self.openai_client = OpenAI(api_key=self.openai_api_key)
+                # OpenAI 클라이언트 초기화 (proxies 파라미터 명시적 제거)
+                self.openai_client = OpenAI(
+                    api_key=self.openai_api_key,
+                    # proxies 파라미터를 명시적으로 제거
+                )
             finally:
                 # 환경 변수 복원
                 if original_proxies:
                     os.environ['HTTP_PROXY'] = original_proxies
                 if original_https_proxies:
                     os.environ['HTTPS_PROXY'] = original_https_proxies
+                if original_no_proxy:
+                    os.environ['NO_PROXY'] = original_no_proxy
             
             # Pinecone 클라이언트 초기화
             if not pinecone_client.initialize():

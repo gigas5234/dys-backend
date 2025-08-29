@@ -70,6 +70,21 @@ except ImportError as e:
     print(f"⚠️ 벡터 서비스 모듈 로드 실패: {e}")
     VECTOR_SERVICE_AVAILABLE = False
 
+# 벡터 서비스 초기화 (실패해도 전체 시스템에 영향 없음)
+async def initialize_vector_service():
+    """벡터 서비스 초기화 (선택적)"""
+    if VECTOR_SERVICE_AVAILABLE:
+        try:
+            success = await vector_service.initialize()
+            if success:
+                print("✅ 벡터 서비스 초기화 성공")
+            else:
+                print("⚠️ 벡터 서비스 초기화 실패 (선택적 기능)")
+        except Exception as e:
+            print(f"⚠️ 벡터 서비스 초기화 오류 (선택적 기능): {e}")
+    else:
+        print("⚠️ 벡터 서비스 모듈 없음 (선택적 기능)")
+
 # 음성 분석 모듈 import (지연 로딩으로 메모리 최적화)
 VOICE_ANALYSIS_AVAILABLE = False
 _voice_models_loaded = False
