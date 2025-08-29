@@ -1926,11 +1926,8 @@ async def generate_ai_response(user_message: str, session_id: str) -> str:
         print(f"✅ [AI_RESPONSE] OpenAI 응답 생성 완료: {len(ai_response)}자")
         print(f"💬 [AI_RESPONSE] AI 응답: {ai_response}")
         
-        # TTS 최적화 적용 (더 긴 응답 허용)
-        final_response = apply_style_constraints(user_message, ai_response, ratio=2.0, hard_cap_tokens=300)
-        print(f"🎤 [AI_RESPONSE] TTS 최적화 완료: {final_response}")
-        
-        return final_response
+        # TTS 최적화 제거 - 원본 AI 응답 그대로 반환
+        return ai_response
         
     except Exception as e:
         print(f"❌ [AI_RESPONSE] OpenAI API 호출 실패: {e}")
@@ -2969,6 +2966,29 @@ async def delete_embedding(vector_id: str):
         
     except Exception as e:
         print(f"❌ [VECTOR] 삭제 실패: {e}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+@app.delete("/api/vector/index/delete")
+async def delete_pinecone_index():
+    """Pinecone 인덱스를 삭제합니다."""
+    try:
+        if not VECTOR_SERVICE_AVAILABLE:
+            return {
+                "success": False,
+                "error": "Vector service module not available"
+            }
+        
+        success = pinecone_client.delete_index()
+        return {
+            "success": success,
+            "message": "Pinecone 인덱스 삭제 완료" if success else "Pinecone 인덱스 삭제 실패"
+        }
+        
+    except Exception as e:
+        print(f"❌ [VECTOR] 인덱스 삭제 실패: {e}")
         return {
             "success": False,
             "error": str(e)

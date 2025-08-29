@@ -23,7 +23,7 @@ class PineconeClient:
         self.pc = None  # v7+ Pinecone 클라이언트
         self.index = None
         self.index_name = "deyeonso"
-        self.dimension = 1024  # text-embedding-3-small 모델의 차원 (1024로 통일)
+        self.dimension = 1536  # text-embedding-3-small 모델의 차원 (1536로 통일)
         self.metric = "cosine"
         self.is_initialized = False
         
@@ -262,6 +262,28 @@ class PineconeClient:
                 "status": "error",
                 "message": str(e)
             }
+    
+    def delete_index(self) -> bool:
+        """인덱스 삭제"""
+        try:
+            if not self.pc:
+                logger.error("❌ Pinecone 클라이언트가 초기화되지 않았습니다")
+                return False
+            
+            existing_indexes = [idx.name for idx in self.pc.list_indexes()]
+            if self.index_name in existing_indexes:
+                logger.info(f"🗑️ 인덱스 '{self.index_name}' 삭제 중...")
+                self.pc.delete_index(self.index_name)
+                logger.info(f"✅ 인덱스 '{self.index_name}' 삭제 완료")
+                self.is_initialized = False
+                return True
+            else:
+                logger.info(f"ℹ️ 인덱스 '{self.index_name}'가 존재하지 않습니다")
+                return True
+                
+        except Exception as e:
+            logger.error(f"❌ 인덱스 삭제 실패: {e}")
+            return False
     
     def cleanup(self):
         """리소스 정리"""
