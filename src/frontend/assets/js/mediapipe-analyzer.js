@@ -435,7 +435,7 @@ class MediaPipeAnalyzer {
             console.log("🎯 [MediaPipe] 초기화 시작...");
             
             // ES6 모듈 import 방식으로 MediaPipe 로드
-            const { FaceLandmarker, FilesetResolver } = await import("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/vision.js");
+            const { FaceLandmarker, FilesetResolver } = await import("./vision.js");
             
             console.log("✅ [MediaPipe] ES6 모듈 로드 완료");
             
