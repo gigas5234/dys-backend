@@ -20,7 +20,7 @@ def make_httpx_client(proxy_url: Optional[str] = None, timeout: float = 60.0) ->
             return httpx.Client(proxy=proxy_url, **kwargs)
         except TypeError:
             # httpx<0.28
-            return httpx.Client(proxies=proxy_url, **kwargs)
+            return httpx.Client(proxies={"http": proxy_url, "https": proxy_url}, **kwargs)
     return httpx.Client(**kwargs)
 
 def make_httpx_async_client(proxy_url: Optional[str] = None, timeout: float = 60.0) -> httpx.AsyncClient:
@@ -36,5 +36,5 @@ def make_httpx_async_client(proxy_url: Optional[str] = None, timeout: float = 60
             return httpx.AsyncClient(proxy=proxy_url, **kwargs)
         except TypeError:
             # httpx<0.28
-            return httpx.AsyncClient(proxies=proxy_url, **kwargs)
+            return httpx.AsyncClient(proxies={"http": proxy_url, "https": proxy_url}, **kwargs)
     return httpx.AsyncClient(**kwargs)

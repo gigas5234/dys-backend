@@ -60,7 +60,7 @@ def check_environment():
         "src/frontend/pages",
         "src/frontend/assets/js",
         "src/frontend/assets/styles",
-        "src/frontend/components/popups"
+        "src/frontend/assets/popups"
     ]
     
     for dir_path in required_dirs:
