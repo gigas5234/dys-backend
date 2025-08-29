@@ -33,7 +33,12 @@ from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse, Fil
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+import base64
+from datetime import datetime
 import uvicorn
+import io
+from PIL import Image
+import numpy as np
 
 # 로컬 모듈 import (선택적)
 try:
@@ -73,6 +78,7 @@ except ImportError as e:
 # 표정 분석 모듈 import
 try:
     from ..services.analysis.expression_analyzer import expression_analyzer
+    import cv2
     EXPRESSION_ANALYSIS_AVAILABLE = True
     print("✅ 표정 분석 모듈 로드됨")
 except ImportError as e:
@@ -3026,4 +3032,173 @@ async def diagnose_user(email: str):
             "status": "error",
             "message": str(e)
         }
+
+# === 하이브리드 표정 분석 API 엔드포인트 ===
+
+class ExpressionAnalysisRequest(BaseModel):
+    """표정 분석 요청 모델"""
+    image: str  # base64 encoded image
+    mediapipe_scores: Dict[str, float]
+    timestamp: float
+    user_id: str
+
+class ExpressionAnalysisResponse(BaseModel):
+    """표정 분석 응답 모델"""
+    success: bool
+    model_emotion: Optional[str] = None
+    model_scores: Optional[Dict[str, float]] = None
+    mediapipe_scores: Optional[Dict[str, float]] = None
+    score_differences: Optional[Dict[str, float]] = None
+    is_anomaly: bool = False
+    anomaly_threshold: float = 0.3
+    feedback: Optional[Dict[str, Any]] = None
+    processing_time: Optional[float] = None
+    error: Optional[str] = None
+
+@app.post("/api/expression/analyze", response_model=ExpressionAnalysisResponse)
+async def analyze_expression_hybrid(request: ExpressionAnalysisRequest):
+    """
+    하이브리드 표정 분석 (구글 스토리지 모델 + MediaPipe 점수 비교)
+    
+    - 2초마다 클라이언트에서 호출
+    - 표정 분석 모델로 정확한 감정 분석
+    - MediaPipe 점수와 비교하여 이상 감지
+    - 피드백 데이터 생성
+    """
+    start_time = time.time()
+    
+    try:
+        print(f"🧠 [EXPRESSION] 하이브리드 분석 시작 - 사용자: {request.user_id}")
+        
+        # 1. 이미지 디코딩
+        try:
+            # base64 데이터 URL에서 실제 데이터 부분 추출
+            if request.image.startswith('data:image'):
+                image_data = request.image.split(',')[1]
+            else:
+                image_data = request.image
+                
+            # base64 디코딩
+            image_bytes = base64.b64decode(image_data)
+            image = Image.open(io.BytesIO(image_bytes))
+            
+            # PIL을 OpenCV 형식으로 변환
+            image_cv = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
+            
+            print(f"✅ [EXPRESSION] 이미지 디코딩 완료: {image_cv.shape}")
+            
+        except Exception as e:
+            print(f"❌ [EXPRESSION] 이미지 디코딩 실패: {e}")
+            return ExpressionAnalysisResponse(
+                success=False,
+                error=f"이미지 디코딩 실패: {str(e)}"
+            )
+        
+        # 2. 표정 분석 모델로 감정 분석
+        model_results = {}
+        model_emotion = "neutral"
+        
+        try:
+            if EXPRESSION_ANALYSIS_AVAILABLE and expression_analyzer.is_initialized:
+                # 기존 표정 분석기 사용
+                analysis_result = expression_analyzer.analyze_expression_sync(image_cv)
+                
+                if analysis_result and analysis_result.get("success"):
+                    model_emotion = analysis_result.get("emotion", "neutral")
+                    model_results = {
+                        "happiness": analysis_result.get("happiness", 0.0),
+                        "sadness": analysis_result.get("sadness", 0.0), 
+                        "anger": analysis_result.get("anger", 0.0),
+                        "surprise": analysis_result.get("surprise", 0.0),
+                        "confidence": analysis_result.get("confidence", 0.0)
+                    }
+                    
+                    print(f"✅ [EXPRESSION] 모델 분석 완료: {model_emotion} (신뢰도: {model_results.get('confidence', 0):.2f})")
+                else:
+                    print("⚠️ [EXPRESSION] 모델 분석 실패, 기본값 사용")
+                    model_results = {"confidence": 0.0}
+            else:
+                print("⚠️ [EXPRESSION] 분석 모델 비활성화됨")
+                model_results = {"confidence": 0.0}
+                
+        except Exception as e:
+            print(f"❌ [EXPRESSION] 모델 분석 오류: {e}")
+            model_results = {"confidence": 0.0}
+        
+        # 3. MediaPipe vs 모델 점수 비교
+        mediapipe_scores = request.mediapipe_scores
+        score_differences = {}
+        max_diff = 0.0
+        
+        # 비교 가능한 메트릭들만 비교
+        comparable_metrics = ['expression', 'concentration']
+        
+        for metric in comparable_metrics:
+            if metric in mediapipe_scores and metric in model_results:
+                diff = abs(model_results[metric] - mediapipe_scores[metric])
+                score_differences[metric] = diff
+                max_diff = max(max_diff, diff)
+        
+        # 4. 이상 감지
+        anomaly_threshold = 0.3
+        is_anomaly = max_diff > anomaly_threshold
+        
+        if is_anomaly:
+            print(f"⚠️ [EXPRESSION] 이상 감지 - 최대 차이: {max_diff:.3f} (임계값: {anomaly_threshold})")
+        
+        # 5. 피드백 생성
+        feedback = {
+            "emotion": model_emotion,
+            "confidence": model_results.get("confidence", 0.0),
+            "message": generate_expression_feedback(model_emotion, is_anomaly),
+            "anomaly_detected": is_anomaly,
+            "analysis_method": "hybrid",
+            "timestamp": datetime.now().isoformat()
+        }
+        
+        processing_time = time.time() - start_time
+        print(f"🎯 [EXPRESSION] 하이브리드 분석 완료 ({processing_time:.3f}초)")
+        
+        return ExpressionAnalysisResponse(
+            success=True,
+            model_emotion=model_emotion,
+            model_scores=model_results,
+            mediapipe_scores=mediapipe_scores,
+            score_differences=score_differences,
+            is_anomaly=is_anomaly,
+            anomaly_threshold=anomaly_threshold,
+            feedback=feedback,
+            processing_time=processing_time
+        )
+        
+    except Exception as e:
+        processing_time = time.time() - start_time
+        print(f"❌ [EXPRESSION] 하이브리드 분석 실패: {e}")
+        
+        return ExpressionAnalysisResponse(
+            success=False,
+            error=str(e),
+            processing_time=processing_time
+        )
+
+def generate_expression_feedback(emotion: str, is_anomaly: bool) -> str:
+    """표정 기반 피드백 메시지 생성"""
+    
+    emotion_feedback = {
+        "happy": "😊 긍정적인 표정이 잘 나타나고 있어요!",
+        "neutral": "😐 중립적인 표정을 유지하고 있습니다.",
+        "sad": "😔 다소 우울한 표정이 보여요. 미소를 지어보세요!",
+        "angry": "😠 화난 표정이 감지됩니다. 표정을 부드럽게 해보세요.",
+        "surprised": "😲 놀란 표정이 보입니다.",
+        "fearful": "😰 불안한 표정이 감지됩니다. 편안하게 있어보세요.",
+        "disgusted": "🤢 불쾌한 표정이 보입니다.",
+        "contempt": "😏 경멸적인 표정이 감지됩니다."
+    }
+    
+    base_message = emotion_feedback.get(emotion, "표정을 분석하고 있습니다.")
+    
+    if is_anomaly:
+        base_message += "\n⚠️ 분석 정확도 확인이 필요합니다."
+        
+    return base_message
 
