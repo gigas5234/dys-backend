@@ -586,13 +586,28 @@ class VoiceAnalyzer:
                 # OpenAI API 호출 (새로운 클라이언트 방식)
                 from openai import OpenAI
                 
-                # 프록시 제거 - OpenAI 직접 연결로 안정성 확보 (import 제거)
-                print("🔗 OpenAI 클라이언트 직접 연결 초기화 (Voice Analyzer)")
-                client = OpenAI(
-                    api_key=os.getenv('OPENAI_API_KEY'),
-                    timeout=60.0
-                )
-                print("✅ OpenAI 음성 분석 직접 연결 완료")
+                # 프록시 완전 차단 - 환경변수도 임시 정리
+                print("🔗 OpenAI 클라이언트 안전 초기화 (Voice Analyzer)")
+                
+                # OpenAI 클라이언트 생성 전 proxy 환경변수 임시 제거
+                original_env = {}
+                proxy_vars = ['HTTP_PROXY', 'HTTPS_PROXY', 'http_proxy', 'https_proxy']
+                
+                for var in proxy_vars:
+                    if var in os.environ:
+                        original_env[var] = os.environ.pop(var)
+                
+                try:
+                    client = OpenAI(
+                        api_key=os.getenv('OPENAI_API_KEY'),
+                        timeout=60.0
+                    )
+                    print("✅ OpenAI 음성 분석 안전 연결 완료")
+                    
+                finally:
+                    # 환경변수 복원
+                    for var, value in original_env.items():
+                        os.environ[var] = value
                     
                     with open(temp_path, 'rb') as audio_file:
                         response = client.audio.transcriptions.create(
