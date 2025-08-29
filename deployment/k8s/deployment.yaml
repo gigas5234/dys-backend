@@ -41,11 +41,11 @@ spec:
         - containerPort: 8001 # WebSocket 서버 포트
         resources:
           requests:
-            memory: "256Mi"
-            cpu: "100m"
+            memory: "512Mi"  # 메모리 요청량 증가
+            cpu: "200m"     # CPU 요청량 증가
           limits:
-            memory: "512Mi"
-            cpu: "250m"
+            memory: "1Gi"   # 메모리 한계 2배 증가 (OOMKilled 해결)
+            cpu: "500m"     # CPU 한계 증가
         # 헬스체크 설정 - 서버 시작 시간 고려
         livenessProbe:
           httpGet:
