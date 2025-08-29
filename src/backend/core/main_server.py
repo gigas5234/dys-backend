@@ -1,24 +1,36 @@
+#!/usr/bin/env python3
+"""
+DYS Backend - Main Server
+FastAPI 기반 메인 서버 애플리케이션
+"""
+
 import os
-import time
-import json
-from dotenv import load_dotenv
-
-# .env 파일 로드
-load_dotenv()
-
-# 로그 레벨 설정
+import sys
 import logging
-logging.basicConfig(level=logging.INFO)
-import asyncio
-from fastapi import FastAPI, UploadFile, WebSocket, WebSocketDisconnect, File, Response, HTTPException, Depends, Request
-from fastapi.security import HTTPAuthorizationCredentials
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, FileResponse, StreamingResponse
-from fastapi.staticfiles import StaticFiles
-from starlette.responses import JSONResponse
 from pathlib import Path
-from pydantic import BaseModel
-from typing import List, Optional, Dict, Any
+from typing import Dict, Any, Optional
+import asyncio
+
+# matplotlib 경고 해결을 위한 임시 디렉토리 설정
+import tempfile
+matplotlib_config_dir = tempfile.mkdtemp(prefix='matplotlib_')
+os.environ['MPLCONFIGDIR'] = matplotlib_config_dir
+
+# 프로젝트 루트 경로 설정
+BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent
+sys.path.insert(0, str(BASE_DIR))
+
+# FastAPI 및 관련 라이브러리 import
+from fastapi import FastAPI, Request, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
+import uvicorn
+
+# 로컬 모듈 import
+from .database.database import get_database, init_database
+from .services.vector_service import vector_service, VECTOR_SERVICE_AVAILABLE
+from .monitoring.monitoring import monitoring, get_metrics, start_timer, record_request_metrics
 
 # 데이터베이스 및 인증 모듈 import (선택적)
 try:
