@@ -107,3 +107,18 @@ spec:
           value: "https://deyeonso-if637zn.svc.aped-4627-b74a.pinecone.io"
         - name: TRANSFORMERS_CACHE
           value: "/tmp/huggingface_cache"
+        # matplotlib 및 권한 문제 해결 환경변수
+        - name: MPLCONFIGDIR
+          value: "/tmp/matplotlib_cache"
+        - name: XDG_CACHE_HOME
+          value: "/tmp/app_cache"
+        - name: HOME
+          value: "/tmp/app_cache"
+        # 로깅 관련 환경변수
+        - name: LOG_LEVEL
+          value: "INFO"
+        # 프록시 관련 환경변수 제거 (Pinecone 오류 방지)
+        - name: HTTP_PROXY
+          value: ""
+        - name: HTTPS_PROXY
+          value: ""

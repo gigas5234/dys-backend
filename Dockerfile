@@ -66,9 +66,22 @@ RUN chmod +x ./start.py && \
 
 # Autopilot 클러스터를 위한 사용자 생성
 RUN groupadd -r appuser && useradd -r -g appuser appuser
-RUN mkdir -p /tmp/huggingface_cache && chown -R appuser:appuser /tmp/huggingface_cache
-RUN chown -R appuser:appuser /usr/src/app
+
+# 캐시 및 설정 디렉토리 생성 (권한 문제 해결)
+RUN mkdir -p /tmp/huggingface_cache && \
+    mkdir -p /tmp/matplotlib_cache && \
+    mkdir -p /tmp/app_cache && \
+    chown -R appuser:appuser /tmp/huggingface_cache && \
+    chown -R appuser:appuser /tmp/matplotlib_cache && \
+    chown -R appuser:appuser /tmp/app_cache && \
+    chown -R appuser:appuser /usr/src/app
+
 USER appuser
+
+# matplotlib 및 기타 권한 문제 해결을 위한 환경변수 설정
+ENV MPLCONFIGDIR=/tmp/matplotlib_cache
+ENV XDG_CACHE_HOME=/tmp/app_cache
+ENV HOME=/tmp/app_cache
 
 # 컨테이너가 8000번 포트와 8001번 포트를 외부에 노출
 EXPOSE 8000 8001
