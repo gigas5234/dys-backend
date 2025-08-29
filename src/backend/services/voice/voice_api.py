@@ -130,22 +130,19 @@ def fallback_stt_analysis(audio_array: np.ndarray, sr: int = 16000, elapsed_sec:
                     # OpenAI API 호출 (새로운 클라이언트 방식)
                     from openai import OpenAI
                     
-                    try:
-                        import httpx
-                        
-                        # httpx 클라이언트로 proxy 설정
-                        proxy_url = os.getenv("HTTPS_PROXY") or os.getenv("HTTP_PROXY")
-                        if proxy_url:
-                            http_client = httpx.Client(
-                                proxy=proxy_url,
-                                timeout=60.0,
-                            )
-                            client = OpenAI(
-                                api_key=os.getenv('OPENAI_API_KEY'),
-                                http_client=http_client
-                            )
-                        else:
-                            client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+                                            try:
+                            from ...common.httpx_utils import make_httpx_client
+                            
+                            # httpx 클라이언트로 proxy 설정
+                            proxy_url = os.getenv("HTTPS_PROXY") or os.getenv("HTTP_PROXY")
+                            if proxy_url:
+                                http_client = make_httpx_client(proxy_url, timeout=60.0)
+                                client = OpenAI(
+                                    api_key=os.getenv('OPENAI_API_KEY'),
+                                    http_client=http_client
+                                )
+                            else:
+                                client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
                         
                         with open(temp_path, 'rb') as audio_file:
                             response = client.audio.transcriptions.create(

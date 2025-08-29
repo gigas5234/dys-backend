@@ -1861,15 +1861,12 @@ async def generate_ai_response(user_message: str, session_id: str) -> str:
         
         print(f"🔗 [AI_RESPONSE] OpenAI 클라이언트 초기화 시작...")
         try:
-            import httpx
+            from ..common.httpx_utils import make_httpx_client
             
             # httpx 클라이언트로 proxy 설정
             proxy_url = os.getenv("HTTPS_PROXY") or os.getenv("HTTP_PROXY")
             if proxy_url:
-                http_client = httpx.Client(
-                    proxy=proxy_url,
-                    timeout=60.0,
-                )
+                http_client = make_httpx_client(proxy_url, timeout=60.0)
                 client = OpenAI(
                     api_key=OPENAI_API_KEY,
                     http_client=http_client
