@@ -434,105 +434,42 @@ class MediaPipeAnalyzer {
         try {
             console.log("🎯 [MediaPipe] 초기화 시작...");
             
-            // MediaPipe Tasks Vision 라이브러리 로드 (UMD 방식)
-            if (typeof window.MediaPipeTasksVision === 'undefined') {
-                console.log("📦 [MediaPipe] 라이브러리 로딩 중...");
-                
-                try {
-                    // UMD 버전으로 로드 (ES6 모듈 문제 해결)
-                    const script = document.createElement('script');
-                    script.src = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/vision_bundle.js';
-                    script.type = 'text/javascript'; // ES6 모듈이 아닌 일반 스크립트
-                    
-                    const loadPromise = new Promise((resolve, reject) => {
-                        script.onload = () => {
-                            console.log("✅ [MediaPipe] UMD 라이브러리 로드 완료");
-                            resolve();
-                        };
-                        script.onerror = (error) => {
-                            console.warn("⚠️ [MediaPipe] UMD 로드 실패, 대안 시도...", error);
-                            reject(error);
-                        };
-                    });
-                    
-                    document.head.appendChild(script);
-                    await loadPromise;
-                    
-                } catch (error) {
-                    console.warn("⚠️ [MediaPipe] UMD 로드 실패, 대안 CDN 시도...");
-                    
-                    // 대안: 다른 CDN 시도
-                    const script = document.createElement('script');
-                    script.src = 'https://unpkg.com/@mediapipe/tasks-vision@0.10.0/vision_bundle.js';
-                    script.type = 'text/javascript';
-                    
-                    const fallbackPromise = new Promise((resolve, reject) => {
-                        script.onload = () => {
-                            console.log("✅ [MediaPipe] 대안 CDN 로드 완료");
-                            resolve();
-                        };
-                        script.onerror = reject;
-                    });
-                    
-                    document.head.appendChild(script);
-                    await fallbackPromise;
-                }
-                
-                console.log("✅ [MediaPipe] 라이브러리 로드 완료");
-            }
+            // ES6 모듈 import 방식으로 MediaPipe 로드
+            const { FaceLandmarker, FilesetResolver } = await import("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/vision.js");
             
-            // FaceLandmarker 초기화 (안전한 접근)
-            const vision = window.MediaPipeTasksVision || window.mediapipe;
-            if (!vision) {
-                throw new Error("MediaPipe 라이브러리를 로드할 수 없습니다");
-            }
+            console.log("✅ [MediaPipe] ES6 모듈 로드 완료");
             
-            const FaceLandmarker = vision.FaceLandmarker;
-            const FilesetResolver = vision.FilesetResolver;
-            
-            if (!FaceLandmarker || !FilesetResolver) {
-                throw new Error("MediaPipe FaceLandmarker 또는 FilesetResolver를 찾을 수 없습니다");
-            }
-            
+            // Vision 초기화
+            const vision = await FilesetResolver.forVisionTasks(
+                "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/wasm"
+            );
+
             console.log("🔧 [MediaPipe] FaceLandmarker 생성 중...");
             
-            const filesetResolver = await FilesetResolver.forVisionTasks(
-                'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/wasm'
-            );
-            
-            this.faceLandmarker = await FaceLandmarker.createFromOptions(filesetResolver, {
-                baseOptions: {
-                    modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',
-                    delegate: 'GPU'
-                },
-                outputFaceBlendshapes: false,
-                outputFacialTransformationMatrixes: false,
-                runningMode: 'VIDEO',
-                numFaces: 1
-            });
-            
-            this.isMediaPipeReady = true;
-            console.log("✅ [MediaPipe] FaceLandmarker 초기화 완료!");
-            
-            return true;
-            
-        } catch (error) {
-            console.error("❌ [MediaPipe] 초기화 실패:", error);
-            console.warn("⚠️ [MediaPipe] CPU 모드로 재시도...");
-            
-            // GPU 실패시 CPU로 재시도
+            // GPU 모드로 시도
             try {
-                const vision = window.MediaPipeTasksVision;
-                const FaceLandmarker = vision.FaceLandmarker;
-                const FilesetResolver = vision.FilesetResolver;
-                
-                const filesetResolver = await FilesetResolver.forVisionTasks(
-                    'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/wasm'
-                );
-                
-                this.faceLandmarker = await FaceLandmarker.createFromOptions(filesetResolver, {
+                this.faceLandmarker = await FaceLandmarker.createFromOptions(vision, {
                     baseOptions: {
-                        modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',
+                        modelAssetPath: "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
+                        delegate: 'GPU'
+                    },
+                    outputFaceBlendshapes: false,
+                    outputFacialTransformationMatrixes: false,
+                    runningMode: 'VIDEO',
+                    numFaces: 1
+                });
+                
+                this.isMediaPipeReady = true;
+                console.log("✅ [MediaPipe] FaceLandmarker 초기화 완료 (GPU 모드)!");
+                return true;
+                
+            } catch (gpuError) {
+                console.warn("⚠️ [MediaPipe] GPU 모드 실패, CPU 모드로 재시도...", gpuError);
+                
+                // CPU 모드로 재시도
+                this.faceLandmarker = await FaceLandmarker.createFromOptions(vision, {
+                    baseOptions: {
+                        modelAssetPath: "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
                         delegate: 'CPU'
                     },
                     outputFaceBlendshapes: false,
@@ -542,14 +479,14 @@ class MediaPipeAnalyzer {
                 });
                 
                 this.isMediaPipeReady = true;
-                console.log("✅ [MediaPipe] CPU 모드로 초기화 완료!");
+                console.log("✅ [MediaPipe] FaceLandmarker 초기화 완료 (CPU 모드)!");
                 return true;
-                
-            } catch (cpuError) {
-                console.error("❌ [MediaPipe] CPU 모드도 실패:", cpuError);
-                this.isMediaPipeReady = false;
-                return false;
             }
+            
+        } catch (error) {
+            console.error("❌ [MediaPipe] 초기화 실패:", error);
+            this.isMediaPipeReady = false;
+            return false;
         }
     }
     
