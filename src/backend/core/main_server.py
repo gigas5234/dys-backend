@@ -28,9 +28,9 @@ from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 
 # 로컬 모듈 import
-from .database.database import get_database, init_database
-from .services.vector_service import vector_service, VECTOR_SERVICE_AVAILABLE
-from .monitoring.monitoring import monitoring, get_metrics, start_timer, record_request_metrics
+from ..database.database import get_database, init_database
+from ..services.vector_service import vector_service, VECTOR_SERVICE_AVAILABLE
+from ..monitoring.monitoring import monitoring, get_metrics, start_timer, record_request_metrics
 
 # 데이터베이스 및 인증 모듈 import (선택적)
 try:
