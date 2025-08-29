@@ -434,30 +434,65 @@ class MediaPipeAnalyzer {
         try {
             console.log("🎯 [MediaPipe] 초기화 시작...");
             
-            // MediaPipe Tasks Vision 라이브러리 로드
+            // MediaPipe Tasks Vision 라이브러리 로드 (UMD 방식)
             if (typeof window.MediaPipeTasksVision === 'undefined') {
                 console.log("📦 [MediaPipe] 라이브러리 로딩 중...");
                 
-                // CDN에서 MediaPipe 라이브러리 로드
-                const script = document.createElement('script');
-                script.src = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0';
-                script.async = true;
-                
-                const loadPromise = new Promise((resolve, reject) => {
-                    script.onload = resolve;
-                    script.onerror = reject;
-                });
-                
-                document.head.appendChild(script);
-                await loadPromise;
+                try {
+                    // UMD 버전으로 로드 (ES6 모듈 문제 해결)
+                    const script = document.createElement('script');
+                    script.src = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/vision_bundle.js';
+                    script.type = 'text/javascript'; // ES6 모듈이 아닌 일반 스크립트
+                    
+                    const loadPromise = new Promise((resolve, reject) => {
+                        script.onload = () => {
+                            console.log("✅ [MediaPipe] UMD 라이브러리 로드 완료");
+                            resolve();
+                        };
+                        script.onerror = (error) => {
+                            console.warn("⚠️ [MediaPipe] UMD 로드 실패, 대안 시도...", error);
+                            reject(error);
+                        };
+                    });
+                    
+                    document.head.appendChild(script);
+                    await loadPromise;
+                    
+                } catch (error) {
+                    console.warn("⚠️ [MediaPipe] UMD 로드 실패, 대안 CDN 시도...");
+                    
+                    // 대안: 다른 CDN 시도
+                    const script = document.createElement('script');
+                    script.src = 'https://unpkg.com/@mediapipe/tasks-vision@0.10.0/vision_bundle.js';
+                    script.type = 'text/javascript';
+                    
+                    const fallbackPromise = new Promise((resolve, reject) => {
+                        script.onload = () => {
+                            console.log("✅ [MediaPipe] 대안 CDN 로드 완료");
+                            resolve();
+                        };
+                        script.onerror = reject;
+                    });
+                    
+                    document.head.appendChild(script);
+                    await fallbackPromise;
+                }
                 
                 console.log("✅ [MediaPipe] 라이브러리 로드 완료");
             }
             
-            // FaceLandmarker 초기화
-            const vision = window.MediaPipeTasksVision;
+            // FaceLandmarker 초기화 (안전한 접근)
+            const vision = window.MediaPipeTasksVision || window.mediapipe;
+            if (!vision) {
+                throw new Error("MediaPipe 라이브러리를 로드할 수 없습니다");
+            }
+            
             const FaceLandmarker = vision.FaceLandmarker;
             const FilesetResolver = vision.FilesetResolver;
+            
+            if (!FaceLandmarker || !FilesetResolver) {
+                throw new Error("MediaPipe FaceLandmarker 또는 FilesetResolver를 찾을 수 없습니다");
+            }
             
             console.log("🔧 [MediaPipe] FaceLandmarker 생성 중...");
             

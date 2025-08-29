@@ -120,9 +120,12 @@ class VectorService:
                 return False
             
             # 임베딩 생성
+            logger.info(f"🔄 [VECTOR_STORE] 임베딩 생성 시작 - 텍스트: '{text[:50]}...'")
             embedding = await self.create_embedding(text)
             if not embedding:
+                logger.error("❌ [VECTOR_STORE] 임베딩 생성 실패")
                 return False
+            logger.info(f"✅ [VECTOR_STORE] 임베딩 생성 완료 - 차원: {len(embedding)}")
             
             # 메타데이터 준비
             if not metadata:
@@ -146,9 +149,11 @@ class VectorService:
                 "metadata": metadata
             }
             
+            logger.info(f"💾 [VECTOR_STORE] Pinecone 저장 시작 - ID: {vector_id}")
             if not pinecone_client.upsert_vectors([vector_data]):
-                logger.error("❌ Pinecone 벡터 저장 실패")
+                logger.error("❌ [VECTOR_STORE] Pinecone 벡터 저장 실패")
                 return False
+            logger.info(f"✅ [VECTOR_STORE] Pinecone 저장 완료 - ID: {vector_id}")
             
             # MongoDB에 메타데이터 저장
             collection = self.db.vector_embeddings

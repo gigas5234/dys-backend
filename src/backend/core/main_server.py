@@ -2865,14 +2865,28 @@ async def store_text_with_embedding(request: dict):
         
         return {
             "success": success,
-            "message": "텍스트 및 임베딩 저장 완료" if success else "텍스트 및 임베딩 저장 실패"
+            "message": "텍스트 및 임베딩 저장 완료" if success else "텍스트 및 임베딩 저장 실패",
+            "debug_info": {
+                "text_length": len(text),
+                "content_type": content_type,
+                "content_id": content_id,
+                "vector_service_initialized": vector_service.is_initialized,
+                "pinecone_initialized": pinecone_client.is_initialized
+            }
         }
         
     except Exception as e:
         print(f"❌ [VECTOR] 저장 실패: {e}")
+        import traceback
+        traceback.print_exc()
         return {
             "success": False,
-            "error": str(e)
+            "error": str(e),
+            "debug_info": {
+                "vector_service_available": VECTOR_SERVICE_AVAILABLE,
+                "vector_service_initialized": vector_service.is_initialized if VECTOR_SERVICE_AVAILABLE else False,
+                "pinecone_initialized": pinecone_client.is_initialized
+            }
         }
 
 @app.post("/api/vector/search")
@@ -3183,6 +3197,82 @@ async def analyze_expression_hybrid(request: ExpressionAnalysisRequest):
             error=str(e),
             processing_time=processing_time
         )
+
+@app.post("/api/vector/test")
+async def test_vector_storage():
+    """벡터 저장 기능 테스트"""
+    try:
+        print("🧪 [VECTOR_TEST] 벡터 저장 테스트 시작")
+        
+        # 테스트 데이터
+        test_text = "안녕하세요, 이것은 벡터 저장 테스트입니다."
+        test_content_type = "test"
+        test_content_id = f"test_{int(time.time())}"
+        
+        # 벡터 서비스 상태 확인
+        if not VECTOR_SERVICE_AVAILABLE:
+            return {
+                "success": False,
+                "error": "Vector service module not available",
+                "test_data": {"text": test_text, "content_type": test_content_type}
+            }
+        
+        if not vector_service.is_initialized:
+            print("🔄 [VECTOR_TEST] 벡터 서비스 초기화 시도")
+            init_success = await vector_service.initialize()
+            if not init_success:
+                return {
+                    "success": False,
+                    "error": "Vector service initialization failed",
+                    "test_data": {"text": test_text}
+                }
+        
+        # 실제 저장 테스트
+        print(f"💾 [VECTOR_TEST] 테스트 데이터 저장 중: {test_content_id}")
+        success = await vector_service.store_text_with_embedding(
+            text=test_text,
+            content_type=test_content_type,
+            content_id=test_content_id,
+            metadata={"test": True, "timestamp": datetime.now().isoformat()}
+        )
+        
+        # 저장 결과 확인
+        if success:
+            print("✅ [VECTOR_TEST] 벡터 저장 테스트 성공")
+            
+            # 검색 테스트
+            search_results = await vector_service.search_similar_texts(
+                query_text=test_text,
+                content_type=test_content_type,
+                top_k=3
+            )
+            
+            return {
+                "success": True,
+                "message": "벡터 저장 및 검색 테스트 성공",
+                "test_data": {
+                    "stored_text": test_text,
+                    "content_id": test_content_id,
+                    "search_results_count": len(search_results)
+                },
+                "search_results": search_results[:1] if search_results else []  # 첫 번째 결과만 반환
+            }
+        else:
+            return {
+                "success": False,
+                "error": "벡터 저장 실패",
+                "test_data": {"text": test_text, "content_id": test_content_id}
+            }
+            
+    except Exception as e:
+        print(f"❌ [VECTOR_TEST] 테스트 실패: {e}")
+        import traceback
+        traceback.print_exc()
+        return {
+            "success": False,
+            "error": str(e),
+            "test_data": {"text": test_text if 'test_text' in locals() else "N/A"}
+        }
 
 def generate_expression_feedback(emotion: str, is_anomaly: bool) -> str:
     """표정 기반 피드백 메시지 생성"""
