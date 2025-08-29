@@ -130,16 +130,13 @@ def fallback_stt_analysis(audio_array: np.ndarray, sr: int = 16000, elapsed_sec:
                     # OpenAI API 호출 (새로운 클라이언트 방식)
                     from openai import OpenAI
                     
-                                            try:
-                            from ...common.httpx_utils import make_httpx_client
-                            
-                            # 프록시 제거 - OpenAI 직접 연결로 안정성 확보
-                            print("🔗 OpenAI 클라이언트 직접 연결 초기화 (Voice API)")
-                            client = OpenAI(
-                                api_key=os.getenv('OPENAI_API_KEY'),
-                                timeout=60.0
-                            )
-                            print("✅ OpenAI 음성 API 직접 연결 완료")
+                        # 프록시 제거 - OpenAI 직접 연결로 안정성 확보 (import 제거)
+                        print("🔗 OpenAI 클라이언트 직접 연결 초기화 (Voice API)")
+                        client = OpenAI(
+                            api_key=os.getenv('OPENAI_API_KEY'),
+                            timeout=60.0
+                        )
+                        print("✅ OpenAI 음성 API 직접 연결 완료")
                         
                         with open(temp_path, 'rb') as audio_file:
                             response = client.audio.transcriptions.create(

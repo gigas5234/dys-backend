@@ -455,7 +455,7 @@ class MediaPipeAnalyzer {
             }
             
             // FaceLandmarker 초기화
-            const vision = await window.MediaPipeTasksVision;
+            const vision = window.MediaPipeTasksVision;
             const FaceLandmarker = vision.FaceLandmarker;
             const FilesetResolver = vision.FilesetResolver;
             

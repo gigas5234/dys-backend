@@ -3,6 +3,6 @@
 Common utilities and helpers
 """
 
-from .httpx_utils import make_httpx_client, make_httpx_async_client
+# httpx_utils import 제거 - 프록시 기능 사용 안함
 
 __all__ = ['make_httpx_client', 'make_httpx_async_client']
