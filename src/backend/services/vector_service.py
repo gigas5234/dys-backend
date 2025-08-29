@@ -57,8 +57,9 @@ class VectorService:
                 else:
                     self.openai_client = OpenAI(api_key=self.openai_api_key)
                     
-            except ImportError:
-                # httpx가 없으면 기본 방식 사용
+            except (ImportError, Exception) as e:
+                # httpx 오류나 기타 오류 시 기본 방식 사용
+                logger.warning(f"⚠️ httpx 클라이언트 초기화 실패, 기본 방식 사용: {e}")
                 self.openai_client = OpenAI(api_key=self.openai_api_key)
             
             # Pinecone 클라이언트 초기화
@@ -372,3 +373,6 @@ class VectorService:
 
 # 전역 인스턴스
 vector_service = VectorService()
+
+# 서비스 가용성 플래그
+VECTOR_SERVICE_AVAILABLE = True
