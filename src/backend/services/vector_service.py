@@ -43,25 +43,26 @@ class VectorService:
                 logger.warning("⚠️ OPENAI_API_KEY가 설정되지 않았습니다. 벡터 서비스가 제한적으로 동작합니다.")
                 return False
             
-            # 환경 변수에서 proxies 제거 (OpenAI 클라이언트 오류 방지)
-            original_proxies = os.environ.pop('HTTP_PROXY', None)
-            original_https_proxies = os.environ.pop('HTTPS_PROXY', None)
-            original_no_proxy = os.environ.pop('NO_PROXY', None)
-            
             try:
-                # OpenAI 클라이언트 초기화 (proxies 파라미터 명시적 제거)
-                self.openai_client = OpenAI(
-                    api_key=self.openai_api_key,
-                    # proxies 파라미터를 명시적으로 제거
-                )
-            finally:
-                # 환경 변수 복원
-                if original_proxies:
-                    os.environ['HTTP_PROXY'] = original_proxies
-                if original_https_proxies:
-                    os.environ['HTTPS_PROXY'] = original_https_proxies
-                if original_no_proxy:
-                    os.environ['NO_PROXY'] = original_no_proxy
+                import httpx
+                
+                # httpx 클라이언트로 proxy 설정
+                proxy_url = os.getenv("HTTPS_PROXY") or os.getenv("HTTP_PROXY")
+                if proxy_url:
+                    http_client = httpx.Client(
+                        proxies=proxy_url,
+                        timeout=60.0,
+                    )
+                    self.openai_client = OpenAI(
+                        api_key=self.openai_api_key,
+                        http_client=http_client
+                    )
+                else:
+                    self.openai_client = OpenAI(api_key=self.openai_api_key)
+                    
+            except ImportError:
+                # httpx가 없으면 기본 방식 사용
+                self.openai_client = OpenAI(api_key=self.openai_api_key)
             
             # Pinecone 클라이언트 초기화
             if not pinecone_client.initialize():

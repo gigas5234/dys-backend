@@ -1860,19 +1860,28 @@ async def generate_ai_response(user_message: str, session_id: str) -> str:
         import os
         
         print(f"🔗 [AI_RESPONSE] OpenAI 클라이언트 초기화 시작...")
-        # 환경 변수에서 proxies 제거 (OpenAI 클라이언트 오류 방지)
-        original_proxies = os.environ.pop('HTTP_PROXY', None)
-        original_https_proxies = os.environ.pop('HTTPS_PROXY', None)
-        
         try:
-            client = OpenAI(api_key=OPENAI_API_KEY)
+            import httpx
+            
+            # httpx 클라이언트로 proxy 설정
+            proxy_url = os.getenv("HTTPS_PROXY") or os.getenv("HTTP_PROXY")
+            if proxy_url:
+                http_client = httpx.Client(
+                    proxies=proxy_url,
+                    timeout=60.0,
+                )
+                client = OpenAI(
+                    api_key=OPENAI_API_KEY,
+                    http_client=http_client
+                )
+            else:
+                client = OpenAI(api_key=OPENAI_API_KEY)
+            
             print(f"✅ [AI_RESPONSE] OpenAI 클라이언트 초기화 완료")
-        finally:
-            # 환경 변수 복원
-            if original_proxies:
-                os.environ['HTTP_PROXY'] = original_proxies
-            if original_https_proxies:
-                os.environ['HTTPS_PROXY'] = original_https_proxies
+        except ImportError:
+            # httpx가 없으면 기본 방식 사용
+            client = OpenAI(api_key=OPENAI_API_KEY)
+            print(f"✅ [AI_RESPONSE] OpenAI 클라이언트 초기화 완료 (기본 방식)")
         
         print(f"🚀 [AI_RESPONSE] OpenAI API 호출 시작...")
         print(f"📋 [AI_RESPONSE] 요청 파라미터: model=gpt-4o-mini, max_tokens=80, temperature=0.8")

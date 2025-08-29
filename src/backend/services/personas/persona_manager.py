@@ -6,9 +6,14 @@ from datetime import datetime
 class PersonaManager:
     """새로운 프로토콜 기반 페르소나 관리 시스템"""
     
-    def __init__(self, personas_dir: str = "personas"):
-        self.personas_dir = personas_dir
-        self.config_file = os.path.join(personas_dir, "personas_config.json")
+    def __init__(self, personas_dir: str = None):
+        if personas_dir is None:
+            # 현재 파일의 디렉토리를 기준으로 절대 경로 설정
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            self.personas_dir = os.path.join(current_dir, "personas")
+        else:
+            self.personas_dir = personas_dir
+        self.config_file = os.path.join(self.personas_dir, "personas_config.json")
         self.ensure_directory()
     
     def ensure_directory(self):

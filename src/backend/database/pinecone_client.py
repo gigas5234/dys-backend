@@ -40,9 +40,13 @@ class PineconeClient:
                 logger.warning("⚠️ PINECONE_API_KEY가 설정되지 않았습니다. Pinecone 기능이 비활성화됩니다.")
                 return False
             
-            # 환경 변수에서 proxies 제거 (Pinecone 클라이언트 오류 방지)
-            original_proxies = os.environ.pop('HTTP_PROXY', None)
-            original_https_proxies = os.environ.pop('HTTPS_PROXY', None)
+            # 모든 proxy 관련 환경 변수 제거 (Pinecone 클라이언트 오류 방지)
+            proxy_vars = ['HTTP_PROXY', 'HTTPS_PROXY', 'NO_PROXY', 'http_proxy', 'https_proxy', 'no_proxy']
+            original_proxy_values = {}
+            
+            for var in proxy_vars:
+                if var in os.environ:
+                    original_proxy_values[var] = os.environ.pop(var)
             
             try:
                 # 새로운 Pinecone 클라이언트 초기화
@@ -80,10 +84,8 @@ class PineconeClient:
                 
             finally:
                 # 환경 변수 복원
-                if original_proxies:
-                    os.environ['HTTP_PROXY'] = original_proxies
-                if original_https_proxies:
-                    os.environ['HTTPS_PROXY'] = original_https_proxies
+                for var, value in original_proxy_values.items():
+                    os.environ[var] = value
             
         except Exception as e:
             logger.error(f"❌ Pinecone 초기화 실패: {e}")
