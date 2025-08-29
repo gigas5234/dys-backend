@@ -43,24 +43,13 @@ class VectorService:
                 logger.warning("⚠️ OPENAI_API_KEY가 설정되지 않았습니다. 벡터 서비스가 제한적으로 동작합니다.")
                 return False
             
-            try:
-                from ..common.httpx_utils import make_httpx_client
-                
-                # httpx 클라이언트로 proxy 설정
-                proxy_url = os.getenv("HTTPS_PROXY") or os.getenv("HTTP_PROXY")
-                if proxy_url:
-                    http_client = make_httpx_client(proxy_url, timeout=60.0)
-                    self.openai_client = OpenAI(
-                        api_key=self.openai_api_key,
-                        http_client=http_client
-                    )
-                else:
-                    self.openai_client = OpenAI(api_key=self.openai_api_key)
-                    
-            except (ImportError, Exception) as e:
-                # httpx 오류나 기타 오류 시 기본 방식 사용
-                logger.warning(f"⚠️ httpx 클라이언트 초기화 실패, 기본 방식 사용: {e}")
-                self.openai_client = OpenAI(api_key=self.openai_api_key)
+            # 프록시 제거 - 직접 연결로 안정성 확보
+            logger.info("🔗 OpenAI 클라이언트 직접 연결 초기화")
+            self.openai_client = OpenAI(
+                api_key=self.openai_api_key,
+                timeout=60.0
+            )
+            logger.info("✅ OpenAI 클라이언트 직접 연결 완료")
             
             # Pinecone 클라이언트 초기화
             if not pinecone_client.initialize():
