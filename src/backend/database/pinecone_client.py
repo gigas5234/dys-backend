@@ -23,7 +23,7 @@ class PineconeClient:
         self.pc = None  # v7+ Pinecone 클라이언트
         self.index = None
         self.index_name = "deyeonso"
-        self.dimension = 1536  # text-embedding-3-small 모델의 차원
+        self.dimension = 1024  # text-embedding-3-small 모델의 차원 (1024로 통일)
         self.metric = "cosine"
         self.is_initialized = False
         
