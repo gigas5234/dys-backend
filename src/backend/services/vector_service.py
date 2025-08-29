@@ -44,15 +44,12 @@ class VectorService:
                 return False
             
             try:
-                import httpx
+                from ..common.httpx_utils import make_httpx_client
                 
                 # httpx 클라이언트로 proxy 설정
                 proxy_url = os.getenv("HTTPS_PROXY") or os.getenv("HTTP_PROXY")
                 if proxy_url:
-                    http_client = httpx.Client(
-                        proxy=proxy_url,
-                        timeout=60.0,
-                    )
+                    http_client = make_httpx_client(proxy_url, timeout=60.0)
                     self.openai_client = OpenAI(
                         api_key=self.openai_api_key,
                         http_client=http_client
