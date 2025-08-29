@@ -62,12 +62,15 @@ def clamp_length_by_ratio(user_text: str, assistant_text: str, ratio: float=0.2,
     if est_tokens(assistant_text) <= high:
         return assistant_text
 
-    # 문장 단위로 잘라 길이 맞추기
+    # 문장 단위로 잘라 길이 맞추기 (더 보수적으로)
     sents = re.split(r'(?<=[.!?])\s+', assistant_text.strip())
     new_text = ""
     for s in sents:
         candidate = (new_text + " " + s).strip()
         if est_tokens(candidate) > high:
+            # 마지막 문장이 너무 길면 첫 번째 문장만 반환
+            if not new_text:
+                return s[: max(1, high*4)]
             break
         new_text = candidate
     return new_text if new_text else assistant_text[: max(1, high*4)]
