@@ -21,29 +21,42 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent
 sys.path.insert(0, str(BASE_DIR))
 
 # FastAPI 및 관련 라이브러리 import
-from fastapi import FastAPI, Request, HTTPException, WebSocket, WebSocketDisconnect
-from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
+from fastapi import FastAPI, Request, HTTPException, WebSocket, WebSocketDisconnect, File, UploadFile
+from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import uvicorn
 
-# 로컬 모듈 import
-from ..database.database import get_database, init_database
-from ..services.vector_service import vector_service, VECTOR_SERVICE_AVAILABLE
-from ..monitoring.monitoring import monitoring, get_metrics, start_timer, record_request_metrics
+# 로컬 모듈 import (선택적)
+try:
+    from ..database.database import get_database, init_database
+    DATABASE_AVAILABLE = True
+except ImportError as e:
+    print(f"⚠️ 데이터베이스 모듈 로드 실패: {e}")
+    DATABASE_AVAILABLE = False
 
-# 데이터베이스 및 인증 모듈 import (선택적)
+try:
+    from ..services.vector_service import vector_service, VECTOR_SERVICE_AVAILABLE
+    VECTOR_SERVICE_AVAILABLE = True
+except ImportError as e:
+    print(f"⚠️ 벡터 서비스 모듈 로드 실패: {e}")
+    VECTOR_SERVICE_AVAILABLE = False
+
+try:
+    from ..monitoring.monitoring import monitoring, get_metrics, start_timer, record_request_metrics
+    MONITORING_AVAILABLE = True
+except ImportError as e:
+    print(f"⚠️ 모니터링 모듈 로드 실패: {e}")
+    MONITORING_AVAILABLE = False
+
+# 인증 모듈 import (선택적)
 try:
     from ..auth.auth import get_current_user, get_current_user_id
-    MONGODB_AVAILABLE = True
+    AUTH_AVAILABLE = True
 except ImportError as e:
-    print(f"⚠️ MongoDB 모듈 로드 실패: {e}")
-    MONGODB_AVAILABLE = False
-
-# 모니터링 모듈 import (이미 위에서 import됨)
-MONITORING_AVAILABLE = True
-print("✅ 모니터링 모듈 로드됨")
+    print(f"⚠️ 인증 모듈 로드 실패: {e}")
+    AUTH_AVAILABLE = False
 
 
 # MediaPipe 전면 제거: 환경변수/임포트/초기화 모두 삭제
@@ -218,7 +231,7 @@ app.add_middleware(
 async def startup_event():
     """서버 시작 시 실행"""
     print(f"🚀 {APP_NAME} 서버 시작됨 (포트: {PORT})")
-    print(f"📋 [STARTUP] MongoDB 연결 상태: {MONGODB_AVAILABLE}")
+    print(f"📋 [STARTUP] MongoDB 연결 상태: {DATABASE_AVAILABLE}")
     print(f"📋 [STARTUP] 서버 URL: http://0.0.0.0:{PORT}")
 
 @app.on_event("shutdown")
@@ -249,7 +262,7 @@ def health():
     return {
         "ok": True, 
         "service": APP_NAME,
-        "mongodb_available": MONGODB_AVAILABLE,
+        "DATABASE_AVAILABLE": DATABASE_AVAILABLE,
         "timestamp": time.time()
     }
 
@@ -529,7 +542,7 @@ async def create_session(
         print(f"📋 [CREATE_SESSION] 클라이언트 정보: IP={client_ip}, UA={user_agent[:50]}...")
     
     # MongoDB 연결 실패 시 임시 세션 ID 생성
-    if not MONGODB_AVAILABLE:
+    if not DATABASE_AVAILABLE:
         print("⚠️ [CREATE_SESSION] MongoDB not available - 임시 세션 생성")
         import uuid
         temp_session_id = str(uuid.uuid4())
@@ -583,9 +596,9 @@ async def create_session(
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/chat/sessions")
-async def get_sessions(current_user_id: str = Depends(get_current_user_id) if MONGODB_AVAILABLE else None):
+async def get_sessions(current_user_id: str = Depends(get_current_user_id) if DATABASE_AVAILABLE else None):
     """사용자의 채팅 세션 목록 조회"""
-    if not MONGODB_AVAILABLE:
+    if not DATABASE_AVAILABLE:
         raise HTTPException(status_code=503, detail="MongoDB not available")
     
     try:
@@ -597,11 +610,11 @@ async def get_sessions(current_user_id: str = Depends(get_current_user_id) if MO
 @app.get("/api/chat/sessions/{session_id}/messages")
 async def get_messages(
     session_id: str,
-    current_user_id: str = Depends(get_current_user_id) if MONGODB_AVAILABLE else None,
+    current_user_id: str = Depends(get_current_user_id) if DATABASE_AVAILABLE else None,
     limit: int = 50
 ):
     """세션의 메시지 목록 조회"""
-    if not MONGODB_AVAILABLE:
+    if not DATABASE_AVAILABLE:
         print("⚠️ [GET_MESSAGES] MongoDB not available")
         raise HTTPException(status_code=503, detail="MongoDB not available")
     
@@ -659,7 +672,7 @@ async def send_message(
         print(f"📋 [SEND_MESSAGE] 클라이언트 정보: IP={client_ip}, UA={user_agent[:50]}...")
     
     # MongoDB 사용 불가 시 명시적 에러 반환
-    if not MONGODB_AVAILABLE:
+    if not DATABASE_AVAILABLE:
         print("⚠️ [SEND_MESSAGE] MongoDB not available")
         raise HTTPException(status_code=503, detail="MongoDB not available")
     
@@ -726,7 +739,7 @@ async def create_test_session():
     """테스트용 세션 생성 (인증 없음)"""
     print("🔍 [TEST_CREATE_SESSION] 테스트 세션 생성 요청")
     
-    if not MONGODB_AVAILABLE:
+    if not DATABASE_AVAILABLE:
         print("❌ [TEST_CREATE_SESSION] MongoDB not available")
         raise HTTPException(status_code=503, detail="MongoDB not available")
     
@@ -748,7 +761,7 @@ async def create_test_session():
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/auth/verify")
-async def verify_auth(current_user_id: str = Depends(get_current_user_id) if MONGODB_AVAILABLE else None):
+async def verify_auth(current_user_id: str = Depends(get_current_user_id) if DATABASE_AVAILABLE else None):
     """인증 상태 검증 API"""
     try:
         if not current_user_id:
@@ -765,7 +778,7 @@ async def verify_auth(current_user_id: str = Depends(get_current_user_id) if MON
         return {"authenticated": False, "message": "인증 검증 실패"}
 
 @app.post("/api/auth/refresh")
-async def refresh_token(current_user_id: str = Depends(get_current_user_id) if MONGODB_AVAILABLE else None):
+async def refresh_token(current_user_id: str = Depends(get_current_user_id) if DATABASE_AVAILABLE else None):
     """토큰 갱신 API (필요시)"""
     try:
         if not current_user_id:
@@ -778,7 +791,7 @@ async def refresh_token(current_user_id: str = Depends(get_current_user_id) if M
         raise HTTPException(status_code=401, detail="토큰 갱신 실패")
 
 @app.get("/auth/verify")
-async def verify_auth_legacy(current_user_id: str = Depends(get_current_user_id) if MONGODB_AVAILABLE else None):
+async def verify_auth_legacy(current_user_id: str = Depends(get_current_user_id) if DATABASE_AVAILABLE else None):
     """레거시 인증 검증 API (/auth/verify)"""
     try:
         if not current_user_id:
@@ -795,7 +808,7 @@ async def verify_auth_legacy(current_user_id: str = Depends(get_current_user_id)
         return {"authenticated": False, "message": "인증 검증 실패"}
 
 @app.post("/auth/verify")
-async def verify_auth_legacy_post(current_user_id: str = Depends(get_current_user_id) if MONGODB_AVAILABLE else None):
+async def verify_auth_legacy_post(current_user_id: str = Depends(get_current_user_id) if DATABASE_AVAILABLE else None):
     """레거시 인증 검증 API POST (/auth/verify)"""
     try:
         if not current_user_id:
@@ -818,7 +831,7 @@ async def startup_event():
     print("🚀 애플리케이션 시작 중...")
     
     # MongoDB 초기화 (선택적)
-    if MONGODB_AVAILABLE:
+    if DATABASE_AVAILABLE:
         try:
             db_success = await init_database()
             if not db_success:
@@ -1220,7 +1233,7 @@ async def check_user_calibration(request: UserCheckRequest):
     try:
         print(f"🔍 [USER_CHECK] 요청 받음 - email: {request.email}")
         
-        if MONGODB_AVAILABLE:
+        if DATABASE_AVAILABLE:
             try:
                 # MongoDB에서 사용자 정보 확인
                 user = await get_user_by_email(request.email)
@@ -1268,7 +1281,7 @@ async def check_user_calibration(request: UserCheckRequest):
                 print(f"⚠️ [USER_CHECK] 데이터베이스 조회 실패: {db_error}")
         
         # MongoDB가 없거나 사용자 생성에 실패한 경우
-        print(f"⚠️ [USER_CHECK] 사용자 정보 없음 - MongoDB: {MONGODB_AVAILABLE}")
+        print(f"⚠️ [USER_CHECK] 사용자 정보 없음 - MongoDB: {DATABASE_AVAILABLE}")
         return {
             "has_calibration": False,
             "cam_calibration": False,
@@ -1287,7 +1300,7 @@ async def check_user_calibration(request: UserCheckRequest):
 async def update_user_calibration_status(request: UserCalibrationUpdateRequest):
     """Supabase users 테이블의 cam_calibration 필드 업데이트"""
     try:
-        if MONGODB_AVAILABLE:
+        if DATABASE_AVAILABLE:
             # MongoDB에서 사용자 정보 업데이트
             from bson import ObjectId
             from datetime import datetime
@@ -1336,7 +1349,7 @@ async def update_user_calibration_status(request: UserCalibrationUpdateRequest):
 async def save_calibration(request: CalibrationRequest):
     """캘리브레이션 데이터를 Supabase에 저장"""
     try:
-        if MONGODB_AVAILABLE:
+        if DATABASE_AVAILABLE:
             from bson import ObjectId
             from datetime import datetime
             
@@ -1404,7 +1417,7 @@ async def save_calibration(request: CalibrationRequest):
 async def get_user_calibration(user_id: str):
     """사용자의 개인 캘리브레이션 데이터 조회"""
     try:
-        if MONGODB_AVAILABLE:
+        if DATABASE_AVAILABLE:
             # 사용자의 캘리브레이션 데이터 조회
             calibration_doc = await chat_sessions_collection.find_one({
                 "user_id": user_id,
@@ -2269,7 +2282,7 @@ async def _cleanup_session_background(request: SessionEndRequest):
         print(f"🔄 [CLEANUP] 백그라운드 세션 정리 시작: {request.session_id}")
         
         # 1. 세션 상태 업데이트 (MongoDB가 있는 경우)
-        if MONGODB_AVAILABLE:
+        if DATABASE_AVAILABLE:
             try:
                 from ..database.database import update_session_end_time
                 await update_session_end_time(request.session_id)
@@ -2941,17 +2954,17 @@ async def diagnose_mongodb():
     try:
         print("🔍 [DIAGNOSE_API] MongoDB 진단 요청")
         
-        if not MONGODB_AVAILABLE:
+        if not DATABASE_AVAILABLE:
             return {
                 "status": "error",
                 "message": "MongoDB 모듈이 로드되지 않음",
-                "mongodb_available": False
+                "DATABASE_AVAILABLE": False
             }
         
         result = await diagnose_database()
         return {
             "status": "success",
-            "mongodb_available": True,
+            "DATABASE_AVAILABLE": True,
             "diagnosis": result
         }
         
@@ -2960,7 +2973,7 @@ async def diagnose_mongodb():
         return {
             "status": "error",
             "message": str(e),
-            "mongodb_available": MONGODB_AVAILABLE
+            "DATABASE_AVAILABLE": DATABASE_AVAILABLE
         }
 
 @app.get("/api/diagnose/user/{email}")
@@ -2969,7 +2982,7 @@ async def diagnose_user(email: str):
     try:
         print(f"🔍 [DIAGNOSE_USER] 사용자 진단 요청: {email}")
         
-        if not MONGODB_AVAILABLE:
+        if not DATABASE_AVAILABLE:
             return {
                 "status": "error",
                 "message": "MongoDB 모듈이 로드되지 않음"
