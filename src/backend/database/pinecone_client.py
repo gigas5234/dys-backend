@@ -20,6 +20,7 @@ class PineconeClient:
     """Pinecone Vector Database 클라이언트"""
     
     def __init__(self):
+        self.pc = None  # v7+ Pinecone 클라이언트
         self.index = None
         self.index_name = "deyeonso"
         self.dimension = 1536  # text-embedding-3-small 모델의 차원
@@ -28,7 +29,7 @@ class PineconeClient:
         
         # Pinecone 설정
         self.api_key = os.getenv("PINECONE_API_KEY")
-        self.environment = os.getenv("PINECONE_ENVIRONMENT", "gcp-starter")  # v2.2.4에서는 environment 필요
+        self.environment = os.getenv("PINECONE_ENVIRONMENT", "gcp-starter")
         
         logger.info("🎯 Pinecone 클라이언트 초기화됨")
     
