@@ -534,6 +534,14 @@ class MediaPipeAnalyzer {
     async analysisLoop(video) {
         if (!this.isMediaPipeReady || !this.faceLandmarker) {
             console.warn("⚠️ [MediaPipe] 아직 준비되지 않음");
+            setTimeout(() => this.analysisLoop(video), 1000); // 1초 후 재시도
+            return;
+        }
+        
+        // 비디오 상태 확인
+        if (!video || video.readyState !== 4 || video.paused || video.ended) {
+            console.warn("⚠️ [MediaPipe] 비디오가 준비되지 않음, 1초 후 재시도");
+            setTimeout(() => this.analysisLoop(video), 1000);
             return;
         }
         
@@ -552,7 +560,7 @@ class MediaPipeAnalyzer {
                 // UI 업데이트
                 this.updateRealtimeUI(scores);
                 
-                // 서버 분석 스케줄링 (2초마다)
+                // 서버 분석 스케줄링 (임시 비활성화)
                 this.scheduleServerAnalysis(video, scores);
                 
                 console.log("👤 [MediaPipe] 얼굴 감지됨, 점수:", scores);
@@ -564,11 +572,14 @@ class MediaPipeAnalyzer {
             
         } catch (error) {
             console.error("❌ [MediaPipe] 분석 중 오류:", error);
+            // 오류 발생시 2초 후 재시도
+            setTimeout(() => this.analysisLoop(video), 2000);
+            return;
         }
         
-        // 다음 프레임 분석 (약 30fps)
+        // 다음 프레임 분석 (약 5fps로 대폭 감소)
         if (this.isMediaPipeReady) {
-            requestAnimationFrame(() => this.analysisLoop(video));
+            setTimeout(() => this.analysisLoop(video), 200); // 200ms 간격 (5fps)
         }
     }
     
@@ -693,9 +704,13 @@ class MediaPipeAnalyzer {
     }
     
     /**
-     * 서버 분석 스케줄링 (2초마다)
+     * 서버 분석 스케줄링 (임시 비활성화)
      */
     async scheduleServerAnalysis(video, mediapipeScores) {
+        // 임시로 서버 분석 비활성화 (405 오류 해결 전까지)
+        console.log("🚫 서버 분석 임시 비활성화 (MediaPipe만 사용)");
+        return;
+        
         const now = Date.now();
         
         if (this.isServerAnalysisRunning || 
