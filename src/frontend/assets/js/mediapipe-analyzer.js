@@ -425,6 +425,12 @@ class MediaPipeAnalyzer {
             this.analysisWs = null;
         }
         
+        // 주기적 상태 체크 인터벌 정리
+        if (this.videoStatusInterval) {
+            clearInterval(this.videoStatusInterval);
+            this.videoStatusInterval = null;
+        }
+        
         this.isConnected = false;
         this.isAnalysisConnected = false;
         
@@ -576,9 +582,10 @@ class MediaPipeAnalyzer {
             return;
         }
         
-        // 비디오 상태 확인
+        // 비디오 상태 확인 (강화된 로그)
         if (!video || video.readyState !== 4 || video.paused || video.ended) {
             console.warn("⚠️ [MediaPipe] 비디오가 준비되지 않음, 1초 후 재시도");
+            this.logDetailedCameraStatus(video);
             setTimeout(() => this.analysisLoop(video), 1000);
             return;
         }
@@ -1596,14 +1603,31 @@ class MediaPipeAnalyzer {
         
         events.forEach(event => {
             video.addEventListener(event, (e) => {
-                console.log(`🔍 [카메라] 이벤트: ${event}`, {
+                const status = {
                     readyState: video.readyState,
+                    readyStateText: this.getReadyStateText(video.readyState),
                     paused: video.paused,
                     ended: video.ended,
                     currentTime: video.currentTime,
+                    duration: video.duration,
                     srcObject: !!video.srcObject,
-                    streamActive: video.srcObject?.active || false
-                });
+                    streamActive: video.srcObject?.active || false,
+                    networkState: video.networkState,
+                    error: video.error
+                };
+                
+                console.log(`🔍 [카메라] 이벤트: ${event}`, status);
+                
+                // 중요 이벤트 강조
+                if (event === 'ended') {
+                    console.error("🚨 [카메라] 비디오 종료됨 - 카메라가 꺼졌을 가능성");
+                }
+                if (event === 'pause') {
+                    console.warn("⚠️ [카메라] 비디오 일시정지됨 - 자동 재생 정책 또는 사용자 액션");
+                }
+                if (event === 'error') {
+                    console.error("🚨 [카메라] 비디오 오류 발생:", video.error);
+                }
             });
         });
         
@@ -1621,11 +1645,14 @@ class MediaPipeAnalyzer {
                     console.log("🔍 [카메라] srcObject 변경:", {
                         hasStream: !!stream,
                         streamActive: stream?.active || false,
-                        streamId: stream?.id || 'none'
+                        streamId: stream?.id || 'none',
+                        tracks: stream ? stream.getTracks().length : 0
                     });
                     
                     if (stream) {
                         self.monitorStream(stream);
+                    } else {
+                        console.warn("⚠️ [카메라] 스트림이 제거됨 - 카메라가 꺼졌을 가능성");
                     }
                     
                     originalSrcObject.set.call(this, stream);
@@ -1633,6 +1660,11 @@ class MediaPipeAnalyzer {
                 get: originalSrcObject.get
             });
         }
+        
+        // 주기적 상태 체크 (5초마다)
+        this.videoStatusInterval = setInterval(() => {
+            this.logDetailedCameraStatus(video);
+        }, 5000);
     }
     
     /**
@@ -2100,6 +2132,100 @@ class MediaPipeAnalyzer {
         if (typeof window.updateInitiativePopupContent === 'function') {
             window.updateInitiativePopupContent();
         }
+    }
+
+    /**
+     * 상세 카메라 상태 로그
+     */
+    logDetailedCameraStatus(video) {
+        if (!video) {
+            console.warn("⚠️ [카메라] 비디오 요소가 없음");
+            return;
+        }
+        
+        const status = {
+            // 기본 상태
+            readyState: video.readyState,
+            readyStateText: this.getReadyStateText(video.readyState),
+            paused: video.paused,
+            ended: video.ended,
+            currentTime: video.currentTime,
+            duration: video.duration,
+            
+            // 소스 정보
+            src: video.src,
+            srcObject: !!video.srcObject,
+            
+            // 네트워크 상태
+            networkState: video.networkState,
+            networkStateText: this.getNetworkStateText(video.networkState),
+            
+            // 오류 정보
+            error: video.error,
+            errorMessage: video.error ? video.error.message : null,
+            
+            // 스트림 정보
+            streamActive: video.srcObject?.active || false,
+            streamId: video.srcObject?.id || 'none',
+            tracks: video.srcObject ? video.srcObject.getTracks().map(track => ({
+                kind: track.kind,
+                enabled: track.enabled,
+                readyState: track.readyState,
+                muted: track.muted,
+                id: track.id
+            })) : []
+        };
+        
+        console.log("📊 [카메라] 상세 상태 로그:", status);
+        
+        // 문제 상황 감지
+        if (video.ended) {
+            console.error("🚨 [카메라] 비디오가 종료됨 - 카메라가 꺼졌을 가능성");
+        }
+        if (video.paused) {
+            console.warn("⚠️ [카메라] 비디오가 일시정지됨");
+        }
+        if (video.readyState !== 4) {
+            console.warn("⚠️ [카메라] 비디오가 완전히 로드되지 않음");
+        }
+        if (video.error) {
+            console.error("🚨 [카메라] 비디오 오류:", video.error);
+        }
+        if (!video.srcObject) {
+            console.warn("⚠️ [카메라] 스트림이 없음");
+        }
+        if (video.srcObject && !video.srcObject.active) {
+            console.error("🚨 [카메라] 스트림이 비활성화됨");
+        }
+        
+        // 트랙 상태 확인
+        if (video.srcObject) {
+            const tracks = video.srcObject.getTracks();
+            tracks.forEach(track => {
+                if (!track.enabled) {
+                    console.warn(`⚠️ [카메라] ${track.kind} 트랙이 비활성화됨`);
+                }
+                if (track.muted) {
+                    console.warn(`⚠️ [카메라] ${track.kind} 트랙이 음소거됨`);
+                }
+                if (track.readyState === 'ended') {
+                    console.error(`🚨 [카메라] ${track.kind} 트랙이 종료됨`);
+                }
+            });
+        }
+    }
+    
+    /**
+     * 네트워크 상태 텍스트 반환
+     */
+    getNetworkStateText(networkState) {
+        const states = {
+            0: 'NETWORK_EMPTY',
+            1: 'NETWORK_IDLE',
+            2: 'NETWORK_LOADING',
+            3: 'NETWORK_NO_SOURCE'
+        };
+        return states[networkState] || 'UNKNOWN';
     }
 }
 
