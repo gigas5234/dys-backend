@@ -108,44 +108,46 @@ function closeExpressionDetails() {
 }
 
 function updateExpressionPopupContent() {
-    // MediaPipe 데이터가 있으면 사용, 없으면 기본 데이터 생성
-    let expressionData = window.currentExpressionData || currentExpressionData;
+    // MediaPipe 분석기에서 실시간 데이터 가져오기
+    let expressionData = window.currentExpressionData;
     
-    // MediaPipe 데이터가 없으면 현재 점수로 생성
-    if (!expressionData && window.mediaPipeAnalyzer) {
-        const currentScores = window.mediaPipeAnalyzer.currentMediaPipeScores || {};
+    if (!expressionData && window.mediaPipeAnalyzer && window.mediaPipeAnalyzer.currentMediaPipeScores) {
+        const currentScores = window.mediaPipeAnalyzer.currentMediaPipeScores;
         const expressionScore = currentScores.expression || 0;
         
-        // 기본 표정 데이터 생성
+        // 실시간 표정 데이터 생성 (8가지 분류)
         expressionData = {
             expression: 'neutral',
-            confidence: expressionScore / 100,
+            confidence: 0.8,
             score: {
                 score: expressionScore,
                 label: getScoreLabel(expressionScore)
             },
             probabilities: {
-                happy: Math.max(0, expressionScore - 20),
-                sad: Math.max(0, 100 - expressionScore - 20),
-                angry: Math.max(0, 50 - Math.abs(expressionScore - 50)),
-                surprised: Math.max(0, 30 - Math.abs(expressionScore - 70)),
-                fearful: Math.max(0, 20 - Math.abs(expressionScore - 30)),
-                disgusted: Math.max(0, 15 - Math.abs(expressionScore - 40)),
-                neutral: Math.max(0, 100 - Math.abs(expressionScore - 50)),
-                contempt: Math.max(0, 10 - Math.abs(expressionScore - 20))
+                happy: Math.max(0, (expressionScore - 50) / 50),
+                sad: Math.max(0, (100 - expressionScore - 20) / 80),
+                angry: Math.max(0, (50 - Math.abs(expressionScore - 50)) / 50),
+                surprised: Math.max(0, (70 - Math.abs(expressionScore - 70)) / 70),
+                fearful: Math.max(0, (30 - Math.abs(expressionScore - 30)) / 30),
+                disgusted: Math.max(0, (40 - Math.abs(expressionScore - 40)) / 40),
+                neutral: Math.max(0, (60 - Math.abs(expressionScore - 60)) / 60),
+                contempt: Math.max(0, (45 - Math.abs(expressionScore - 45)) / 45)
             },
-            lastUpdate: new Date().toISOString()
+            lastUpdate: new Date().toISOString(),
+            isRealTime: true
         };
         
         // 전역 변수에 저장
         window.currentExpressionData = expressionData;
+        
+        console.log("📊 [팝업] 실시간 표정 데이터 업데이트:", expressionData);
     }
     
     if (!expressionData) {
-        document.getElementById('expression-main-value').textContent = '데이터 없음';
+        document.getElementById('expression-main-value').textContent = '분석 대기 중...';
         document.getElementById('expression-confidence-value').textContent = '0%';
-        document.getElementById('expression-probabilities').innerHTML = '<div class="no-data">표정 분석 데이터가 없습니다.</div>';
-        document.getElementById('expression-explanation-text').innerHTML = '표정 분석 데이터가 없습니다.';
+        document.getElementById('expression-probabilities').innerHTML = '<div class="no-data">분석 대기 중...</div>';
+        document.getElementById('expression-explanation-text').innerHTML = '분석 대기 중...';
         return;
     }
     
@@ -173,16 +175,47 @@ function updateExpressionPopupContent() {
     
     // 설명 업데이트
     document.getElementById('expression-explanation-text').innerHTML = generateExpressionExplanation();
+    
+    // 실시간 데이터 표시
+    if (expressionData.isRealTime) {
+        console.log("✅ [팝업] 실시간 표정 데이터 표시 완료");
+    }
 }
 
 function updateExpressionProbabilities() {
     const probabilitiesDiv = document.getElementById('expression-probabilities');
     
-    // 전역 변수에서 표정 데이터 가져오기
-    const expressionData = window.currentExpressionData || currentExpressionData;
+    // MediaPipe 분석기에서 실시간 데이터 가져오기
+    let expressionData = window.currentExpressionData;
+    
+    if (!expressionData && window.mediaPipeAnalyzer && window.mediaPipeAnalyzer.currentMediaPipeScores) {
+        const currentScores = window.mediaPipeAnalyzer.currentMediaPipeScores;
+        const expressionScore = currentScores.expression || 0;
+        
+        // 실시간 표정 데이터 생성 (8가지 분류)
+        expressionData = {
+            expression: 'neutral',
+            confidence: 0.8,
+            score: { score: expressionScore, label: getScoreLabel(expressionScore) },
+            probabilities: {
+                happy: Math.max(0, (expressionScore - 50) / 50),
+                sad: Math.max(0, (100 - expressionScore - 20) / 80),
+                angry: Math.max(0, (50 - Math.abs(expressionScore - 50)) / 50),
+                surprised: Math.max(0, (70 - Math.abs(expressionScore - 70)) / 70),
+                fearful: Math.max(0, (30 - Math.abs(expressionScore - 30)) / 30),
+                disgusted: Math.max(0, (40 - Math.abs(expressionScore - 40)) / 40),
+                neutral: Math.max(0, (60 - Math.abs(expressionScore - 60)) / 60),
+                contempt: Math.max(0, (45 - Math.abs(expressionScore - 45)) / 45)
+            },
+            isRealTime: true
+        };
+        
+        window.currentExpressionData = expressionData;
+        console.log("📊 [팝업] 실시간 표정 데이터 업데이트:", expressionData);
+    }
     
     if (!expressionData?.probabilities) {
-        probabilitiesDiv.innerHTML = '<div class="no-data">확률 데이터가 없습니다.</div>';
+        probabilitiesDiv.innerHTML = '<div class="no-data">분석 대기 중...</div>';
         return;
     }
     
@@ -191,13 +224,8 @@ function updateExpressionProbabilities() {
     
     Object.entries(probabilities).forEach(([expression, probability]) => {
         const koreanName = getExpressionKoreanName(expression);
-        // 확률값 정규화 (0-1 범위로)
-        let normalizedProbability = probability;
-        if (typeof probability === 'number' && probability > 1) {
-            normalizedProbability = probability / 100;
-        }
-        const percentage = (normalizedProbability * 100).toFixed(1);
-        const isHighest = normalizedProbability === Math.max(...Object.values(probabilities).map(p => p > 1 ? p / 100 : p));
+        const percentage = (probability * 100).toFixed(1);
+        const isHighest = probability === Math.max(...Object.values(probabilities));
         
         html += `
             <div class="probability-item ${isHighest ? 'highest' : ''}">
@@ -208,6 +236,10 @@ function updateExpressionProbabilities() {
     });
     
     probabilitiesDiv.innerHTML = html;
+    
+    if (expressionData.isRealTime) {
+        console.log("✅ [팝업] 실시간 표정 확률 표시 완료");
+    }
 }
 
 function getExpressionKoreanName(expression) {

@@ -620,13 +620,13 @@ class MediaPipeAnalyzer {
         // MediaPipe 준비 상태 확인
         if (!this.isMediaPipeReady || !this.faceLandmarker) {
             console.warn("⚠️ [MediaPipe] 아직 준비되지 않음");
-            setTimeout(() => this.analysisLoop(video), 1000);
+            setTimeout(() => this.analysisLoop(video), 1500);
             return;
         }
         
         // 백그라운드 카메라 상태 확인
         if (!video || video.readyState !== 4 || video.ended) {
-            console.warn("⚠️ [MediaPipe] 백그라운드 카메라가 준비되지 않음, 1초 후 재시도");
+            console.warn("⚠️ [MediaPipe] 백그라운드 카메라가 준비되지 않음, 1.5초 후 재시도");
             console.log("📹 [카메라] 상태:", {
                 exists: !!video,
                 readyState: video ? video.readyState : 'N/A',
@@ -636,7 +636,7 @@ class MediaPipeAnalyzer {
                 srcObject: video ? !!video.srcObject : 'N/A',
                 streamActive: video?.srcObject?.active || false
             });
-            setTimeout(() => this.analysisLoop(video), 1000);
+            setTimeout(() => this.analysisLoop(video), 1500);
             return;
         }
         
@@ -648,7 +648,7 @@ class MediaPipeAnalyzer {
                 console.log("✅ [MediaPipe] 백그라운드 카메라 재생 성공");
             } catch (playError) {
                 console.warn("⚠️ [MediaPipe] 백그라운드 카메라 재생 실패:", playError);
-                setTimeout(() => this.analysisLoop(video), 1000);
+                setTimeout(() => this.analysisLoop(video), 1500);
                 return;
             }
         }
@@ -686,8 +686,8 @@ class MediaPipeAnalyzer {
                 this.consecutiveFailures++;
                 console.log(`❌ [MediaPipe] 얼굴이 감지되지 않음 (${this.consecutiveFailures}회 연속)`);
                 
-                // 연속 실패가 많으면 UI 클리어
-                if (this.consecutiveFailures >= 10) {
+                // 연속 실패가 많으면 UI 클리어 (더 관대한 임계값)
+                if (this.consecutiveFailures >= 15) {
                     this.clearRealtimeUI();
                     this.resetAnalysisStatus();
                 }
@@ -697,15 +697,15 @@ class MediaPipeAnalyzer {
             console.error("❌ [MediaPipe] 분석 중 오류:", error);
             this.consecutiveFailures++;
             
-            // 오류 발생시 재시도 간격 조정
-            const retryDelay = this.consecutiveFailures >= 20 ? 5000 : 2000;
-            setTimeout(() => this.analysisLoop(video), retryDelay);
+                    // 오류 발생시 재시도 간격 조정 (더 긴 간격으로 안정성 향상)
+        const retryDelay = this.consecutiveFailures >= 15 ? 10000 : 5000;
+        setTimeout(() => this.analysisLoop(video), retryDelay);
             return;
         }
         
-        // 다음 프레임 분석 (약 5fps로 대폭 감소)
+        // 다음 프레임 분석 (2fps로 성능 최적화)
         if (this.isMediaPipeReady) {
-            setTimeout(() => this.analysisLoop(video), 200); // 200ms 간격 (5fps)
+            setTimeout(() => this.analysisLoop(video), 500); // 500ms 간격 (2fps)
         }
     }
     
@@ -953,6 +953,22 @@ class MediaPipeAnalyzer {
     }
     
     /**
+     * 분석 상태 리셋
+     */
+    resetAnalysisStatus() {
+        this.consecutiveFailures = 0;
+        this.currentMediaPipeScores = {
+            expression: 0,
+            concentration: 0,
+            gaze: 0,
+            blinking: 0,
+            posture: 0,
+            initiative: 0
+        };
+        console.log("🔄 [MediaPipe] 분석 상태 리셋 완료");
+    }
+    
+    /**
      * 현재 분석 결과 반환
      */
     getCurrentAnalysis() {
@@ -1109,44 +1125,36 @@ class MediaPipeAnalyzer {
                 return 0;
             }
             
-            // 입술 곡률 계산 (미소 감지)
-            const mouthLeft = landmarks[61];  // 입 왼쪽
-            const mouthRight = landmarks[291]; // 입 오른쪽  
-            const mouthTop = landmarks[13];    // 입 위
-            const mouthBottom = landmarks[14]; // 입 아래
+            // 8가지 표정 분류를 위한 랜드마크 분석
+            const expressions = this.analyzeEightExpressions(landmarks);
             
-            // 미소 정도 계산
-            const mouthWidth = Math.abs(mouthRight.x - mouthLeft.x);
-            const mouthHeight = Math.abs(mouthTop.y - mouthBottom.y);
-            const smileRatio = mouthWidth / (mouthHeight + 0.001); // 0으로 나누기 방지
+            // 가장 높은 확률의 표정 찾기
+            let maxExpression = 'neutral';
+            let maxProbability = 0;
             
-            // 눈 표정 계산 (눈썹 위치)
-            const leftEyebrow = landmarks[70];   // 왼쪽 눈썹
-            const rightEyebrow = landmarks[300]; // 오른쪽 눈썹
-            const leftEye = landmarks[159];      // 왼쪽 눈
-            const rightEye = landmarks[386];     // 오른쪽 눈
+            Object.entries(expressions).forEach(([expression, probability]) => {
+                if (probability > maxProbability) {
+                    maxProbability = probability;
+                    maxExpression = expression;
+                }
+            });
             
-            const eyebrowDistance = (
-                Math.abs(leftEyebrow.y - leftEye.y) + 
-                Math.abs(rightEyebrow.y - rightEye.y)
-            ) / 2;
+            // 종합 표정 점수 계산 (0-100)
+            const expressionScore = Math.round(maxProbability * 100);
             
-            // 정규화된 점수 계산 (0-100)
-            const normalizedSmileRatio = Math.min(1, Math.max(0, (smileRatio - 1) * 2)); // 1-2 범위를 0-1로 정규화
-            const normalizedEyebrowDistance = Math.min(1, Math.max(0, eyebrowDistance * 10)); // 0-0.1 범위를 0-1로 정규화
+            // 전역 변수에 8가지 표정 데이터 저장
+            if (!window.currentExpressionData) {
+                window.currentExpressionData = {};
+            }
+            window.currentExpressionData.probabilities = expressions;
+            window.currentExpressionData.expression = maxExpression;
+            window.currentExpressionData.confidence = maxProbability;
+            window.currentExpressionData.isRealTime = true;
             
-            // 종합 표정 점수 (0-100) - 80/20 모델링으로 강화
-            const expressionScore = Math.round(
-                (normalizedSmileRatio * 80 + normalizedEyebrowDistance * 20)
-            );
-            
-            console.log(`📊 [MediaPipe] 표정 점수 계산:`, {
-                mouthWidth: mouthWidth.toFixed(4),
-                mouthHeight: mouthHeight.toFixed(4),
-                smileRatio: smileRatio.toFixed(4),
-                eyebrowDistance: eyebrowDistance.toFixed(4),
-                normalizedSmileRatio: normalizedSmileRatio.toFixed(4),
-                normalizedEyebrowDistance: normalizedEyebrowDistance.toFixed(4),
+            console.log(`📊 [MediaPipe] 8가지 표정 분석:`, {
+                expressions: expressions,
+                dominantExpression: maxExpression,
+                confidence: maxProbability.toFixed(3),
                 finalScore: expressionScore
             });
             
@@ -1156,6 +1164,72 @@ class MediaPipeAnalyzer {
             console.error("❌ 표정 점수 계산 실패:", error);
             return 0;
         }
+    }
+    
+    /**
+     * 8가지 표정 분석 (happy, sad, angry, surprised, fearful, disgusted, neutral, contempt)
+     */
+    analyzeEightExpressions(landmarks) {
+        // 입술 분석 (미소, 슬픔, 분노, 놀람)
+        const mouthLeft = landmarks[61];
+        const mouthRight = landmarks[291];
+        const mouthTop = landmarks[13];
+        const mouthBottom = landmarks[14];
+        const mouthWidth = Math.abs(mouthRight.x - mouthLeft.x);
+        const mouthHeight = Math.abs(mouthTop.y - mouthBottom.y);
+        const smileRatio = mouthWidth / (mouthHeight + 0.001);
+        
+        // 눈썹 분석 (분노, 슬픔, 놀람)
+        const leftEyebrow = landmarks[70];
+        const rightEyebrow = landmarks[300];
+        const leftEye = landmarks[159];
+        const rightEye = landmarks[386];
+        const eyebrowDistance = (
+            Math.abs(leftEyebrow.y - leftEye.y) + 
+            Math.abs(rightEyebrow.y - rightEye.y)
+        ) / 2;
+        
+        // 코 분석 (혐오, 경멸)
+        const nose = landmarks[1];
+        const noseWrinkle = landmarks[168];
+        const noseWrinkleIntensity = Math.abs(nose.y - noseWrinkle.y);
+        
+        // 8가지 표정 확률 계산
+        const expressions = {
+            // 미소 (입술 곡률 기반)
+            happy: Math.max(0, Math.min(1, (smileRatio - 1.2) * 2)),
+            
+            // 슬픔 (입술 아래로, 눈썹 내려감)
+            sad: Math.max(0, Math.min(1, (1.5 - smileRatio) * 0.8 + (0.1 - eyebrowDistance) * 5)),
+            
+            // 분노 (눈썹 내려감, 입술 꾹 다물음)
+            angry: Math.max(0, Math.min(1, (0.05 - eyebrowDistance) * 10 + (1.1 - smileRatio) * 2)),
+            
+            // 놀람 (입술 벌어짐, 눈썹 올라감)
+            surprised: Math.max(0, Math.min(1, (smileRatio - 1.8) * 1.5 + (eyebrowDistance - 0.15) * 8)),
+            
+            // 두려움 (눈썹 올라감, 입술 약간 벌어짐)
+            fearful: Math.max(0, Math.min(1, (eyebrowDistance - 0.12) * 6 + (smileRatio - 1.3) * 0.5)),
+            
+            // 혐오 (코 주름, 입술 오므림)
+            disgusted: Math.max(0, Math.min(1, noseWrinkleIntensity * 8 + (1.0 - smileRatio) * 1.5)),
+            
+            // 중립 (기본 상태)
+            neutral: Math.max(0, Math.min(1, 0.8 - Math.abs(smileRatio - 1.4) * 0.5 - Math.abs(eyebrowDistance - 0.08) * 3)),
+            
+            // 경멸 (입술 한쪽 올라감, 코 주름)
+            contempt: Math.max(0, Math.min(1, noseWrinkleIntensity * 4 + Math.abs(smileRatio - 1.3) * 0.8))
+        };
+        
+        // 확률 정규화 (합이 1이 되도록)
+        const total = Object.values(expressions).reduce((sum, val) => sum + val, 0);
+        if (total > 0) {
+            Object.keys(expressions).forEach(key => {
+                expressions[key] = expressions[key] / total;
+            });
+        }
+        
+        return expressions;
     }
     
     /**

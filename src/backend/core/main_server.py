@@ -510,10 +510,12 @@ try:
     from ..models.calibration import CalibrationRequest, CalibrationResponse, CalibrationStatus
     from ..services.calibration_service import calibration_service
     CALIBRATION_AVAILABLE = True
+    SUPABASE_AVAILABLE = True
     print("✅ 캘리브레이션 모듈 로드 성공")
 except ImportError as e:
     print(f"⚠️ 캘리브레이션 모듈 로드 실패: {e}")
     CALIBRATION_AVAILABLE = False
+    SUPABASE_AVAILABLE = False
 
 # ====== 채팅 API 엔드포인트 ======
 
