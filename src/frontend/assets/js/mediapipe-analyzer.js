@@ -461,6 +461,9 @@ class MediaPipeAnalyzer {
                 
                 this.isMediaPipeReady = true;
                 console.log("✅ [MediaPipe] FaceLandmarker 초기화 완료 (GPU 모드)!");
+                
+                // 초기화 완료 후 비디오 분석 시작
+                this.startVideoAnalysis();
                 return true;
                 
             } catch (gpuError) {
@@ -480,6 +483,9 @@ class MediaPipeAnalyzer {
                 
                 this.isMediaPipeReady = true;
                 console.log("✅ [MediaPipe] FaceLandmarker 초기화 완료 (CPU 모드)!");
+                
+                // 초기화 완료 후 비디오 분석 시작
+                this.startVideoAnalysis();
                 return true;
             }
             
@@ -487,6 +493,82 @@ class MediaPipeAnalyzer {
             console.error("❌ [MediaPipe] 초기화 실패:", error);
             this.isMediaPipeReady = false;
             return false;
+        }
+    }
+    
+    /**
+     * 비디오 분석 시작
+     */
+    async startVideoAnalysis() {
+        try {
+            console.log("🎥 [MediaPipe] 비디오 분석 시작...");
+            
+            // 비디오 요소 찾기
+            const video = document.querySelector('video');
+            if (!video) {
+                console.error("❌ [MediaPipe] 비디오 요소를 찾을 수 없습니다");
+                return;
+            }
+            
+            // 비디오가 로드될 때까지 대기
+            if (video.readyState < 2) {
+                console.log("⏳ [MediaPipe] 비디오 로딩 대기 중...");
+                await new Promise((resolve) => {
+                    video.addEventListener('loadeddata', resolve, { once: true });
+                });
+            }
+            
+            console.log("✅ [MediaPipe] 비디오 준비 완료, 분석 시작");
+            
+            // 실시간 분석 루프 시작
+            this.analysisLoop(video);
+            
+        } catch (error) {
+            console.error("❌ [MediaPipe] 비디오 분석 시작 실패:", error);
+        }
+    }
+    
+    /**
+     * 실시간 분석 루프
+     */
+    async analysisLoop(video) {
+        if (!this.isMediaPipeReady || !this.faceLandmarker) {
+            console.warn("⚠️ [MediaPipe] 아직 준비되지 않음");
+            return;
+        }
+        
+        try {
+            // 현재 프레임 분석
+            const startTimeMs = performance.now();
+            const results = await this.faceLandmarker.detectAsync(video, startTimeMs);
+            
+            if (results.faceLandmarks && results.faceLandmarks.length > 0) {
+                // 얼굴이 감지된 경우
+                const landmarks = results.faceLandmarks[0];
+                
+                // 실시간 점수 계산
+                const scores = this.calculateRealtimeScores(landmarks);
+                
+                // UI 업데이트
+                this.updateRealtimeUI(scores);
+                
+                // 서버 분석 스케줄링 (2초마다)
+                this.scheduleServerAnalysis(video, scores);
+                
+                console.log("👤 [MediaPipe] 얼굴 감지됨, 점수:", scores);
+            } else {
+                // 얼굴이 감지되지 않은 경우
+                this.clearRealtimeUI();
+                console.log("❌ [MediaPipe] 얼굴이 감지되지 않음");
+            }
+            
+        } catch (error) {
+            console.error("❌ [MediaPipe] 분석 중 오류:", error);
+        }
+        
+        // 다음 프레임 분석 (약 30fps)
+        if (this.isMediaPipeReady) {
+            requestAnimationFrame(() => this.analysisLoop(video));
         }
     }
     
