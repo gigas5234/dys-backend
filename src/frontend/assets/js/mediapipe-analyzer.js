@@ -1080,7 +1080,7 @@ class MediaPipeAnalyzer {
         
         try {
             console.log("🧠 서버 표정 분석 요청...");
-            console.log("🔍 [디버그] 요청 URL:", `${window.location.origin}/api/analysis/expression`);
+            console.log("🔍 [디버그] 요청 URL:", `${window.location.origin}/api/expression/analyze`);
             console.log("🔍 [디버그] 요청 데이터 크기:", JSON.stringify({
                 image: imageData.substring(0, 100) + "...",
                 mediapipe_scores: mediapipeScores,
@@ -1090,7 +1090,7 @@ class MediaPipeAnalyzer {
             
             // 올바른 API 엔드포인트 사용
             const baseUrl = window.location.origin;
-            const response = await fetch(`${baseUrl}/api/analysis/expression`, {
+            const response = await fetch(`${baseUrl}/api/expression/analyze`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -1550,8 +1550,9 @@ class MediaPipeAnalyzer {
                 this.landmarkHistory = [];
             }
             
-            // 랜드마크 변화량 계산
+            // 랜드마크 변화량 계산 (더 민감하게)
             let totalChange = 0;
+            let changeCount = 0;
             for (let i = 0; i < Math.min(landmarks.length, this.previousLandmarks.length); i++) {
                 const current = landmarks[i];
                 const previous = this.previousLandmarks[i];
@@ -1559,12 +1560,15 @@ class MediaPipeAnalyzer {
                     Math.pow(current.x - previous.x, 2) + 
                     Math.pow(current.y - previous.y, 2)
                 );
-                totalChange += change;
+                if (change > 0.001) { // 더 작은 변화도 감지
+                    totalChange += change;
+                    changeCount++;
+                }
             }
-            const averageChange = totalChange / landmarks.length;
+            const averageChange = changeCount > 0 ? totalChange / changeCount : 0;
             
-            // 이전 랜드마크 업데이트
-            this.previousLandmarks = landmarks;
+            // 이전 랜드마크 업데이트 (깊은 복사)
+            this.previousLandmarks = landmarks.map(lm => ({ x: lm.x, y: lm.y, z: lm.z }));
             
             // 8가지 표정 확률 계산 (더 관대한 임계값으로 수정)
             const expressions = {
@@ -1614,7 +1618,8 @@ class MediaPipeAnalyzer {
                 neutral: Math.max(0.05, Math.min(1, 
                     0.4 - Math.abs(smileRatio - 1.2) * 0.15 - 
                     Math.abs(eyebrowDistance - 0.07) * 1.0 - 
-                    (averageChange > 0.01 ? 0.05 : 0)
+                    (averageChange > 0.005 ? 0.1 : 0) + // 변화량에 따른 동적 조정
+                    (averageChange < 0.001 ? 0.2 : 0)   // 변화가 없으면 중립 증가
                 )),
                 
                 // 경멸 (입술 한쪽 올라감, 코 주름, 눈썹 약간 올라감)
