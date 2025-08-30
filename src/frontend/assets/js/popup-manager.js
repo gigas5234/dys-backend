@@ -203,6 +203,12 @@ function showGazeDetails() {
     const popup = document.getElementById('gaze-details-popup');
     if (popup) {
         popup.classList.add('active');
+        
+        // MediaPipe 데이터로 업데이트
+        if (window.mediaPipeAnalyzer) {
+            window.mediaPipeAnalyzer.updateGazePopupOnOpen();
+        }
+        
         updateGazePopupContent();
     }
 }
