@@ -161,4 +161,10 @@ function generateInitiativeExplanation(analysis) {
     
     return explanation;
 }
+
+// 전역 스코프에 함수들 노출
+window.showInitiativeDetails = showInitiativeDetails;
+window.closeInitiativeDetails = closeInitiativeDetails;
+window.updateInitiativePopupContent = updateInitiativePopupContent;
+window.generateInitiativeExplanation = generateInitiativeExplanation;
 </script>
