@@ -599,7 +599,7 @@ class MediaPipeAnalyzer {
             this.updateConcentrationScore(scores.concentration);
             this.updateGazeScore(scores.gaze);
             this.updateBlinkingScore(scores.blinking);
-            this.updatePostureScore(scores.initiative);
+            this.updatePostureScore(scores.posture);
             
             console.log("📊 실시간 점수 업데이트:", scores);
         } catch (error) {
@@ -732,7 +732,9 @@ class MediaPipeAnalyzer {
         try {
             console.log("🧠 서버 표정 분석 요청...");
             
-            const response = await fetch('/api/expression/analyze', {
+            // 절대 URL로 변경
+            const baseUrl = window.location.origin;
+            const response = await fetch(`${baseUrl}/api/expression/analyze`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -749,11 +751,25 @@ class MediaPipeAnalyzer {
                 const result = await response.json();
                 this.handleServerAnalysisResult(result);
             } else {
-                console.warn("⚠️ 서버 분석 응답 오류:", response.status);
+                console.warn("⚠️ 서버 분석 응답 오류:", response.status, response.statusText);
+                // 서버 오류시 MediaPipe 점수만 사용
+                this.handleServerAnalysisResult({
+                    model_scores: mediapipeScores,
+                    mediapipe_scores: mediapipeScores,
+                    is_anomaly: false,
+                    feedback: { confidence: 0.8 }
+                });
             }
             
         } catch (error) {
             console.warn("⚠️ 서버 분석 요청 실패:", error);
+            // 네트워크 오류시 MediaPipe 점수만 사용
+            this.handleServerAnalysisResult({
+                model_scores: mediapipeScores,
+                mediapipe_scores: mediapipeScores,
+                is_anomaly: false,
+                feedback: { confidence: 0.8 }
+            });
         }
     }
     
