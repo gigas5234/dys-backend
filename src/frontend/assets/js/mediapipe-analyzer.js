@@ -1005,13 +1005,26 @@ class MediaPipeAnalyzer {
                 Math.abs(rightEyebrow.y - rightEye.y)
             ) / 2;
             
-            // 종합 표정 점수 (0-100)
-            const expressionScore = Math.min(100, Math.max(0, 
-                (smileRatio * 30 + eyebrowDistance * 70) * 100
-            ));
+            // 정규화된 점수 계산 (0-100)
+            const normalizedSmileRatio = Math.min(1, Math.max(0, (smileRatio - 1) * 2)); // 1-2 범위를 0-1로 정규화
+            const normalizedEyebrowDistance = Math.min(1, Math.max(0, eyebrowDistance * 10)); // 0-0.1 범위를 0-1로 정규화
             
-            console.log(`📊 [MediaPipe] 표정 점수: ${expressionScore.toFixed(1)} (미소: ${smileRatio.toFixed(2)}, 눈썹: ${eyebrowDistance.toFixed(2)})`);
-            return Math.round(expressionScore);
+            // 종합 표정 점수 (0-100)
+            const expressionScore = Math.round(
+                (normalizedSmileRatio * 60 + normalizedEyebrowDistance * 40)
+            );
+            
+            console.log(`📊 [MediaPipe] 표정 점수 계산:`, {
+                mouthWidth: mouthWidth.toFixed(4),
+                mouthHeight: mouthHeight.toFixed(4),
+                smileRatio: smileRatio.toFixed(4),
+                eyebrowDistance: eyebrowDistance.toFixed(4),
+                normalizedSmileRatio: normalizedSmileRatio.toFixed(4),
+                normalizedEyebrowDistance: normalizedEyebrowDistance.toFixed(4),
+                finalScore: expressionScore
+            });
+            
+            return expressionScore;
             
         } catch (error) {
             console.error("❌ 표정 점수 계산 실패:", error);
