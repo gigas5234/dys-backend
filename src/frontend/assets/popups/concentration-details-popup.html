@@ -9,11 +9,11 @@
       <div class="concentration-summary">
         <div class="concentration-main">
           <div class="concentration-label">집중 상태</div>
-          <div id="concentration-main-value" class="concentration-main-value">-</div>
+          <div id="concentration-main-value" class="concentration-main-value">UI 모드</div>
         </div>
         <div class="concentration-score">
           <div class="concentration-label">집중도 점수</div>
-          <div id="concentration-score-value" class="concentration-score-value">-%</div>
+          <div id="concentration-score-value" class="concentration-score-value">0%</div>
         </div>
         <div class="concentration-confidence">
           <div class="concentration-label">신뢰도</div>
@@ -29,13 +29,13 @@
       <div class="concentration-criteria">
         <div class="concentration-label">평가 기준</div>
         <div id="concentration-criteria-text" class="concentration-criteria-text">
-          집중도 분석 데이터가 없습니다.
+          집중도 분석 기능이 비활성화되어 있습니다.
         </div>
       </div>
       <div class="concentration-explanation">
         <div class="concentration-label">점수 계산 근거</div>
         <div id="concentration-explanation-text" class="concentration-explanation-text">
-          집중도 분석 데이터가 없습니다.
+          집중도 분석 기능이 비활성화되어 있습니다.
         </div>
       </div>
     </div>
@@ -58,6 +58,22 @@ function updateConcentrationFactorsInfo() {
             score: concentrationScore,
             isRealTime: true
         };
+    }
+    
+    // 가중 평균 점수 우선 사용
+    if (concentrationData?.weightedScore !== undefined) {
+        concentrationData.score = concentrationData.weightedScore;
+    }
+    
+    // 메인 값들 업데이트
+    if (concentrationData?.isRealTime) {
+        document.getElementById('concentration-main-value').textContent = '실시간 분석 모드';
+        document.getElementById('concentration-score-value').textContent = `${concentrationData.score}%`;
+        document.getElementById('concentration-confidence-value').textContent = '85%';
+    } else {
+        document.getElementById('concentration-main-value').textContent = 'UI 모드';
+        document.getElementById('concentration-score-value').textContent = '0%';
+        document.getElementById('concentration-confidence-value').textContent = '-%';
     }
     
     // 실시간 집중도 분석 요소들
