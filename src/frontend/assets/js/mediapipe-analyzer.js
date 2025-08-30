@@ -593,24 +593,33 @@ class MediaPipeAnalyzer {
      * 실시간 UI 업데이트
      */
     updateRealtimeUI(scores) {
-        // 표정 점수 업데이트
-        this.updateExpressionScore(scores.expression);
-        this.updateConcentrationScore(scores.concentration);
-        this.updateGazeScore(scores.gaze);
-        this.updateBlinkingScore(scores.blinking);
-        this.updatePostureScore(scores.initiative);
-        
-        console.log("📊 실시간 점수 업데이트:", scores);
+        try {
+            // 표정 점수 업데이트
+            this.updateExpressionScore(scores.expression);
+            this.updateConcentrationScore(scores.concentration);
+            this.updateGazeScore(scores.gaze);
+            this.updateBlinkingScore(scores.blinking);
+            this.updatePostureScore(scores.initiative);
+            
+            console.log("📊 실시간 점수 업데이트:", scores);
+        } catch (error) {
+            console.warn("⚠️ UI 업데이트 실패:", error);
+        }
     }
     
     /**
      * 표정 점수 UI 업데이트
      */
     updateExpressionScore(score) {
-        const element = document.getElementById('expression-score');
+        // 여러 가능한 ID 시도
+        const possibleIds = ['expression-score', 'expressionScore', 'expression_score', 'score-expression'];
+        const element = this.findElementByIds(possibleIds);
+        
         if (element) {
             element.textContent = Math.round(score);
             element.style.color = this.getScoreColor(score);
+        } else {
+            console.log("📊 [UI] 표정 점수:", Math.round(score));
         }
     }
     
@@ -618,10 +627,14 @@ class MediaPipeAnalyzer {
      * 집중도 점수 UI 업데이트
      */
     updateConcentrationScore(score) {
-        const element = document.getElementById('concentration-score');
+        const possibleIds = ['concentration-score', 'concentrationScore', 'concentration_score', 'score-concentration'];
+        const element = this.findElementByIds(possibleIds);
+        
         if (element) {
             element.textContent = Math.round(score);
             element.style.color = this.getScoreColor(score);
+        } else {
+            console.log("📊 [UI] 집중도 점수:", Math.round(score));
         }
     }
     
@@ -629,10 +642,14 @@ class MediaPipeAnalyzer {
      * 시선 점수 UI 업데이트
      */
     updateGazeScore(score) {
-        const element = document.getElementById('gaze-score');
+        const possibleIds = ['gaze-score', 'gazeScore', 'gaze_score', 'score-gaze'];
+        const element = this.findElementByIds(possibleIds);
+        
         if (element) {
             element.textContent = Math.round(score);
             element.style.color = this.getScoreColor(score);
+        } else {
+            console.log("📊 [UI] 시선 점수:", Math.round(score));
         }
     }
     
@@ -640,10 +657,14 @@ class MediaPipeAnalyzer {
      * 깜빡임 점수 UI 업데이트
      */
     updateBlinkingScore(score) {
-        const element = document.getElementById('blinking-score');
+        const possibleIds = ['blinking-score', 'blinkingScore', 'blinking_score', 'score-blinking'];
+        const element = this.findElementByIds(possibleIds);
+        
         if (element) {
             element.textContent = Math.round(score);
             element.style.color = this.getScoreColor(score);
+        } else {
+            console.log("📊 [UI] 깜빡임 점수:", Math.round(score));
         }
     }
     
@@ -651,10 +672,14 @@ class MediaPipeAnalyzer {
      * 자세 점수 UI 업데이트
      */
     updatePostureScore(score) {
-        const element = document.getElementById('posture-score');
+        const possibleIds = ['posture-score', 'postureScore', 'posture_score', 'score-posture'];
+        const element = this.findElementByIds(possibleIds);
+        
         if (element) {
             element.textContent = Math.round(score);
             element.style.color = this.getScoreColor(score);
+        } else {
+            console.log("📊 [UI] 자세 점수:", Math.round(score));
         }
     }
     
@@ -763,14 +788,10 @@ class MediaPipeAnalyzer {
      * 실시간 UI 클리어
      */
     clearRealtimeUI() {
-        // 얼굴이 감지되지 않았을 때 점수들 초기화
-        this.updateRealtimeUI({
-            expression: 0,
-            concentration: 0, 
-            gaze: 0,
-            blinking: 0,
-            posture: 0,
-            initiative: 0
+        const scoreElements = document.querySelectorAll('[id*="score"]');
+        scoreElements.forEach(element => {
+            element.textContent = '0';
+            element.style.color = '#F44336';
         });
     }
     
@@ -1161,6 +1182,19 @@ class MediaPipeAnalyzer {
             console.error(`❌ ${eye} 눈동자 중심 계산 실패:`, error);
             return { x: 0.5, y: 0.5 };
         }
+    }
+
+    /**
+     * 여러 ID로 요소 찾기
+     */
+    findElementByIds(ids) {
+        for (const id of ids) {
+            const element = document.getElementById(id);
+            if (element) {
+                return element;
+            }
+        }
+        return null;
     }
 }
 
