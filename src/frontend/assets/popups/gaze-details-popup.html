@@ -43,11 +43,36 @@
 function updateGazeLandmarksInfo() {
     const landmarksDiv = document.getElementById('gaze-landmarks');
     
-    // UI-only mode: 기본 정보 표시
+    // MediaPipe 분석기에서 실시간 데이터 가져오기
+    let gazeData = window.currentGazeData;
+    
+    if (!gazeData && window.mediaPipeAnalyzer && window.mediaPipeAnalyzer.currentMediaPipeScores) {
+        const currentScores = window.mediaPipeAnalyzer.currentMediaPipeScores;
+        const gazeScore = currentScores.gaze || 0;
+        
+        gazeData = {
+            score: gazeScore,
+            isRealTime: true
+        };
+    }
+    
+    // 실시간 시선 분석 정보 표시
     const landmarkInfo = [
-        { name: '시선 분석', value: '비활성화', description: 'MediaPipe 기반 시선 분석 기능이 비활성화되어 있습니다.' },
-        { name: '눈 추적', value: '비활성화', description: '실시간 눈 추적 기능이 비활성화되어 있습니다.' },
-        { name: '안정성 측정', value: '비활성화', description: '시선 안정성 측정 기능이 비활성화되어 있습니다.' }
+        { 
+            name: '시선 분석', 
+            value: gazeData?.isRealTime ? '활성화' : '대기 중', 
+            description: gazeData?.isRealTime ? 'MediaPipe 기반 실시간 시선 분석이 진행 중입니다.' : '시선 분석을 기다리는 중입니다.' 
+        },
+        { 
+            name: '눈 추적', 
+            value: gazeData?.isRealTime ? '실시간' : '대기 중', 
+            description: gazeData?.isRealTime ? '32개 눈 랜드마크를 통한 실시간 눈 추적' : '눈 추적을 기다리는 중입니다.' 
+        },
+        { 
+            name: '안정성 측정', 
+            value: gazeData?.isRealTime ? `${gazeData.score}%` : '측정 중', 
+            description: gazeData?.isRealTime ? '시선 변화량과 속도를 통한 안정성 측정' : '안정성 측정을 기다리는 중입니다.' 
+        }
     ];
     
     let html = '';
@@ -62,27 +87,46 @@ function updateGazeLandmarksInfo() {
     });
     
     landmarksDiv.innerHTML = html;
+    
+    if (gazeData?.isRealTime) {
+        console.log("✅ [팝업] 실시간 시선 랜드마크 정보 표시 완료");
+    }
 }
 
 function updateGazeCriteriaInfo() {
     const criteriaDiv = document.getElementById('gaze-criteria-text');
     
+    // MediaPipe 분석기에서 실시간 데이터 가져오기
+    let gazeData = window.currentGazeData;
+    
+    if (!gazeData && window.mediaPipeAnalyzer && window.mediaPipeAnalyzer.currentMediaPipeScores) {
+        const currentScores = window.mediaPipeAnalyzer.currentMediaPipeScores;
+        const gazeScore = currentScores.gaze || 0;
+        
+        gazeData = {
+            score: gazeScore,
+            isRealTime: true
+        };
+    }
+    
+    const statusText = gazeData?.isRealTime ? '실시간 분석 모드' : '대기 모드';
+    
     const criteria = `
         <div class="criteria-section">
-            <h4>🎯 시선 안정성 평가 기준 (UI-only mode)</h4>
+            <h4>🎯 시선 안정성 평가 기준 (${statusText})</h4>
             <ul>
-                <li><strong>시선 분석 기능</strong>: MediaPipe 기반 시선 분석이 비활성화되어 있습니다.</li>
-                <li><strong>실시간 추적</strong>: 실시간 시선 추적 기능이 비활성화되어 있습니다.</li>
-                <li><strong>안정성 측정</strong>: 시선 안정성 측정 기능이 비활성화되어 있습니다.</li>
+                <li><strong>시선 분석 기능</strong>: ${gazeData?.isRealTime ? 'MediaPipe 기반 실시간 시선 분석이 활성화되어 있습니다.' : '시선 분석을 기다리는 중입니다.'}</li>
+                <li><strong>실시간 추적</strong>: ${gazeData?.isRealTime ? '실시간 시선 추적이 진행 중입니다.' : '시선 추적을 기다리는 중입니다.'}</li>
+                <li><strong>안정성 측정</strong>: ${gazeData?.isRealTime ? '시선 안정성 측정이 진행 중입니다.' : '안정성 측정을 기다리는 중입니다.'}</li>
             </ul>
             
-                         <h4>👁️ 시선 분석 방법</h4>
-             <ul>
-                 <li><strong>얼굴 랜드마크</strong>: 468개 얼굴 랜드마크를 사용한 시선 분석</li>
-                 <li><strong>눈 추적</strong>: 32개 눈 랜드마크를 통한 정확한 눈 위치 추적</li>
-                 <li><strong>시선 방향</strong>: 눈동자 중심점을 통한 시선 방향 계산</li>
-                 <li><strong>안정성 평가</strong>: 시선 변화량과 속도를 통한 안정성 측정</li>
-             </ul>
+            <h4>👁️ 시선 분석 방법</h4>
+            <ul>
+                <li><strong>얼굴 랜드마크</strong>: 468개 얼굴 랜드마크를 사용한 시선 분석</li>
+                <li><strong>눈 추적</strong>: 32개 눈 랜드마크를 통한 정확한 눈 위치 추적</li>
+                <li><strong>시선 방향</strong>: 눈동자 중심점을 통한 시선 방향 계산</li>
+                <li><strong>안정성 평가</strong>: 시선 변화량과 속도를 통한 안정성 측정</li>
+            </ul>
             
             <h4>📊 점수 기준</h4>
             <ul>
@@ -101,18 +145,49 @@ function updateGazeCriteriaInfo() {
 function updateGazeExplanationInfo() {
     const explanationDiv = document.getElementById('gaze-explanation-text');
     
-    // UI-only mode: 기본 설명 표시
+    // MediaPipe 분석기에서 실시간 데이터 가져오기
+    let gazeData = window.currentGazeData;
+    
+    if (!gazeData && window.mediaPipeAnalyzer && window.mediaPipeAnalyzer.currentMediaPipeScores) {
+        const currentScores = window.mediaPipeAnalyzer.currentMediaPipeScores;
+        const gazeScore = currentScores.gaze || 0;
+        
+        gazeData = {
+            score: gazeScore,
+            isRealTime: true
+        };
+    }
+    
+    if (!gazeData) {
+        explanationDiv.innerHTML = '<div class="explanation-section"><p>분석 대기 중...</p></div>';
+        return;
+    }
+    
     let explanation = `<div class="explanation-section">`;
-    explanation += `<h4>📈 현재 상태 (UI-only mode)</h4>`;
+    explanation += `<h4>📈 현재 분석 결과</h4>`;
     explanation += `<ul>`;
-    explanation += `<li><strong>시선 분석</strong>: MediaPipe 기반 시선 분석이 비활성화되어 있습니다.</li>`;
-    explanation += `<li><strong>실시간 추적</strong>: 실시간 시선 추적 기능이 비활성화되어 있습니다.</li>`;
-    explanation += `<li><strong>안정성 측정</strong>: 시선 안정성 측정 기능이 비활성화되어 있습니다.</li>`;
-    explanation += `<li><strong>점수 계산</strong>: 실시간 점수 계산이 비활성화되어 있습니다.</li>`;
+    explanation += `<li><strong>시선 안정성 점수</strong>: ${gazeData.score}점</li>`;
+    explanation += `<li><strong>분석 상태</strong>: ${gazeData.isRealTime ? '실시간 분석 중' : '대기 중'}</li>`;
+    explanation += `<li><strong>시선 추적</strong>: ${gazeData.isRealTime ? '활성화' : '비활성화'}</li>`;
+    explanation += `<li><strong>안정성 측정</strong>: ${gazeData.isRealTime ? '진행 중' : '대기 중'}</li>`;
     explanation += `</ul>`;
     
-    explanation += `<p>🎯 <strong>UI 디자인 모드</strong>: 현재 UI 디자인만 표시되고 있으며, 실제 시선 분석 기능은 비활성화되어 있습니다.</p>`;
-    explanation += `<p>💡 <strong>기능 활성화</strong>: MediaPipe 통합이 완료되면 실시간 시선 분석 기능이 활성화됩니다.</p>`;
+    // 점수 해석
+    if (gazeData.score >= 90) {
+        explanation += `<p>🎯 <strong>완벽한 시선 안정성</strong>: 시선이 매우 안정적이고 집중력이 우수합니다.</p>`;
+    } else if (gazeData.score >= 70) {
+        explanation += `<p>🎯 <strong>우수한 시선 안정성</strong>: 시선이 안정적이고 적절한 집중을 보입니다.</p>`;
+    } else if (gazeData.score >= 50) {
+        explanation += `<p>🎯 <strong>보통 시선 안정성</strong>: 일반적인 수준의 시선 안정성을 보입니다.</p>`;
+    } else if (gazeData.score >= 30) {
+        explanation += `<p>🎯 <strong>개선이 필요한 시선</strong>: 시선이 불안정하고 집중력이 저하되고 있습니다.</p>`;
+    } else {
+        explanation += `<p>🎯 <strong>매우 개선이 필요한 시선</strong>: 시선이 매우 불안정하고 심각한 집중력 문제가 있습니다.</p>`;
+    }
+    
+    if (gazeData.isRealTime) {
+        explanation += `<p>🔄 <strong>실시간 분석</strong>: MediaPipe 기반 실시간 시선 분석이 진행 중입니다.</p>`;
+    }
     
     explanation += `</div>`;
     

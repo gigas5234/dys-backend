@@ -61,7 +61,14 @@ async function checkUserCalibration() {
             raw_response: result
         });
         
-        return hasCalibration;
+        // cam_calibration이 true이면 캘리브레이션 완료된 것으로 간주
+        if (hasCalibration) {
+            console.log("✅ 사용자 캘리브레이션 완료됨 (cam_calibration: true)");
+            return true;
+        } else {
+            console.log("❌ 사용자 캘리브레이션 미완료 (cam_calibration: false)");
+            return false;
+        }
     } catch (error) {
         console.error("사용자 상태 확인 실패:", error);
         return false;
@@ -280,39 +287,85 @@ async function updateUserCalibrationStatus(hasCalibration = true) {
  */
 async function sendCalibrationData(calibrationData) {
     try {
-        // 1. 캘리브레이션 데이터 저장
-        const response = await fetch(window.apiEndpoints?.calibration || `${window.serverUrl || 'https://dys-phi.vercel.app/api/gke'}/calibration`, {
+        // 1. 새로운 Supabase camera_calibrations 테이블에 저장
+        const deviceId = getDeviceId(); // 디바이스 ID 생성
+        const profileName = 'default'; // 기본 프로필
+        
+        const supabaseResponse = await fetch(`${window.serverUrl || 'https://dys-phi.vercel.app/api/gke'}/supabase/calibration`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 user_id: window.userId,
-                email: window.email,
-                token: window.token,
+                device_id: deviceId,
+                profile_name: profileName,
                 calibration_data: calibrationData
             })
         });
 
-        if (!response.ok) {
-            throw new Error(`캘리브레이션 저장 실패: ${response.status}`);
+        if (!supabaseResponse.ok) {
+            throw new Error(`Supabase 캘리브레이션 저장 실패: ${supabaseResponse.status}`);
         }
         
-        const result = await response.json();
-        console.log("캘리브레이션 데이터 저장 완료:", result);
+        const supabaseResult = await supabaseResponse.json();
+        console.log("Supabase 캘리브레이션 데이터 저장 완료:", supabaseResult);
         
-        // 2. Supabase users 테이블의 cam_calibration 필드를 true로 업데이트
+        // 2. 기존 MongoDB에도 저장 (호환성 유지)
+        try {
+            const mongoResponse = await fetch(window.apiEndpoints?.calibration || `${window.serverUrl || 'https://dys-phi.vercel.app/api/gke'}/calibration`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    user_id: window.userId,
+                    email: window.email,
+                    token: window.token,
+                    calibration_data: calibrationData
+                })
+            });
+
+            if (mongoResponse.ok) {
+                const mongoResult = await mongoResponse.json();
+                console.log("MongoDB 캘리브레이션 데이터 저장 완료:", mongoResult);
+            }
+        } catch (mongoError) {
+            console.warn("MongoDB 저장 실패 (Supabase는 성공):", mongoError);
+        }
+        
+        // 3. Supabase users 테이블의 cam_calibration 필드를 true로 업데이트
         try {
             await updateUserCalibrationStatus(true);
-            console.log("Supabase users 테이블 캘리브레이션 상태 업데이트 완료");
+            console.log("Supabase users 테이블 cam_calibration 상태 업데이트 완료");
         } catch (updateError) {
-            console.error("Supabase 업데이트 실패 (캘리브레이션 데이터는 저장됨):", updateError);
-            // Supabase 업데이트 실패해도 캘리브레이션 데이터는 저장되었으므로 계속 진행
+            console.error("Supabase users 업데이트 실패:", updateError);
+            throw updateError; // 이 부분은 중요하므로 실패 시 에러 발생
         }
         
-        return result;
+        return supabaseResult;
     } catch (error) {
         console.error("캘리브레이션 저장 오류:", error);
         throw error;
     }
+}
+
+/**
+ * 디바이스 ID 생성 (브라우저 기반)
+ * @returns {string} 디바이스 ID
+ */
+function getDeviceId() {
+    // 브라우저 정보 기반 디바이스 ID 생성
+    const userAgent = navigator.userAgent;
+    const platform = navigator.platform;
+    const language = navigator.language;
+    
+    // 간단한 해시 생성
+    let hash = 0;
+    const deviceString = `${userAgent}-${platform}-${language}`;
+    for (let i = 0; i < deviceString.length; i++) {
+        const char = deviceString.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash; // 32bit 정수로 변환
+    }
+    
+    return `device-${Math.abs(hash)}`;
 }
 
 /**
@@ -443,7 +496,7 @@ async function initializeCalibration() {
         window.__hasCalibrationInDb = !!hasCalibration;
         
         if (hasCalibration) {
-            console.log("기존 개인 캘리브레이션 발견");
+            console.log("✅ 기존 개인 캘리브레이션 발견 (cam_calibration: true)");
             // 개인 캘리브레이션이 있으면 로드 시도
             try {
                 const personalCalibration = await loadPersonalCalibration();
@@ -463,10 +516,13 @@ async function initializeCalibration() {
                 setCalibrationData(defaultCalibration, 'default');
                 console.log("개인 캘리브레이션 로드 에러, 기본 캘리브레이션 설정");
             }
-            // 기존 캘리브레이션이 있어도 사용자가 선택하도록 캘리브레이션 팝업 표시
-            console.log("캘리브레이션 팝업 표시 (사용자 선택 대기)");
+            
+            // cam_calibration이 true이면 캘리브레이션 팝업을 표시하지 않고 바로 앱 시작
+            console.log("캘리브레이션 완료됨 - 바로 앱 시작");
+            window.__readyToStartApp = true;
+            return; // 캘리브레이션 팝업 표시하지 않음
         } else {
-            console.log("캘리브레이션 필요, 기본 캘리브레이션 로드");
+            console.log("❌ 캘리브레이션 필요 (cam_calibration: false)");
             // 개인 캘리브레이션이 없으면 기본 캘리브레이션 로드
             try {
                 const defaultCalibration = await loadDefaultCalibration();
@@ -475,6 +531,9 @@ async function initializeCalibration() {
             } catch (error) {
                 console.error("기본 캘리브레이션 로드 실패:", error);
             }
+            
+            // 캘리브레이션 팝업 표시 (사용자가 캘리브레이션 완료해야 함)
+            console.log("캘리브레이션 팝업 표시 (사용자 캘리브레이션 필요)");
         }
         
         // 자동으로 앱을 시작하지 않고 사용자 선택을 기다림

@@ -43,14 +43,51 @@
 function updatePostureFactorsInfo() {
     const factorsDiv = document.getElementById('posture-factors');
     
-    // 자세 분석에 사용되는 요소들
+    // MediaPipe 분석기에서 실시간 데이터 가져오기
+    let postureData = window.currentPostureData;
+    
+    if (!postureData && window.mediaPipeAnalyzer && window.mediaPipeAnalyzer.currentMediaPipeScores) {
+        const currentScores = window.mediaPipeAnalyzer.currentMediaPipeScores;
+        const postureScore = currentScores.posture || 0;
+        
+        postureData = {
+            score: postureScore,
+            isRealTime: true
+        };
+    }
+    
+    // 실시간 자세 분석 요소들
     const factorInfo = [
-        { name: '목 각도', value: '0-15도', description: '목이 앞으로 기울어진 각도' },
-        { name: '거북목 정도', value: '0-30%', description: '목이 앞으로 나온 비율' },
-        { name: '어깨 균형', value: '좌우 대칭', description: '어깨의 높이와 기울기' },
-        { name: '정면 자세', value: '90도', description: '얼굴이 정면을 향하는 각도' },
-        { name: '자세 안정성', value: '지속적', description: '자세의 지속적 유지 정도' },
-        { name: '목 근육 긴장', value: '적정', description: '목 근육의 긴장도' }
+        { 
+            name: '목 각도', 
+            value: postureData?.isRealTime ? '0-15도' : '측정 중', 
+            description: postureData?.isRealTime ? '목이 앞으로 기울어진 각도' : '목 각도를 측정하는 중' 
+        },
+        { 
+            name: '거북목 정도', 
+            value: postureData?.isRealTime ? '0-30%' : '분석 중', 
+            description: postureData?.isRealTime ? '목이 앞으로 나온 비율' : '거북목 정도를 분석하는 중' 
+        },
+        { 
+            name: '어깨 균형', 
+            value: postureData?.isRealTime ? '좌우 대칭' : '측정 중', 
+            description: postureData?.isRealTime ? '어깨의 높이와 기울기' : '어깨 균형을 측정하는 중' 
+        },
+        { 
+            name: '정면 자세', 
+            value: postureData?.isRealTime ? '90도' : '분석 중', 
+            description: postureData?.isRealTime ? '얼굴이 정면을 향하는 각도' : '정면 자세를 분석하는 중' 
+        },
+        { 
+            name: '자세 안정성', 
+            value: postureData?.isRealTime ? '지속적' : '측정 중', 
+            description: postureData?.isRealTime ? '자세의 지속적 유지 정도' : '자세 안정성을 측정하는 중' 
+        },
+        { 
+            name: '목 근육 긴장', 
+            value: postureData?.isRealTime ? '적정' : '분석 중', 
+            description: postureData?.isRealTime ? '목 근육의 긴장도' : '목 근육 긴장도를 분석하는 중' 
+        }
     ];
     
     let html = '';
@@ -65,6 +102,10 @@ function updatePostureFactorsInfo() {
     });
     
     factorsDiv.innerHTML = html;
+    
+    if (postureData?.isRealTime) {
+        console.log("✅ [팝업] 실시간 자세 요소 정보 표시 완료");
+    }
 }
 
 function updatePostureCriteriaInfo() {

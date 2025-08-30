@@ -40,6 +40,11 @@ class MediaPipeAnalyzer {
         this.lastServerRequest = 0;
         this.consecutiveFailures = 0;
         
+        // 깜빡임 통계 관리
+        this.blinkHistory = [];
+        this.lastBlinkTime = 0;
+        this.blinkCount = 0;
+        
         // 카메라 스트림 모니터링
         this.setupCameraMonitoring();
         
@@ -712,7 +717,7 @@ class MediaPipeAnalyzer {
             expression: this.calculateExpressionScore(landmarks),
             concentration: this.calculateConcentrationScore(landmarks),
             gaze: this.calculateGazeScore(landmarks),
-            blinking: this.calculateBlinkingScore(landmarks),
+            blinking: this.calculateBlinkingScore(landmarks).score,
             posture: this.calculatePostureScore(landmarks),
             initiative: this.calculateInitiativeScore(landmarks)
         };
@@ -1130,9 +1135,9 @@ class MediaPipeAnalyzer {
             const normalizedSmileRatio = Math.min(1, Math.max(0, (smileRatio - 1) * 2)); // 1-2 범위를 0-1로 정규화
             const normalizedEyebrowDistance = Math.min(1, Math.max(0, eyebrowDistance * 10)); // 0-0.1 범위를 0-1로 정규화
             
-            // 종합 표정 점수 (0-100)
+            // 종합 표정 점수 (0-100) - 80/20 모델링으로 강화
             const expressionScore = Math.round(
-                (normalizedSmileRatio * 60 + normalizedEyebrowDistance * 40)
+                (normalizedSmileRatio * 80 + normalizedEyebrowDistance * 20)
             );
             
             console.log(`📊 [MediaPipe] 표정 점수 계산:`, {
@@ -1166,7 +1171,8 @@ class MediaPipeAnalyzer {
             const gazeScore = this.calculateGazeScore(landmarks);
             
             // 눈꺼풀 안정성 (너무 많이 깜빡이면 집중도 낮음)
-            const blinkScore = 100 - this.calculateBlinkingScore(landmarks);
+            const blinkResult = this.calculateBlinkingScore(landmarks);
+            const blinkScore = 100 - blinkResult.score;
             
             // 머리 기울기 (너무 기울어지면 집중도 낮음)  
             const nose = landmarks[1];   // 코끝
@@ -1189,7 +1195,7 @@ class MediaPipeAnalyzer {
     }
     
     /**
-     * 시선 점수 계산
+     * 시선 점수 계산 (정교한 안정성 분석)
      */
     calculateGazeScore(landmarks) {
         try {
@@ -1201,24 +1207,48 @@ class MediaPipeAnalyzer {
             const leftEyeCenter = this.getEyeCenter(landmarks, 'left');
             const rightEyeCenter = this.getEyeCenter(landmarks, 'right');
             
-            // 화면 중앙을 향한 시선 계산 (0.5, 0.5가 중앙)
-            const targetX = 0.5, targetY = 0.5;
+            // 화면 중앙을 향한 시선 계산 (0.5, 0.53이 실제 중앙)
+            const screenCenter = { x: 0.5, y: 0.53 };
+            const bandCenterHalf = 0.08;  // 중앙 밴드
+            const bandMidHalf = 0.18;     // 중간 밴드
             
             const leftDistance = Math.sqrt(
-                Math.pow(leftEyeCenter.x - targetX, 2) + 
-                Math.pow(leftEyeCenter.y - targetY, 2)
+                Math.pow(leftEyeCenter.x - screenCenter.x, 2) + 
+                Math.pow(leftEyeCenter.y - screenCenter.y, 2)
             );
             
             const rightDistance = Math.sqrt(
-                Math.pow(rightEyeCenter.x - targetX, 2) + 
-                Math.pow(rightEyeCenter.y - targetY, 2)
+                Math.pow(rightEyeCenter.x - screenCenter.x, 2) + 
+                Math.pow(rightEyeCenter.y - screenCenter.y, 2)
             );
             
             const avgDistance = (leftDistance + rightDistance) / 2;
-            const gazeScore = Math.max(0, 100 - (avgDistance * 200));
             
-            console.log(`📊 [MediaPipe] 시선 점수: ${gazeScore.toFixed(1)} (거리: ${avgDistance.toFixed(3)})`);
-            return Math.round(gazeScore);
+            // 정교한 시선 안정성 점수 계산
+            let stabilityScore = 100;
+            if (avgDistance > bandMidHalf) {
+                stabilityScore = 30; // 최소 30점 보장
+            } else if (avgDistance > bandCenterHalf) {
+                stabilityScore = 70;
+            } else if (avgDistance > bandCenterHalf * 0.5) {
+                stabilityScore = 90;
+            } else {
+                stabilityScore = 100;
+            }
+            
+            // 시선 방향 및 집중 상태 판단
+            let gazeDirection = 'center';
+            if (avgDistance > bandMidHalf) {
+                gazeDirection = 'outer';
+            } else if (avgDistance > bandCenterHalf) {
+                gazeDirection = 'mid';
+            }
+            
+            const isFocused = avgDistance <= bandCenterHalf;
+            const jumpDistance = avgDistance;
+            
+            console.log(`📊 [MediaPipe] 시선 점수: ${stabilityScore.toFixed(1)} (거리: ${avgDistance.toFixed(3)}, 방향: ${gazeDirection}, 집중: ${isFocused})`);
+            return Math.round(stabilityScore);
             
         } catch (error) {
             console.error("❌ 시선 점수 계산 실패:", error);
@@ -1227,7 +1257,7 @@ class MediaPipeAnalyzer {
     }
     
     /**
-     * 깜빡임 점수 계산
+     * 깜빡임 점수 계산 (EAR 기반 + 통계 추적)
      */
     calculateBlinkingScore(landmarks) {
         try {
@@ -1235,33 +1265,93 @@ class MediaPipeAnalyzer {
                 return 0;
             }
             
-            // 왼쪽 눈 개방도
-            const leftEyeTop = landmarks[159];    // 왼쪽 눈 위
-            const leftEyeBottom = landmarks[145]; // 왼쪽 눈 아래
-            const leftEyeOpen = Math.abs(leftEyeTop.y - leftEyeBottom.y);
+            // EAR (Eye Aspect Ratio) 계산
+            const leftEye = [landmarks[33], landmarks[7], landmarks[163], landmarks[144], landmarks[145], landmarks[153]];
+            const rightEye = [landmarks[362], landmarks[382], landmarks[381], landmarks[380], landmarks[374], landmarks[373]];
             
-            // 오른쪽 눈 개방도  
-            const rightEyeTop = landmarks[386];   // 오른쪽 눈 위
-            const rightEyeBottom = landmarks[374]; // 오른쪽 눈 아래
-            const rightEyeOpen = Math.abs(rightEyeTop.y - rightEyeBottom.y);
+            function eyeAspectRatio(eye) {
+                const A = Math.sqrt(Math.pow(eye[1].x - eye[5].x, 2) + Math.pow(eye[1].y - eye[5].y, 2));
+                const B = Math.sqrt(Math.pow(eye[2].x - eye[4].x, 2) + Math.pow(eye[2].y - eye[4].y, 2));
+                const C = Math.sqrt(Math.pow(eye[0].x - eye[3].x, 2) + Math.pow(eye[0].y - eye[3].y, 2));
+                return (A + B) / (2.0 * C);
+            }
             
-            // 평균 눈 개방도
-            const avgEyeOpen = (leftEyeOpen + rightEyeOpen) / 2;
+            const leftEAR = eyeAspectRatio(leftEye);
+            const rightEAR = eyeAspectRatio(rightEye);
+            const avgEAR = (leftEAR + rightEAR) / 2.0;
             
-            // 깜빡임 점수 (눈이 많이 열려있을수록 높은 점수)
-            const blinkingScore = Math.min(100, avgEyeOpen * 2000); // 스케일링
+            // 깜빡임 상태 판단
+            const blinkEarThreshold = 0.19;
+            const blinkClosedThreshold = 0.22;
             
-            console.log(`📊 [MediaPipe] 깜빡임 점수: ${blinkingScore.toFixed(1)} (개방도: ${avgEyeOpen.toFixed(4)})`);
-            return Math.round(blinkingScore);
+            let blinkStatus = 'open';
+            if (avgEAR < blinkClosedThreshold) {
+                blinkStatus = 'closed';
+            } else if (avgEAR < blinkEarThreshold) {
+                blinkStatus = 'blinking';
+            }
+            
+            // 깜빡임 통계 업데이트
+            const currentTime = Date.now();
+            if (blinkStatus === 'blinking' && this.lastBlinkTime === 0) {
+                // 깜빡임 시작
+                this.lastBlinkTime = currentTime;
+            } else if (blinkStatus === 'open' && this.lastBlinkTime > 0) {
+                // 깜빡임 완료
+                const blinkDuration = currentTime - this.lastBlinkTime;
+                if (blinkDuration > 50 && blinkDuration < 500) { // 유효한 깜빡임 (50ms-500ms)
+                    this.blinkCount++;
+                    this.blinkHistory.push({
+                        time: currentTime,
+                        duration: blinkDuration,
+                        ear: avgEAR
+                    });
+                }
+                this.lastBlinkTime = 0;
+            }
+            
+            // 1분 이전 데이터 제거
+            this.blinkHistory = this.blinkHistory.filter(blink => currentTime - blink.time < 60000);
+            
+            // 분당 깜빡임 수 계산
+            const oneMinuteAgo = currentTime - 60000;
+            const recentBlinks = this.blinkHistory.filter(blink => blink.time > oneMinuteAgo);
+            const blinkRatePerMinute = recentBlinks.length;
+            
+            // 평균 깜빡임 지속시간
+            const avgBlinkDuration = recentBlinks.length > 0 
+                ? recentBlinks.reduce((sum, blink) => sum + blink.duration, 0) / recentBlinks.length 
+                : 0;
+            
+            // 깜빡임 점수 계산 (EAR 기반)
+            const blinkingScore = Math.min(100, avgEAR * 500); // EAR를 0-100으로 스케일링
+            
+            console.log(`📊 [MediaPipe] 깜빡임 점수: ${blinkingScore.toFixed(1)} (EAR: ${avgEAR.toFixed(4)}, 분당: ${blinkRatePerMinute}회, 평균지속: ${avgBlinkDuration.toFixed(0)}ms)`);
+            
+            return {
+                score: Math.round(blinkingScore),
+                ear: avgEAR,
+                blinkStatus,
+                blinkRatePerMinute,
+                avgBlinkDuration,
+                totalBlinkCount: this.blinkCount
+            };
             
         } catch (error) {
             console.error("❌ 깜빡임 점수 계산 실패:", error);
-            return 0;
+            return {
+                score: 0,
+                ear: 0.22,
+                blinkStatus: 'open',
+                blinkRatePerMinute: 0,
+                avgBlinkDuration: 0,
+                totalBlinkCount: this.blinkCount
+            };
         }
     }
     
     /**
-     * 자세 점수 계산
+     * 자세 점수 계산 (얼굴 기울기 + 어깨 자세 추정)
      */
     calculatePostureScore(landmarks) {
         try {
@@ -1279,10 +1369,39 @@ class MediaPipeAnalyzer {
             const forehead = landmarks[10];  // 이마
             const faceVertical = Math.abs(nose.x - forehead.x);
             
-            // 자세 점수 (기울기가 적을수록 높은 점수)
-            const postureScore = Math.max(0, 100 - (faceTilt + faceVertical) * 200);
+            // 어깨 자세 추정 (얼굴 측면 랜드마크 기반)
+            const leftSide = landmarks[234];
+            const rightSide = landmarks[454];
             
-            console.log(`📊 [MediaPipe] 자세 점수: ${postureScore.toFixed(1)} (기울기: ${faceTilt.toFixed(4)}, 수직성: ${faceVertical.toFixed(4)})`);
+            // 어깨 위치 추정 (귀보다 약간 아래)
+            const leftShoulder = { x: leftSide.x, y: leftSide.y + 0.1 };
+            const rightShoulder = { x: rightSide.x, y: rightSide.y + 0.1 };
+            
+            const shoulderHeightDiff = Math.abs(leftShoulder.y - rightShoulder.y);
+            const shoulderSlope = (rightShoulder.y - leftShoulder.y) / Math.abs(rightShoulder.x - leftShoulder.x);
+            const shoulderWidth = Math.abs(rightShoulder.x - leftShoulder.x);
+            
+            // 기본 어깨 너비 기준값
+            const shoulderWidthBaseline = 0.28;
+            const widthRatio = shoulderWidth / shoulderWidthBaseline;
+            
+            const shoulderRotation = Math.atan(shoulderSlope) * (180 / Math.PI);
+            
+            // 어깨 자세 점수 계산
+            const heightBalanceScore = Math.max(0, 100 - (shoulderHeightDiff * 500));
+            const slopeScore = Math.max(0, 100 - (Math.abs(shoulderSlope) * 200));
+            const widthScore = Math.min(100, Math.max(0, (widthRatio - 0.8) / 0.3 * 100));
+            const rotationScore = Math.max(0, 100 - (Math.abs(shoulderRotation) * 1));
+            
+            const shoulderScore = Math.round((heightBalanceScore + slopeScore + widthScore + rotationScore) / 4);
+            
+            // 얼굴 자세 점수
+            const facePostureScore = Math.max(0, 100 - (faceTilt + faceVertical) * 200);
+            
+            // 종합 자세 점수 (얼굴 60% + 어깨 40%)
+            const postureScore = Math.round(facePostureScore * 0.6 + shoulderScore * 0.4);
+            
+            console.log(`📊 [MediaPipe] 자세 점수: ${postureScore.toFixed(1)} (얼굴: ${facePostureScore.toFixed(1)}, 어깨: ${shoulderScore.toFixed(1)}, 기울기: ${faceTilt.toFixed(4)}, 어깨회전: ${shoulderRotation.toFixed(1)}°)`);
             return Math.round(postureScore);
             
         } catch (error) {

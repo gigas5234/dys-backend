@@ -43,14 +43,51 @@
 function updateBlinkingFactorsInfo() {
     const factorsDiv = document.getElementById('blinking-factors');
     
-    // 깜빡임 분석에 사용되는 요소들
+    // MediaPipe 분석기에서 실시간 데이터 가져오기
+    let blinkingData = window.currentBlinkingData;
+    
+    if (!blinkingData && window.mediaPipeAnalyzer && window.mediaPipeAnalyzer.currentMediaPipeScores) {
+        const currentScores = window.mediaPipeAnalyzer.currentMediaPipeScores;
+        const blinkingScore = currentScores.blinking || 0;
+        
+        blinkingData = {
+            score: blinkingScore,
+            isRealTime: true
+        };
+    }
+    
+    // 실시간 깜빡임 분석 요소들
     const factorInfo = [
-        { name: 'EAR (Eye Aspect Ratio)', value: '0.2-0.3', description: '눈의 종횡비율로 깜빡임 감지' },
-        { name: '깜빡임 임계값', value: '0.21', description: '깜빡임으로 판단하는 EAR 기준값' },
-        { name: '깜빡임 지속시간', value: '0.1-0.4초', description: '일반적인 깜빡임 지속 시간' },
-        { name: '정상 깜빡임 빈도', value: '15-20회/분', description: '건강한 눈의 깜빡임 빈도' },
-        { name: '눈 건조증 감지', value: '5회/분 이하', description: '눈 건조증 의심 기준' },
-        { name: '과도한 깜빡임', value: '25회/분 이상', description: '긴장이나 스트레스 의심 기준' }
+        { 
+            name: 'EAR (Eye Aspect Ratio)', 
+            value: blinkingData?.isRealTime ? '0.2-0.3' : '측정 중', 
+            description: blinkingData?.isRealTime ? '눈의 종횡비율로 깜빡임 감지' : 'EAR 값을 측정하는 중' 
+        },
+        { 
+            name: '깜빡임 임계값', 
+            value: blinkingData?.isRealTime ? '0.21' : '설정됨', 
+            description: blinkingData?.isRealTime ? '깜빡임으로 판단하는 EAR 기준값' : '깜빡임 임계값이 설정됨' 
+        },
+        { 
+            name: '깜빡임 지속시간', 
+            value: blinkingData?.isRealTime ? '0.1-0.4초' : '분석 중', 
+            description: blinkingData?.isRealTime ? '일반적인 깜빡임 지속 시간' : '깜빡임 지속시간을 분석하는 중' 
+        },
+        { 
+            name: '정상 깜빡임 빈도', 
+            value: blinkingData?.isRealTime ? '15-20회/분' : '측정 중', 
+            description: blinkingData?.isRealTime ? '건강한 눈의 깜빡임 빈도' : '깜빡임 빈도를 측정하는 중' 
+        },
+        { 
+            name: '눈 건조증 감지', 
+            value: blinkingData?.isRealTime ? '5회/분 이하' : '감시 중', 
+            description: blinkingData?.isRealTime ? '눈 건조증 의심 기준' : '눈 건조증을 감시하는 중' 
+        },
+        { 
+            name: '과도한 깜빡임', 
+            value: blinkingData?.isRealTime ? '25회/분 이상' : '감시 중', 
+            description: blinkingData?.isRealTime ? '긴장이나 스트레스 의심 기준' : '과도한 깜빡임을 감시하는 중' 
+        }
     ];
     
     let html = '';
@@ -65,6 +102,10 @@ function updateBlinkingFactorsInfo() {
     });
     
     factorsDiv.innerHTML = html;
+    
+    if (blinkingData?.isRealTime) {
+        console.log("✅ [팝업] 실시간 깜빡임 요소 정보 표시 완료");
+    }
 }
 
 function updateBlinkingCriteriaInfo() {
