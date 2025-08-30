@@ -560,6 +560,9 @@ class MediaPipeAnalyzer {
                 // UI 업데이트
                 this.updateRealtimeUI(scores);
                 
+                // 분석 상태 업데이트 (실제 동작 내용 표시)
+                this.updateAnalysisStatus(scores);
+                
                 // 서버 분석 스케줄링 (임시 비활성화)
                 this.scheduleServerAnalysis(video, scores);
                 
