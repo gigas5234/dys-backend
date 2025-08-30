@@ -197,7 +197,7 @@ class ExpressionAnalyzer:
                                         try:
                                             # 최신 버전용 설정
                                             config = ViTConfig(
-                                                image_size=224,
+                                                image_size=384,  # 고화질 대응
                                                 patch_size=16,
                                                 num_channels=3,
                                                 num_labels=8,  # 8개 감정 카테고리
@@ -212,7 +212,7 @@ class ExpressionAnalyzer:
                                         except TypeError:
                                             # 구버전 호환 설정 (output_attentions 속성이 없는 경우)
                                             config = ViTConfig(
-                                                image_size=224,
+                                                image_size=384,  # 고화질 대응
                                                 patch_size=16,
                                                 num_channels=3,
                                                 num_labels=8,  # 8개 감정 카테고리
@@ -341,8 +341,8 @@ class ExpressionAnalyzer:
             if image.mode != 'RGB':
                 image = image.convert('RGB')
             
-            # 리사이즈 (224x224)
-            image = image.resize((224, 224), Image.Resampling.LANCZOS)
+            # 리사이즈 (384x384) - 고화질 대응
+            image = image.resize((384, 384), Image.Resampling.LANCZOS)
             
             # numpy 배열로 변환
             image_array = np.array(image)

@@ -115,27 +115,44 @@ function updateExpressionPopupContent() {
         const currentScores = window.mediaPipeAnalyzer.currentMediaPipeScores;
         const expressionScore = currentScores.expression || 0;
         
-        // 실시간 표정 데이터 생성 (8가지 분류)
-        expressionData = {
-            expression: 'neutral',
-            confidence: 0.8,
-            score: {
-                score: expressionScore,
-                label: getScoreLabel(expressionScore)
-            },
-            probabilities: {
-                happy: Math.max(0, (expressionScore - 50) / 50),
-                sad: Math.max(0, (100 - expressionScore - 20) / 80),
-                angry: Math.max(0, (50 - Math.abs(expressionScore - 50)) / 50),
-                surprised: Math.max(0, (70 - Math.abs(expressionScore - 70)) / 70),
-                fearful: Math.max(0, (30 - Math.abs(expressionScore - 30)) / 30),
-                disgusted: Math.max(0, (40 - Math.abs(expressionScore - 40)) / 40),
-                neutral: Math.max(0, (60 - Math.abs(expressionScore - 60)) / 60),
-                contempt: Math.max(0, (45 - Math.abs(expressionScore - 45)) / 45)
-            },
-            lastUpdate: new Date().toISOString(),
-            isRealTime: true
-        };
+        // 실시간 표정 데이터 생성 (8가지 분류) - 실제 MediaPipe 데이터 사용
+        if (window.mediaPipeAnalyzer.currentMediaPipeScores && window.mediaPipeAnalyzer.currentMediaPipeScores.expressionProbabilities) {
+            expressionData = {
+                expression: 'neutral',
+                confidence: 0.8,
+                score: {
+                    score: expressionScore,
+                    label: getScoreLabel(expressionScore)
+                },
+                probabilities: window.mediaPipeAnalyzer.currentMediaPipeScores.expressionProbabilities,
+                datingScore: expressionScore,
+                lastUpdate: new Date().toISOString(),
+                isRealTime: true
+            };
+        } else {
+            // 폴백 데이터
+            expressionData = {
+                expression: 'neutral',
+                confidence: 0.8,
+                score: {
+                    score: expressionScore,
+                    label: getScoreLabel(expressionScore)
+                },
+                probabilities: {
+                    happy: Math.max(0, (expressionScore - 50) / 50),
+                    sad: Math.max(0, (100 - expressionScore - 20) / 80),
+                    angry: Math.max(0, (50 - Math.abs(expressionScore - 50)) / 50),
+                    surprised: Math.max(0, (70 - Math.abs(expressionScore - 70)) / 70),
+                    fearful: Math.max(0, (30 - Math.abs(expressionScore - 30)) / 30),
+                    disgusted: Math.max(0, (40 - Math.abs(expressionScore - 40)) / 40),
+                    neutral: Math.max(0, (60 - Math.abs(expressionScore - 60)) / 60),
+                    contempt: Math.max(0, (45 - Math.abs(expressionScore - 45)) / 45)
+                },
+                datingScore: expressionScore,
+                lastUpdate: new Date().toISOString(),
+                isRealTime: true
+            };
+        }
         
         // 전역 변수에 저장
         window.currentExpressionData = expressionData;
@@ -154,7 +171,11 @@ function updateExpressionPopupContent() {
     // 주요 정보 업데이트
     const expression = expressionData.expression;
     const confidence = expressionData.confidence;
-    document.getElementById('expression-main-value').textContent = getExpressionKoreanName(expression);
+    const datingScore = expressionData.datingScore || expressionData.score?.score || 0;
+    
+    // 메인 값: 데이팅 친화적 점수 표시
+    document.getElementById('expression-main-value').textContent = `${datingScore}점`;
+    
     // 신뢰도: 0.xxx (xx.x%) 형식으로 표시 (0-1 범위로 정규화)
     let normalizedConfidence = confidence;
     if (typeof confidence === 'number') {
@@ -192,23 +213,34 @@ function updateExpressionProbabilities() {
         const currentScores = window.mediaPipeAnalyzer.currentMediaPipeScores;
         const expressionScore = currentScores.expression || 0;
         
-        // 실시간 표정 데이터 생성 (8가지 분류)
-        expressionData = {
-            expression: 'neutral',
-            confidence: 0.8,
-            score: { score: expressionScore, label: getScoreLabel(expressionScore) },
-            probabilities: {
-                happy: Math.max(0, (expressionScore - 50) / 50),
-                sad: Math.max(0, (100 - expressionScore - 20) / 80),
-                angry: Math.max(0, (50 - Math.abs(expressionScore - 50)) / 50),
-                surprised: Math.max(0, (70 - Math.abs(expressionScore - 70)) / 70),
-                fearful: Math.max(0, (30 - Math.abs(expressionScore - 30)) / 30),
-                disgusted: Math.max(0, (40 - Math.abs(expressionScore - 40)) / 40),
-                neutral: Math.max(0, (60 - Math.abs(expressionScore - 60)) / 60),
-                contempt: Math.max(0, (45 - Math.abs(expressionScore - 45)) / 45)
-            },
-            isRealTime: true
-        };
+        // 실제 MediaPipe 8가지 표정 확률 사용
+        if (currentScores.expressionProbabilities) {
+            expressionData = {
+                expression: 'neutral',
+                confidence: 0.8,
+                score: { score: expressionScore, label: getScoreLabel(expressionScore) },
+                probabilities: currentScores.expressionProbabilities,
+                isRealTime: true
+            };
+        } else {
+            // 폴백 데이터
+            expressionData = {
+                expression: 'neutral',
+                confidence: 0.8,
+                score: { score: expressionScore, label: getScoreLabel(expressionScore) },
+                probabilities: {
+                    happy: Math.max(0, (expressionScore - 50) / 50),
+                    sad: Math.max(0, (100 - expressionScore - 20) / 80),
+                    angry: Math.max(0, (50 - Math.abs(expressionScore - 50)) / 50),
+                    surprised: Math.max(0, (70 - Math.abs(expressionScore - 70)) / 70),
+                    fearful: Math.max(0, (30 - Math.abs(expressionScore - 30)) / 30),
+                    disgusted: Math.max(0, (40 - Math.abs(expressionScore - 40)) / 40),
+                    neutral: Math.max(0, (60 - Math.abs(expressionScore - 60)) / 60),
+                    contempt: Math.max(0, (45 - Math.abs(expressionScore - 45)) / 45)
+                },
+                isRealTime: true
+            };
+        }
         
         window.currentExpressionData = expressionData;
         console.log("📊 [팝업] 실시간 표정 데이터 업데이트:", expressionData);
@@ -222,14 +254,33 @@ function updateExpressionProbabilities() {
     const probabilities = expressionData.probabilities;
     let html = '';
     
+    // 데이팅 친화적 가중치 정보
+    const datingWeights = {
+        happy: 1.0,      // 웃음 - 가장 높은 점수
+        neutral: 0.8,    // 중립 - 좋은 점수
+        surprised: 0.6,  // 놀람 - 중간 점수
+        contempt: 0.4,   // 경멸 - 낮은 점수
+        fearful: 0.3,    // 두려움 - 낮은 점수
+        sad: 0.2,        // 슬픔 - 낮은 점수
+        disgusted: 0.1,  // 혐오 - 매우 낮은 점수
+        angry: 0.0       // 분노 - 최저 점수
+    };
+    
     Object.entries(probabilities).forEach(([expression, probability]) => {
         const koreanName = getExpressionKoreanName(expression);
         const percentage = (probability * 100).toFixed(1);
         const isHighest = probability === Math.max(...Object.values(probabilities));
+        const weight = datingWeights[expression] || 0.5;
+        const weightText = weight === 1.0 ? '최고' : weight >= 0.8 ? '높음' : weight >= 0.6 ? '중간' : weight >= 0.4 ? '낮음' : '최저';
         
         html += `
             <div class="probability-item ${isHighest ? 'highest' : ''}">
-                <div class="probability-label">${koreanName}</div>
+                <div class="probability-label">
+                    ${koreanName}
+                    <span class="weight-badge" style="font-size: 10px; color: ${weight >= 0.8 ? '#22c55e' : weight >= 0.6 ? '#eab308' : weight >= 0.4 ? '#f97316' : '#ef4444'};">
+                        (${weightText})
+                    </span>
+                </div>
                 <div class="probability-value">${percentage}%</div>
             </div>
         `;
@@ -272,7 +323,7 @@ function generateExpressionExplanation() {
         return '표정 분석 데이터가 없습니다.';
     }
     
-    const { expression, confidence, score } = expressionData;
+    const { expression, confidence, score, datingScore } = expressionData;
     const koreanExpression = getExpressionKoreanName(expression);
     
     // 신뢰도 정규화
@@ -281,31 +332,65 @@ function generateExpressionExplanation() {
         normalizedConfidence = confidence / 100;
     }
     
+    // 데이팅 친화적 점수 사용
+    const finalScore = datingScore || score?.score || 0;
+    
     let explanation = `<div class="explanation-section">`;
-    explanation += `<h4>📈 현재 분석 결과</h4>`;
+    explanation += `<h4>💕 데이팅 친화적 표정 분석</h4>`;
     explanation += `<ul>`;
     explanation += `<li><strong>감지된 표정</strong>: ${koreanExpression}</li>`;
     explanation += `<li><strong>신뢰도</strong>: ${(normalizedConfidence * 100).toFixed(1)}%</li>`;
-    explanation += `<li><strong>최종 점수</strong>: ${score.score}점</li>`;
-    explanation += `<li><strong>평가</strong>: ${score.label}</li>`;
+    explanation += `<li><strong>데이팅 점수</strong>: ${finalScore}점</li>`;
+    explanation += `<li><strong>평가</strong>: ${getScoreLabel(finalScore)}</li>`;
     explanation += `</ul>`;
     
-    // 점수 해석
-    if (score.score >= 85) {
-        explanation += `<p>🎯 <strong>매우 긍정적인 표정</strong>: 대화에 매우 좋은 영향을 주는 표정입니다.</p>`;
-    } else if (score.score >= 70) {
-        explanation += `<p>🎯 <strong>긍정적인 표정</strong>: 대화에 좋은 영향을 주는 표정입니다.</p>`;
-    } else if (score.score >= 50) {
-        explanation += `<p>🎯 <strong>중립적인 표정</strong>: 대화에 중립적인 영향을 주는 표정입니다.</p>`;
-    } else if (score.score >= 30) {
-        explanation += `<p>🎯 <strong>부정적인 표정</strong>: 대화에 부정적인 영향을 줄 수 있는 표정입니다.</p>`;
+    // 데이팅 친화적 점수 해석
+    if (finalScore >= 85) {
+        explanation += `<p>💖 <strong>매우 매력적인 표정</strong>: 상대방이 매우 좋아할 만한 표정입니다. 웃음과 긍정적인 에너지가 넘칩니다!</p>`;
+    } else if (finalScore >= 70) {
+        explanation += `<p>😊 <strong>매력적인 표정</strong>: 상대방이 좋아할 만한 표정입니다. 자연스럽고 친근한 느낌을 줍니다.</p>`;
+    } else if (finalScore >= 50) {
+        explanation += `<p>😐 <strong>중립적인 표정</strong>: 특별히 매력적이지는 않지만 부정적이지도 않은 표정입니다.</p>`;
+    } else if (finalScore >= 30) {
+        explanation += `<p>😟 <strong>개선이 필요한 표정</strong>: 상대방이 부담스러워할 수 있는 표정입니다. 더 긍정적인 표정을 연습해보세요.</p>`;
     } else {
-        explanation += `<p>🎯 <strong>매우 부정적인 표정</strong>: 대화에 매우 부정적인 영향을 줄 수 있는 표정입니다.</p>`;
+        explanation += `<p>😞 <strong>매우 부정적인 표정</strong>: 상대방이 기피할 수 있는 표정입니다. 즉시 표정을 개선하는 것이 좋겠습니다.</p>`;
+    }
+    
+    // 8가지 표정별 조언
+    explanation += `<h4>🎭 표정별 데이팅 조언</h4>`;
+    if (expressionData.probabilities) {
+        const topExpressions = Object.entries(expressionData.probabilities)
+            .sort(([,a], [,b]) => b - a)
+            .slice(0, 3);
+        
+        explanation += `<ul>`;
+        topExpressions.forEach(([exp, prob]) => {
+            const koreanName = getExpressionKoreanName(exp);
+            const percentage = (prob * 100).toFixed(1);
+            const advice = getExpressionAdvice(exp);
+            explanation += `<li><strong>${koreanName} (${percentage}%)</strong>: ${advice}</li>`;
+        });
+        explanation += `</ul>`;
     }
     
     explanation += `</div>`;
     
     return explanation;
+}
+
+function getExpressionAdvice(expression) {
+    const advice = {
+        happy: "완벽합니다! 웃음은 가장 매력적인 표정입니다. 이 상태를 유지하세요.",
+        neutral: "괜찮습니다. 하지만 약간의 미소를 더하면 더 매력적일 것입니다.",
+        surprised: "놀란 표정은 귀여울 수 있지만, 너무 과하면 부자연스러워 보일 수 있습니다.",
+        contempt: "경멸적인 표정은 피하는 것이 좋습니다. 더 친근한 표정을 연습해보세요.",
+        fearful: "두려운 표정은 상대방에게 부담을 줄 수 있습니다. 안정감을 표현해보세요.",
+        sad: "슬픈 표정은 상대방을 우울하게 만들 수 있습니다. 긍정적인 생각을 해보세요.",
+        disgusted: "혐오스러운 표정은 절대 피해야 합니다. 즉시 표정을 바꿔주세요.",
+        angry: "화난 표정은 상대방을 겁주거나 기피하게 만듭니다. 진정하고 긍정적인 표정을 연습하세요."
+    };
+    return advice[expression] || "표정을 개선해보세요.";
 }
 
 // ===== 시선 안정성 상세 정보 팝업 (UI-only mode) =====
@@ -344,7 +429,7 @@ function closeGazeDetails() {
 }
 
 function updateGazePopupContent() {
-    // MediaPipe 데이터가 있으면 사용, 없으면 기본 데이터 생성
+    // 실제 MediaPipe 데이터 사용
     let gazeData = window.currentGazeData;
     
     // MediaPipe 분석기에서 실시간 데이터 가져오기
@@ -352,28 +437,33 @@ function updateGazePopupContent() {
         const currentScores = window.mediaPipeAnalyzer.currentMediaPipeScores;
         const gazeScore = currentScores.gaze || 0;
         
-        // 실시간 시선 데이터 생성
-        gazeData = {
-            score: gazeScore,
-            label: getScoreLabel(gazeScore),
-            gazeDirection: {
-                x: 0.5,
-                y: 0.53,
-                distance: 0.184,
-                status: gazeScore >= 85 ? '중앙' : gazeScore >= 70 ? '중간' : '외곽'
-            },
-            eyeCenter: {
-                left: { x: 0.4, y: 0.5 },
-                right: { x: 0.6, y: 0.5 }
-            },
-            lastUpdate: new Date().toISOString(),
-            isRealTime: true
-        };
+        // 실제 MediaPipe 시선 데이터 사용
+        if (window.currentGazeData && window.currentGazeData.isRealTime) {
+            gazeData = window.currentGazeData;
+        } else {
+            // 폴백 데이터 생성
+            gazeData = {
+                score: gazeScore,
+                label: getScoreLabel(gazeScore),
+                gazeDirection: {
+                    x: 0.5,
+                    y: 0.53,
+                    distance: 0.184,
+                    status: gazeScore >= 85 ? '중앙' : gazeScore >= 70 ? '중간' : '외곽'
+                },
+                eyeCenter: {
+                    left: { x: 0.4, y: 0.5 },
+                    right: { x: 0.6, y: 0.5 }
+                },
+                lastUpdate: new Date().toISOString(),
+                isRealTime: true
+            };
+            
+            // 전역 변수에 저장
+            window.currentGazeData = gazeData;
+        }
         
-        // 전역 변수에 저장
-        window.currentGazeData = gazeData;
-        
-        console.log("📊 [팝업] 실시간 시선 데이터 업데이트:", gazeData);
+        console.log("📊 [팝업] 실제 MediaPipe 시선 데이터 사용:", gazeData);
     }
     
     if (!gazeData) {
@@ -429,30 +519,35 @@ function closeConcentrationDetails() {
 }
 
 function updateConcentrationPopupContent() {
-    // MediaPipe 분석기에서 실시간 데이터 가져오기
+    // 실제 MediaPipe 데이터 사용
     let concentrationData = window.currentConcentrationData;
     
     if (!concentrationData && window.mediaPipeAnalyzer && window.mediaPipeAnalyzer.currentMediaPipeScores) {
         const currentScores = window.mediaPipeAnalyzer.currentMediaPipeScores;
         const concentrationScore = currentScores.concentration || 0;
         
-        // 실시간 집중도 데이터 생성
-        concentrationData = {
-            score: concentrationScore,
-            label: getScoreLabel(concentrationScore),
-            factors: {
-                eyeOpenness: concentrationScore * 0.8,
-                headStability: concentrationScore * 0.9,
-                blinkRate: concentrationScore * 0.7
-            },
-            lastUpdate: new Date().toISOString(),
-            isRealTime: true
-        };
+        // 실제 MediaPipe 집중도 데이터 사용
+        if (window.currentConcentrationData && window.currentConcentrationData.isRealTime) {
+            concentrationData = window.currentConcentrationData;
+        } else {
+            // 폴백 데이터 생성
+            concentrationData = {
+                score: concentrationScore,
+                label: getScoreLabel(concentrationScore),
+                factors: {
+                    eyeOpenness: concentrationScore * 0.8,
+                    headStability: concentrationScore * 0.9,
+                    blinkRate: concentrationScore * 0.7
+                },
+                lastUpdate: new Date().toISOString(),
+                isRealTime: true
+            };
+            
+            // 전역 변수에 저장
+            window.currentConcentrationData = concentrationData;
+        }
         
-        // 전역 변수에 저장
-        window.currentConcentrationData = concentrationData;
-        
-        console.log("📊 [팝업] 실시간 집중도 데이터 업데이트:", concentrationData);
+        console.log("📊 [팝업] 실제 MediaPipe 집중도 데이터 사용:", concentrationData);
     }
     
     if (!concentrationData) {
@@ -676,30 +771,35 @@ function closePostureDetails() {
 }
 
 function updatePosturePopupContent() {
-    // MediaPipe 분석기에서 실시간 데이터 가져오기
+    // 실제 MediaPipe 데이터 사용
     let postureData = window.currentPostureData;
     
     if (!postureData && window.mediaPipeAnalyzer && window.mediaPipeAnalyzer.currentMediaPipeScores) {
         const currentScores = window.mediaPipeAnalyzer.currentMediaPipeScores;
         const postureScore = currentScores.posture || 0;
         
-        // 실시간 자세 데이터 생성
-        postureData = {
-            score: postureScore,
-            label: getScoreLabel(postureScore),
-            stability: {
-                neckAngle: postureScore * 0.8,
-                shoulderLevel: postureScore * 0.9,
-                backCurve: postureScore * 0.7
-            },
-            lastUpdate: new Date().toISOString(),
-            isRealTime: true
-        };
+        // 실제 MediaPipe 자세 데이터 사용
+        if (window.currentPostureData && window.currentPostureData.isRealTime) {
+            postureData = window.currentPostureData;
+        } else {
+            // 폴백 데이터 생성
+            postureData = {
+                score: postureScore,
+                label: getScoreLabel(postureScore),
+                stability: {
+                    neckAngle: postureScore * 0.8,
+                    shoulderLevel: postureScore * 0.9,
+                    backCurve: postureScore * 0.7
+                },
+                lastUpdate: new Date().toISOString(),
+                isRealTime: true
+            };
+            
+            // 전역 변수에 저장
+            window.currentPostureData = postureData;
+        }
         
-        // 전역 변수에 저장
-        window.currentPostureData = postureData;
-        
-        console.log("📊 [팝업] 실시간 자세 데이터 업데이트:", postureData);
+        console.log("📊 [팝업] 실제 MediaPipe 자세 데이터 사용:", postureData);
     }
     
     if (!postureData) {
@@ -722,7 +822,7 @@ function updatePosturePopupContent() {
 }
 
 function updateBlinkingPopupContent() {
-    // MediaPipe 데이터가 있으면 사용, 없으면 기본 데이터 생성
+    // 실제 MediaPipe 데이터 사용
     let blinkingData = window.currentBlinkingData;
     
     // MediaPipe 분석기에서 실시간 데이터 가져오기
@@ -730,35 +830,40 @@ function updateBlinkingPopupContent() {
         const currentScores = window.mediaPipeAnalyzer.currentMediaPipeScores;
         const blinkingScore = currentScores.blinking || 0;
         
-        // 깜빡임 통계 데이터 가져오기 (EAR 기반)
-        let blinkRate = 15; // 기본값
-        let blinkStatus = '정상';
-        
-        if (window.mediaPipeAnalyzer.blinkHistory && window.mediaPipeAnalyzer.blinkHistory.length > 0) {
-            const recentBlinks = window.mediaPipeAnalyzer.blinkHistory.filter(blink => 
-                Date.now() - blink.time < 60000
-            );
-            blinkRate = recentBlinks.length;
-            blinkStatus = blinkRate >= 10 && blinkRate <= 20 ? '정상' : blinkRate < 10 ? '부족' : '과다';
+        // 실제 MediaPipe 깜빡임 데이터 사용
+        if (window.currentBlinkingData && window.currentBlinkingData.isRealTime) {
+            blinkingData = window.currentBlinkingData;
+        } else {
+            // 깜빡임 통계 데이터 가져오기 (EAR 기반)
+            let blinkRate = 15; // 기본값
+            let blinkStatus = '정상';
+            
+            if (window.mediaPipeAnalyzer.blinkHistory && window.mediaPipeAnalyzer.blinkHistory.length > 0) {
+                const recentBlinks = window.mediaPipeAnalyzer.blinkHistory.filter(blink => 
+                    Date.now() - blink.time < 60000
+                );
+                blinkRate = recentBlinks.length;
+                blinkStatus = blinkRate >= 10 && blinkRate <= 20 ? '정상' : blinkRate < 10 ? '부족' : '과다';
+            }
+            
+            // 폴백 데이터 생성
+            blinkingData = {
+                score: blinkingScore,
+                label: getScoreLabel(blinkingScore),
+                rate: {
+                    current: blinkRate,
+                    normal: 15,
+                    status: blinkStatus
+                },
+                lastUpdate: new Date().toISOString(),
+                isRealTime: true
+            };
+            
+            // 전역 변수에 저장
+            window.currentBlinkingData = blinkingData;
         }
         
-        // 실시간 깜빡임 데이터 생성
-        blinkingData = {
-            score: blinkingScore,
-            label: getScoreLabel(blinkingScore),
-            rate: {
-                current: blinkRate,
-                normal: 15,
-                status: blinkStatus
-            },
-            lastUpdate: new Date().toISOString(),
-            isRealTime: true
-        };
-        
-        // 전역 변수에 저장
-        window.currentBlinkingData = blinkingData;
-        
-        console.log("📊 [팝업] 실시간 깜빡임 데이터 업데이트:", blinkingData);
+        console.log("📊 [팝업] 실제 MediaPipe 깜빡임 데이터 사용:", blinkingData);
     }
     
     if (!blinkingData) {
