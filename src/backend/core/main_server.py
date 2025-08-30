@@ -114,7 +114,7 @@ async def initialize_vector_service():
         print("⚠️ 벡터 서비스 모듈 없음 (선택적 기능)")
 
 # 음성 분석 모듈 import (지연 로딩으로 메모리 최적화)
-VOICE_ANALYSIS_AVAILABLE = False
+VOICE_ANALYSIS_AVAILABLE = True  # 활성화
 _voice_models_loaded = False
 
 def load_voice_models():
@@ -2090,42 +2090,148 @@ async def generate_ai_response(user_message: str, session_id: str) -> str:
 
 @app.post("/api/voice/analyze")
 async def analyze_voice(audio: UploadFile = File(...)):
-    """음성 파일을 텍스트로 변환 (faster-whisper 사용)"""
+    """음성 파일을 텍스트로 변환 (faster-whisper 우선 사용)"""
     print(f"🎤 [VOICE_ANALYZE] 음성 분석 요청 받음 - 파일명: {audio.filename}")
     
-    if not VOICE_ANALYSIS_AVAILABLE:
-        print("❌ [VOICE_ANALYZE] 음성 분석 모듈 비활성화됨 - 기본 STT 시도")
-        # 기본 STT 기능 시도
+    # 오디오 파일 읽기
+    audio_data = await audio.read()
+    print(f"📊 [VOICE_ANALYZE] 오디오 데이터 크기: {len(audio_data)} bytes")
+    
+    # 1. 먼저 faster-whisper로 STT 시도
+    try:
+        import tempfile
+        import os
+        from faster_whisper import WhisperModel
+        
+        # 임시 파일 생성
+        with tempfile.NamedTemporaryFile(suffix='.webm', delete=False) as temp_webm:
+            temp_webm.write(audio_data)
+            temp_webm_path = temp_webm.name
+        
         try:
-            # 오디오 파일 읽기
-            audio_data = await audio.read()
-            print(f"📊 [VOICE_ANALYZE] 오디오 데이터 크기: {len(audio_data)} bytes")
+            # faster-whisper 모델 로드 및 STT 실행
+            print("🔄 [VOICE_ANALYZE] faster-whisper로 STT 시작...")
+            model = WhisperModel("base", device="cpu", compute_type="int8")
+            segments, info = model.transcribe(temp_webm_path, language="ko")
             
-            # 기본 STT 처리 (faster-whisper 직접 사용)
-            import tempfile
-            import os
-            from faster_whisper import WhisperModel
+            # 전사 결과 수집
+            transcript = ""
+            for segment in segments:
+                transcript += segment.text
             
-            # 임시 파일 생성
-            with tempfile.NamedTemporaryFile(suffix='.webm', delete=False) as temp_webm:
-                temp_webm.write(audio_data)
-                temp_webm_path = temp_webm.name
+            if not transcript.strip():
+                transcript = "음성을 인식하지 못했습니다."
             
-            try:
-                # faster-whisper 모델 로드 및 STT 실행
-                model = WhisperModel("base", device="cpu", compute_type="int8")
-                segments, info = model.transcribe(temp_webm_path, language="ko")
-                
-                # 전사 결과 수집
-                transcript = ""
-                for segment in segments:
-                    transcript += segment.text
-                
-                if not transcript.strip():
-                    transcript = "음성을 인식하지 못했습니다."
-                
-                print(f"✅ [VOICE_ANALYZE] 기본 STT 성공: {transcript}")
-                
+            print(f"✅ [VOICE_ANALYZE] faster-whisper STT 성공: {transcript}")
+            
+            # 음성 분석 모듈이 활성화되어 있으면 추가 분석 수행
+            if VOICE_ANALYSIS_AVAILABLE:
+                try:
+                    print("🔄 [VOICE_ANALYZE] 새로운 말투 분석 시스템으로 분석 시작...")
+                    from ..services.voice.voice_api import process_audio_simple
+                    import numpy as np
+                    import torchaudio
+                    
+                    # 오디오 데이터를 numpy 배열로 변환
+                    try:
+                        # 임시 파일을 numpy 배열로 로드
+                        audio_array, sr = torchaudio.load(temp_webm_path)
+                        audio_array = audio_array.numpy().flatten()
+                        
+                        # 샘플링 레이트가 16000이 아니면 리샘플링
+                        if sr != 16000:
+                            audio_array = torchaudio.functional.resample(
+                                torch.tensor(audio_array).unsqueeze(0), 
+                                sr, 
+                                16000
+                            ).numpy().flatten()
+                            sr = 16000
+                        
+                        print(f"🎵 [VOICE_ANALYZE] 오디오 변환 완료: shape={audio_array.shape}, sr={sr}")
+                        
+                        # 새로운 말투 분석 시스템으로 분석
+                        analysis_result = await asyncio.to_thread(
+                            process_audio_simple, 
+                            audio_array, 
+                            sr, 
+                            0.0  # elapsed_sec
+                        )
+                        
+                        # 분석 결과에 STT 결과 추가
+                        analysis_result["transcript"] = transcript
+                        analysis_result["voice_details"]["stt_method"] = "faster-whisper"
+                        
+                        print(f"✅ [VOICE_ANALYZE] 말투 분석 완료")
+                        print(f"📊 [VOICE_ANALYZE] 총점: {analysis_result.get('total_score', 0):.1f}")
+                        print(f"🎤 [VOICE_ANALYZE] 음성톤: {analysis_result.get('voice_tone_score', 0):.1f}")
+                        print(f"💬 [VOICE_ANALYZE] 단어선택: {analysis_result.get('word_choice_score', 0):.1f}")
+                        print(f"😊 [VOICE_ANALYZE] 감정: {analysis_result.get('emotion', '중립')}")
+                        print(f"📝 [VOICE_ANALYZE] 전사: {transcript}")
+                        
+                        return {
+                            "success": True,
+                            "analysis": analysis_result,
+                            "message": "faster-whisper STT 및 말투 분석 완료",
+                            "details": {
+                                "stt_method": "faster-whisper",
+                                "status": "full_analysis",
+                                "message": "faster-whisper STT와 새로운 말투 분석이 모두 완료되었습니다."
+                            }
+                        }
+                        
+                    except Exception as audio_error:
+                        print(f"⚠️ [VOICE_ANALYZE] 오디오 변환 실패: {audio_error}")
+                        # 오디오 변환 실패 시 STT 결과만 반환
+                        return {
+                            "success": True,
+                            "analysis": {
+                                "transcript": transcript,
+                                "emotion": "중립",
+                                "emotion_score": 0.5,
+                                "total_score": 60.0,
+                                "voice_tone_score": 60.0,
+                                "word_choice_score": 60.0,
+                                "voice_details": {"stt_method": "faster-whisper", "error": "오디오 변환 실패"},
+                                "word_details": {},
+                                "weights": {"voice": 0.4, "word": 0.4, "emotion": 0.2},
+                                "positive_words": [],
+                                "negative_words": []
+                            },
+                            "message": "faster-whisper STT 성공, 오디오 변환 실패",
+                            "details": {
+                                "stt_method": "faster-whisper",
+                                "status": "stt_only",
+                                "message": "STT는 성공했으나 오디오 변환에 실패했습니다."
+                            }
+                        }
+                    
+                except Exception as analysis_error:
+                    print(f"⚠️ [VOICE_ANALYZE] 말투 분석 실패, STT 결과만 반환: {analysis_error}")
+                    # STT 결과만 반환
+                    return {
+                        "success": True,
+                        "analysis": {
+                            "transcript": transcript,
+                            "emotion": "중립",
+                            "emotion_score": 0.5,
+                            "total_score": 60.0,
+                            "voice_tone_score": 60.0,
+                            "word_choice_score": 60.0,
+                            "voice_details": {"stt_method": "faster-whisper"},
+                            "word_details": {},
+                            "weights": {"voice": 0.4, "word": 0.4, "emotion": 0.2},
+                            "positive_words": [],
+                            "negative_words": []
+                        },
+                        "message": "faster-whisper STT 성공, 말투 분석은 실패",
+                        "details": {
+                            "stt_method": "faster-whisper",
+                            "status": "stt_only",
+                            "message": "STT는 성공했으나 말투 분석은 실패했습니다."
+                        }
+                    }
+            else:
+                # 음성 분석 모듈이 비활성화된 경우 STT 결과만 반환
                 return {
                     "success": True,
                     "analysis": {
@@ -2135,28 +2241,73 @@ async def analyze_voice(audio: UploadFile = File(...)):
                         "total_score": 60.0,
                         "voice_tone_score": 60.0,
                         "word_choice_score": 60.0,
-                        "voice_details": {"stt_method": "faster-whisper-direct"},
+                        "voice_details": {"stt_method": "faster-whisper"},
                         "word_details": {},
                         "weights": {"voice": 0.4, "word": 0.4, "emotion": 0.2},
                         "positive_words": [],
                         "negative_words": []
                     },
-                    "message": "기본 STT 기능으로 음성 인식 완료",
+                    "message": "faster-whisper STT 성공",
                     "details": {
-                        "stt_method": "faster-whisper-direct",
-                        "status": "basic_stt",
-                        "message": "기본 음성 인식 모드로 동작 중입니다."
+                        "stt_method": "faster-whisper",
+                        "status": "stt_only",
+                        "message": "faster-whisper STT로 음성 인식 완료"
                     }
                 }
                 
-            finally:
-                # 임시 파일 정리
-                os.unlink(temp_webm_path)
+        finally:
+            # 임시 파일 정리
+            os.unlink(temp_webm_path)
+            
+    except Exception as e:
+        print(f"❌ [VOICE_ANALYZE] faster-whisper STT 실패: {e}")
+        
+        # faster-whisper 실패 시 기존 음성 분석 모듈 시도
+        if VOICE_ANALYSIS_AVAILABLE:
+            try:
+                print("🔄 [VOICE_ANALYZE] 기존 음성 분석 모듈로 fallback...")
+                from ..services.voice.voice_api import process_audio_simple
                 
-        except Exception as e:
-            print(f"❌ [VOICE_ANALYZE] 기본 STT도 실패: {e}")
+                analysis_result = await asyncio.to_thread(process_audio_simple, audio_data)
+                
+                return {
+                    "success": True,
+                    "analysis": analysis_result,
+                    "message": "기존 음성 분석 모듈로 처리 완료",
+                    "details": {
+                        "stt_method": "voice_analyzer_fallback",
+                        "status": "fallback_analysis",
+                        "message": "faster-whisper 실패로 기존 모듈 사용"
+                    }
+                }
+                
+            except Exception as fallback_error:
+                print(f"❌ [VOICE_ANALYZE] 모든 음성 분석 방법 실패: {fallback_error}")
+                return {
+                    "success": False,
+                    "analysis": {
+                        "transcript": "음성 분석 기능이 일시적으로 비활성화되었습니다.",
+                        "emotion": "중립",
+                        "emotion_score": 0.5,
+                        "total_score": 50.0,
+                        "voice_tone_score": 50.0,
+                        "word_choice_score": 50.0,
+                        "voice_details": {},
+                        "word_details": {},
+                        "weights": {"voice": 0.4, "word": 0.4, "emotion": 0.2},
+                        "positive_words": [],
+                        "negative_words": []
+                    },
+                    "message": "모든 음성 분석 방법이 실패했습니다.",
+                    "details": {
+                        "issue": "모든 STT 방법 실패",
+                        "status": "error",
+                        "message": "faster-whisper와 기존 모듈 모두 실패"
+                    }
+                }
+        else:
             return {
-                "success": True,
+                "success": False,
                 "analysis": {
                     "transcript": "음성 분석 기능이 일시적으로 비활성화되었습니다.",
                     "emotion": "중립",
@@ -2170,11 +2321,11 @@ async def analyze_voice(audio: UploadFile = File(...)):
                     "positive_words": [],
                     "negative_words": []
                 },
-                "message": "음성 분석 기능이 일시적으로 비활성화되어 기본 응답을 제공합니다.",
+                "message": "faster-whisper STT 실패",
                 "details": {
-                    "issue": "모든 STT 방법 실패",
-                    "status": "fallback",
-                    "message": "기본 응답 모드로 동작 중입니다."
+                    "issue": "faster-whisper 실패",
+                    "status": "error",
+                    "message": "faster-whisper STT가 실패했습니다."
                 }
             }
     

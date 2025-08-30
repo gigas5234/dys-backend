@@ -624,25 +624,25 @@ class VoiceAnalyzer:
                         logger.warning("OpenAI Whisper 전사 결과가 비어있습니다.")
                         return ""
                         
-                except ImportError:
-                    # httpx가 없으면 기본 방식 사용
-                    client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+            except ImportError:
+                # httpx가 없으면 기본 방식 사용
+                client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+                
+                with open(temp_path, 'rb') as audio_file:
+                    response = client.audio.transcriptions.create(
+                        model="whisper-1",
+                        file=audio_file,
+                        language="ko"
+                    )
+                
+                transcript = response.text.strip()
+                if transcript:
+                    logger.info(f"✅ OpenAI Whisper 전사 성공: '{transcript}'")
+                    return transcript
+                else:
+                    logger.warning("OpenAI Whisper 전사 결과가 비어있습니다.")
+                    return ""
                     
-                    with open(temp_path, 'rb') as audio_file:
-                        response = client.audio.transcriptions.create(
-                            model="whisper-1",
-                            file=audio_file,
-                            language="ko"
-                        )
-                    
-                    transcript = response.text.strip()
-                    if transcript:
-                        logger.info(f"✅ OpenAI Whisper 전사 성공: '{transcript}'")
-                        return transcript
-                    else:
-                        logger.warning("OpenAI Whisper 전사 결과가 비어있습니다.")
-                        return ""
-                        
             finally:
                 # 임시 파일 정리
                 os.unlink(temp_path)
@@ -815,3 +815,113 @@ class VoiceAnalyzer:
             "is_valid": is_valid,
             "error_message": error_message
         }
+
+    def _analyze_emotion(self, audio_array: np.ndarray, transcript: str) -> List[Tuple[str, float]]:
+        """감정 분석 (오디오 + 텍스트 결합)"""
+        try:
+            # 1. 텍스트 기반 감정 분석 (우선)
+            text_emotions = self.classify_emotion_by_keywords(transcript)
+            
+            # 2. 오디오 기반 감정 분석 (보조)
+            audio_emotions = self.classify_emotion_audio(audio_array)
+            
+            # 3. 결과 결합 (텍스트 우선, 오디오 보조)
+            combined_emotions = {}
+            
+            # 텍스트 감정 가중치 0.7
+            for emotion, score in text_emotions:
+                combined_emotions[emotion] = combined_emotions.get(emotion, 0.0) + score * 0.7
+            
+            # 오디오 감정 가중치 0.3
+            for emotion, score in audio_emotions:
+                combined_emotions[emotion] = combined_emotions.get(emotion, 0.0) + score * 0.3
+            
+            # 정규화
+            total_score = sum(combined_emotions.values())
+            if total_score > 0:
+                combined_emotions = {k: v / total_score for k, v in combined_emotions.items()}
+            
+            return sorted(combined_emotions.items(), key=lambda x: x[1], reverse=True)
+            
+        except Exception as e:
+            logger.error(f"감정 분석 실패: {e}")
+            return [("중립", 1.0)]
+
+    def analyze_audio(
+        self,
+        audio_array: np.ndarray,
+        sr: int = 16000,
+        elapsed_sec: float = 0.0
+    ) -> VoiceAnalysisResult:
+        """
+        오디오를 완전히 분석하여 VoiceAnalysisResult 반환
+        
+        Args:
+            audio_array: 오디오 데이터
+            sr: 샘플링 레이트
+            elapsed_sec: 경과 시간 (대화 맥락용)
+            
+        Returns:
+            완전한 음성 분석 결과
+        """
+        start_time = time.time()
+        
+        try:
+            # 1. 음성 인식 (STT)
+            transcript = self.transcribe_korean(audio_array)
+            if not transcript:
+                transcript = "음성을 인식하지 못했습니다."
+            
+            # 2. 감정 분석
+            emotion_scores = self._analyze_emotion(audio_array, transcript)
+            top_emotion, top_score = emotion_scores[0] if emotion_scores else ("중립", 1.0)
+            
+            # 3. 음성 톤 분석
+            voice_tone = self.analyze_voice_tone(audio_array, sr)
+            
+            # 4. 단어 선택 분석
+            word_choice = self.analyze_word_choice(transcript, elapsed_sec, voice_tone)
+            
+            # 5. 오디오 품질 검사
+            audio_quality = self.check_audio_quality(audio_array, sr)
+            
+            # 6. 처리 시간 계산
+            processing_time = time.time() - start_time
+            
+            # 7. VoiceAnalysisResult 생성
+            result = VoiceAnalysisResult(
+                transcript=transcript,
+                emotion=top_emotion,
+                emotion_score=top_score,
+                voice_tone=voice_tone,
+                word_choice=word_choice,
+                total_score=0.0,  # VoiceScorer에서 계산
+                voice_tone_score=0.0,  # VoiceScorer에서 계산
+                word_choice_score=0.0,  # VoiceScorer에서 계산
+                overall_mood="보통",  # VoiceScorer에서 계산
+                evidence={},  # VoiceScorer에서 생성
+                recommendations=[],  # VoiceScorer에서 생성
+                processing_time=processing_time,
+                audio_quality=audio_quality
+            )
+            
+            return result
+            
+        except Exception as e:
+            logger.error(f"오디오 분석 실패: {e}")
+            # 기본 결과 반환
+            return VoiceAnalysisResult(
+                transcript="분석 실패",
+                emotion="중립",
+                emotion_score=1.0,
+                voice_tone=VoiceToneAnalysis(0.5, 3.0, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5),
+                word_choice=WordChoiceAnalysis([], [], [], [], [], 0.5, 0.5, 0.5, 0.5),
+                total_score=50.0,
+                voice_tone_score=50.0,
+                word_choice_score=50.0,
+                overall_mood="보통",
+                evidence={"오류": "분석 실패"},
+                recommendations=["다시 시도해보세요"],
+                processing_time=time.time() - start_time,
+                audio_quality={"error": "분석 실패"}
+            )

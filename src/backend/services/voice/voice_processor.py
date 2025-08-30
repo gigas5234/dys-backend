@@ -98,6 +98,65 @@ class VoiceProcessor:
             logger.info(f"✅ 단어 선택 분석 완료: 긍정단어={len(word_choice.positive_words)}, "
                        f"부정단어={len(word_choice.negative_words)}, "
                        f"공손함={word_choice.politeness_score:.2f}, "
+                       f"공감={word_choice.empathy_score:.2f}, "
+                       f"열정={word_choice.enthusiasm_score:.2f}")
+            
+            # 5. 점수 계산 (VoiceScorer 사용)
+            detailed_scores = self.scorer.calculate_detailed_scores(
+                voice_tone, word_choice, emotion_scores
+            )
+            
+            # 6. 전체 분위기 판단
+            overall_mood = self.scorer.determine_overall_mood(detailed_scores['total_score'])
+            
+            # 7. 근거 생성
+            evidence = self.scorer.generate_evidence(voice_tone, word_choice, emotion_scores)
+            
+            # 8. 개선 제안 생성
+            recommendations = self.scorer.generate_recommendations(voice_tone, word_choice, emotion_scores)
+            
+            # 9. 처리 시간 계산
+            processing_time = time.time() - start_time
+            
+            logger.info(f"✅ 음성 분석 완료: 총점={detailed_scores['total_score']:.1f}, "
+                       f"음성톤={detailed_scores['voice_tone_score']:.1f}, "
+                       f"단어선택={detailed_scores['word_choice_score']:.1f}, "
+                       f"분위기={overall_mood}, "
+                       f"처리시간={processing_time:.2f}초")
+            
+            # 10. 결과 반환
+            return {
+                'transcript': transcript,
+                'emotion': top_emotion,
+                'emotion_score': top_score,
+                'total_score': detailed_scores['total_score'],
+                'voice_tone_score': detailed_scores['voice_tone_score'],
+                'word_choice_score': detailed_scores['word_choice_score'],
+                'overall_mood': overall_mood,
+                'voice_details': detailed_scores['voice_details'],
+                'word_details': detailed_scores['word_details'],
+                'weights': detailed_scores['weights'],
+                'positive_words': detailed_scores['positive_words'],
+                'negative_words': word_choice.negative_words,
+                'evidence': evidence,
+                'recommendations': recommendations,
+                'processing_time': processing_time,
+                'audio_quality': quality,
+                'elapsed_sec': elapsed_sec
+            }
+            
+        except Exception as e:
+            logger.error(f"음성 분석 실패: {e}", exc_info=True)
+            return self._create_fallback_result(f"분석 중 오류 발생: {str(e)}")
+    
+    def _analyze_emotion(self, audio_array: np.ndarray, transcript: str) -> List[Tuple[str, float]]:
+        """감정 분석 (오디오 + 텍스트 결합)"""
+        try:
+            # VoiceAnalyzer의 _analyze_emotion 메서드 사용
+            return self.analyzer._analyze_emotion(audio_array, transcript)
+        except Exception as e:
+            logger.error(f"감정 분석 실패: {e}")
+            return [("중립", 1.0)]
                        f"공감={word_choice.empathy_score:.2f}")
             
             # 5. 점수 계산
