@@ -36,6 +36,15 @@ async function loadBlinkingPopup() {
         if (html) {
             container.innerHTML = html;
             console.log('✅ 깜빡임 팝업 로드 완료');
+            
+            // 팝업 로드 후 함수 확인
+            setTimeout(() => {
+                if (typeof window.showBlinkingDetails === 'function') {
+                    console.log('✅ showBlinkingDetails 함수 확인됨');
+                } else {
+                    console.warn('⚠️ showBlinkingDetails 함수를 찾을 수 없습니다');
+                }
+            }, 100);
         }
     }
 }
@@ -48,6 +57,15 @@ async function loadInitiativePopup() {
         if (html) {
             container.innerHTML = html;
             console.log('✅ 대화 주도권 팝업 로드 완료');
+            
+            // 팝업 로드 후 함수 확인
+            setTimeout(() => {
+                if (typeof window.showInitiativeDetails === 'function') {
+                    console.log('✅ showInitiativeDetails 함수 확인됨');
+                } else {
+                    console.warn('⚠️ showInitiativeDetails 함수를 찾을 수 없습니다');
+                }
+            }, 100);
         }
     }
 }
@@ -205,21 +223,65 @@ async function loadCameraWarningPopup() {
 async function loadAllPopups() {
     console.log('🔄 모든 팝업 로드 시작...');
     
-    // 기존 상세 팝업들
-    await loadBlinkingPopup();
-    await loadInitiativePopup();
-    await loadExpressionPopup();
-    await loadGazePopup();
-    await loadConcentrationPopup();
-    await loadPosturePopup();
-    
-    // 새로운 팝업들
-    await loadCalibrationPopup();
-    await loadInitialGuidePopup();
-    await loadConfirmPopup();
-    await loadCameraWarningPopup();
-    
-    console.log('✅ 모든 팝업 로드 완료');
+    try {
+        // 기존 상세 팝업들
+        console.log('📦 깜빡임 팝업 로드 중...');
+        await loadBlinkingPopup();
+        
+        console.log('📦 대화 주도권 팝업 로드 중...');
+        await loadInitiativePopup();
+        
+        console.log('📦 표정 팝업 로드 중...');
+        await loadExpressionPopup();
+        
+        console.log('📦 시선 팝업 로드 중...');
+        await loadGazePopup();
+        
+        console.log('📦 집중도 팝업 로드 중...');
+        await loadConcentrationPopup();
+        
+        console.log('📦 자세 팝업 로드 중...');
+        await loadPosturePopup();
+        
+        // 새로운 팝업들
+        console.log('📦 캘리브레이션 팝업 로드 중...');
+        await loadCalibrationPopup();
+        
+        console.log('📦 초기 안내 팝업 로드 중...');
+        await loadInitialGuidePopup();
+        
+        console.log('📦 확인 팝업 로드 중...');
+        await loadConfirmPopup();
+        
+        console.log('📦 카메라 경고 팝업 로드 중...');
+        await loadCameraWarningPopup();
+        
+        console.log('✅ 모든 팝업 로드 완료');
+        
+        // 팝업 로드 완료 후 함수 확인
+        setTimeout(() => {
+            console.log('🔍 팝업 함수 확인 중...');
+            const functions = [
+                'showBlinkingDetails',
+                'showInitiativeDetails', 
+                'showExpressionDetails',
+                'showGazeDetails',
+                'showConcentrationDetails',
+                'showPostureDetails'
+            ];
+            
+            functions.forEach(funcName => {
+                if (typeof window[funcName] === 'function') {
+                    console.log(`✅ ${funcName} 함수 확인됨`);
+                } else {
+                    console.warn(`⚠️ ${funcName} 함수를 찾을 수 없습니다`);
+                }
+            });
+        }, 200);
+        
+    } catch (error) {
+        console.error('❌ 팝업 로드 중 오류 발생:', error);
+    }
 }
 
 // 전역 함수로 노출

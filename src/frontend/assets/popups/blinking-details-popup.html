@@ -9,11 +9,11 @@
       <div class="blinking-summary">
         <div class="blinking-main">
           <div class="blinking-label">깜빡임 상태</div>
-          <div id="blinking-main-value" class="blinking-main-value">-</div>
+          <div id="blinking-main-value" class="blinking-main-value">UI 모드</div>
         </div>
         <div class="blinking-rate">
           <div class="blinking-label">깜빡임 빈도</div>
-          <div id="blinking-rate-value" class="blinking-rate-value">-</div>
+          <div id="blinking-rate-value" class="blinking-rate-value">0회/분</div>
         </div>
         <div class="blinking-confidence">
           <div class="blinking-label">신뢰도</div>
@@ -33,13 +33,13 @@
       <div class="blinking-criteria">
         <div class="blinking-label">평가 기준</div>
         <div id="blinking-criteria-text" class="blinking-criteria-text">
-          깜빡임 분석 데이터가 없습니다.
+          깜빡임 분석 기능이 비활성화되어 있습니다.
         </div>
       </div>
       <div class="blinking-explanation">
         <div class="blinking-label">점수 계산 근거</div>
         <div id="blinking-explanation-text" class="blinking-explanation-text">
-          깜빡임 분석 데이터가 없습니다.
+          깜빡임 분석 기능이 비활성화되어 있습니다.
         </div>
       </div>
     </div>
@@ -62,6 +62,24 @@ function updateBlinkingFactorsInfo() {
             score: blinkingScore,
             isRealTime: true
         };
+    }
+    
+    // 가중 평균 점수 우선 사용
+    if (blinkingData?.weightedScore !== undefined) {
+        blinkingData.score = blinkingData.weightedScore;
+    }
+    
+    // 메인 값들 업데이트
+    if (blinkingData?.isRealTime) {
+        document.getElementById('blinking-main-value').textContent = '실시간 분석 모드';
+        document.getElementById('blinking-rate-value').textContent = `${Math.round(blinkingData.score / 5)}회/분`;
+        document.getElementById('blinking-confidence-value').textContent = '85%';
+        document.getElementById('blinking-rate-info').textContent = '정상 범위';
+    } else {
+        document.getElementById('blinking-main-value').textContent = 'UI 모드';
+        document.getElementById('blinking-rate-value').textContent = '0회/분';
+        document.getElementById('blinking-confidence-value').textContent = '-%';
+        document.getElementById('blinking-rate-info').textContent = '-';
     }
     
     // 실시간 깜빡임 분석 요소들

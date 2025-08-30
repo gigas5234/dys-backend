@@ -888,12 +888,113 @@ function updateBlinkingPopupContent() {
     // 깜빡임 비율 업데이트
     const rateEl = document.getElementById('blinking-rate-value');
     if (rateEl) {
-        rateEl.textContent = `${blinkingData.rate.current}회/분 (${blinkingData.rate.status})`;
+        if (blinkingData.rate && blinkingData.rate.current !== undefined) {
+            rateEl.textContent = `${blinkingData.rate.current}회/분 (${blinkingData.rate.status || '정상'})`;
+        } else {
+            // 가중 평균 점수로 깜빡임 빈도 추정
+            const estimatedRate = blinkingData.weightedScore ? Math.round(blinkingData.weightedScore / 5) : 15;
+            rateEl.textContent = `${estimatedRate}회/분 (추정)`;
+        }
     }
     
     // 실시간 데이터 표시
     if (blinkingData.isRealTime) {
         console.log("✅ [팝업] 실시간 깜빡임 데이터 표시 완료");
+    }
+}
+
+// ===== 대화 주도권 상세 정보 팝업 =====
+function showInitiativeDetails() {
+    const popup = document.getElementById('initiative-details-popup');
+    if (popup) {
+        popup.classList.add('active');
+        
+        // DOM 상태 확인
+        const domOk = checkAndRepairPopupDOM();
+        if (!domOk) {
+            console.warn("⚠️ [POPUP] DOM 상태 문제로 팝업 업데이트 제한");
+        }
+        
+        // 데이터 동기화 확인
+        const syncOk = checkPopupDataSync();
+        if (!syncOk.initiativeData) {
+            console.warn("⚠️ [POPUP] 대화 주도권 데이터가 없어서 강제 동기화 시도");
+            forcePopupDataSync();
+        }
+        
+        // MediaPipe 데이터로 업데이트
+        if (window.mediaPipeAnalyzer) {
+            window.mediaPipeAnalyzer.updateInitiativePopupOnOpen();
+        }
+        
+        updateInitiativePopupContent();
+    }
+}
+
+function closeInitiativeDetails() {
+    const popup = document.getElementById('initiative-details-popup');
+    if (popup) {
+        popup.classList.remove('active');
+    }
+}
+
+function updateInitiativePopupContent() {
+    // 실제 MediaPipe 데이터 사용
+    let initiativeData = window.currentInitiativeData;
+    
+    // MediaPipe 분석기에서 실시간 데이터 가져오기
+    if (window.mediaPipeAnalyzer && window.mediaPipeAnalyzer.currentMediaPipeScores) {
+        const currentScores = window.mediaPipeAnalyzer.currentMediaPipeScores;
+        const initiativeScore = currentScores.initiative || 0;
+        
+        // 가중 평균 점수 우선 사용
+        if (initiativeData?.weightedScore !== undefined) {
+            initiativeData.score = initiativeData.weightedScore;
+        }
+        
+        // 폴백 데이터 생성
+        if (!initiativeData) {
+            initiativeData = {
+                score: initiativeScore,
+                label: getScoreLabel(initiativeScore),
+                lastUpdate: new Date().toISOString(),
+                isRealTime: true
+            };
+            
+            // 전역 변수에 저장
+            window.currentInitiativeData = initiativeData;
+        }
+        
+        console.log("📊 [팝업] 실제 MediaPipe 대화 주도권 데이터 사용:", initiativeData);
+    }
+    
+    if (!initiativeData) {
+        document.getElementById('initiative-main-value').textContent = '분석 대기 중...';
+        document.getElementById('initiative-status-text').textContent = '대기 중';
+        return;
+    }
+    
+    // 대화 주도권 상태 업데이트
+    const mainValueEl = document.getElementById('initiative-main-value');
+    if (mainValueEl) {
+        mainValueEl.textContent = `${initiativeData.score}%`;
+    }
+    
+    // 상태 텍스트 업데이트
+    const statusEl = document.getElementById('initiative-status-text');
+    if (statusEl) {
+        if (initiativeData.isRealTime) {
+            statusEl.textContent = '실시간 분석';
+            statusEl.style.color = '#22c55e';
+        } else {
+            statusEl.textContent = 'UI 모드';
+            statusEl.style.color = '#ef4444';
+        }
+    }
+    
+    // 실시간 데이터 표시
+    if (initiativeData.isRealTime) {
+        console.log("✅ [팝업] 실시간 대화 주도권 데이터 표시 완료");
     }
 }
 
@@ -910,3 +1011,5 @@ window.showPostureDetails = showPostureDetails;
 window.closePostureDetails = closePostureDetails;
 window.showComprehensiveScoreDetails = showComprehensiveScoreDetails;
 window.closeComprehensiveScoreDetails = closeComprehensiveScoreDetails;
+window.showInitiativeDetails = showInitiativeDetails;
+window.closeInitiativeDetails = closeInitiativeDetails;

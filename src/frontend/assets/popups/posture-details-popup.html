@@ -9,11 +9,11 @@
       <div class="posture-summary">
         <div class="posture-main">
           <div class="posture-label">자세 상태</div>
-          <div id="posture-main-value" class="posture-main-value">-</div>
+          <div id="posture-main-value" class="posture-main-value">UI 모드</div>
         </div>
         <div class="posture-score">
           <div class="posture-label">자세 점수</div>
-          <div id="posture-score-value" class="posture-score-value">-%</div>
+          <div id="posture-score-value" class="posture-score-value">0%</div>
         </div>
         <div class="posture-confidence">
           <div class="posture-label">신뢰도</div>
@@ -33,13 +33,13 @@
       <div class="posture-criteria">
         <div class="posture-label">평가 기준</div>
         <div id="posture-criteria-text" class="posture-criteria-text">
-          자세 분석 데이터가 없습니다.
+          자세 분석 기능이 비활성화되어 있습니다.
         </div>
       </div>
       <div class="posture-explanation">
         <div class="posture-label">점수 계산 근거</div>
         <div id="posture-explanation-text" class="posture-explanation-text">
-          자세 분석 데이터가 없습니다.
+          자세 분석 기능이 비활성화되어 있습니다.
         </div>
       </div>
     </div>
@@ -62,6 +62,24 @@ function updatePostureFactorsInfo() {
             score: postureScore,
             isRealTime: true
         };
+    }
+    
+    // 가중 평균 점수 우선 사용
+    if (postureData?.weightedScore !== undefined) {
+        postureData.score = postureData.weightedScore;
+    }
+    
+    // 메인 값들 업데이트
+    if (postureData?.isRealTime) {
+        document.getElementById('posture-main-value').textContent = '실시간 분석 모드';
+        document.getElementById('posture-score-value').textContent = `${postureData.score}%`;
+        document.getElementById('posture-confidence-value').textContent = '85%';
+        document.getElementById('posture-stability-info').textContent = '안정적';
+    } else {
+        document.getElementById('posture-main-value').textContent = 'UI 모드';
+        document.getElementById('posture-score-value').textContent = '0%';
+        document.getElementById('posture-confidence-value').textContent = '-%';
+        document.getElementById('posture-stability-info').textContent = '-';
     }
     
     // 실시간 자세 분석 요소들

@@ -2076,87 +2076,8 @@ function onLandmarkFrame(lmBuffer, ear) {
 }
 
 
-// --- 시선 안정성 상세 정보 팝업 함수들 ---
-function showGazeDetails() {
-    const popup = document.getElementById('gaze-details-popup');
-    if (popup) {
-        popup.classList.add('active');
-        updateGazePopupContent();
-    }
-}
-
-function closeGazeDetails() {
-    const popup = document.getElementById('gaze-details-popup');
-    if (popup) {
-        popup.classList.remove('active');
-    }
-}
-
-function updateGazePopupContent() {
-    // UI-only mode: 기본 데이터 표시
-    document.getElementById('gaze-main-value').textContent = 'UI 모드';
-    document.getElementById('gaze-stability-value').textContent = '0%';
-    document.getElementById('gaze-landmarks').innerHTML = '<div class="no-data">시선 분석 기능이 비활성화되어 있습니다.</div>';
-    document.getElementById('gaze-criteria-text').innerHTML = '시선 분석 기능이 비활성화되어 있습니다.';
-    document.getElementById('gaze-explanation-text').innerHTML = '시선 분석 기능이 비활성화되어 있습니다.';
-    
-    // 랜드마크 정보 업데이트
-    if (typeof updateGazeLandmarksInfo === 'function') {
-        updateGazeLandmarksInfo();
-    }
-    
-    // 평가 기준 업데이트
-    if (typeof updateGazeCriteriaInfo === 'function') {
-        updateGazeCriteriaInfo();
-    }
-    
-    // 점수 계산 근거 업데이트
-    if (typeof updateGazeExplanationInfo === 'function') {
-        updateGazeExplanationInfo();
-    }
-}
-
-
-
-// --- 집중도 상세 정보 팝업 함수들 ---
-function showConcentrationDetails() {
-    const popup = document.getElementById('concentration-details-popup');
-    if (popup) {
-        popup.classList.add('active');
-        updateConcentrationPopupContent();
-    }
-}
-
-function closeConcentrationDetails() {
-    const popup = document.getElementById('concentration-details-popup');
-    if (popup) {
-        popup.classList.remove('active');
-    }
-}
-
-function updateConcentrationPopupContent() {
-    // UI-only mode: 기본 데이터 표시
-    document.getElementById('concentration-main-value').textContent = 'UI 모드';
-    document.getElementById('concentration-score-value').textContent = '0%';
-    document.getElementById('concentration-factors').innerHTML = '<div class="no-data">집중도 분석 기능이 비활성화되어 있습니다.</div>';
-    document.getElementById('concentration-criteria-text').innerHTML = '집중도 분석 기능이 비활성화되어 있습니다.';
-    document.getElementById('concentration-explanation-text').innerHTML = '집중도 분석 기능이 비활성화되어 있습니다.';
-    
-    // 분석 요소 업데이트
-    if (typeof updateConcentrationFactorsInfo === 'function') {
-        updateConcentrationFactorsInfo();
-    }
-    
-    // 평가 기준 업데이트
-    if (typeof updateConcentrationCriteriaInfo === 'function') {
-        updateConcentrationCriteriaInfo();
-    }
-    
-    // 점수 계산 근거 업데이트
-    if (typeof updateConcentrationExplanationInfo === 'function') {
-        updateConcentrationExplanationInfo();
-    }
-}
+// 팝업 함수들은 popup-manager.js에서 관리됩니다
+// 중복된 함수 정의 제거됨
 
 // 팝업 외부 클릭 시 닫기
 document.addEventListener('click', function(event) {

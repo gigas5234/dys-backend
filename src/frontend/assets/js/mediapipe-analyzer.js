@@ -846,6 +846,9 @@ class MediaPipeAnalyzer {
                 // 팝업 데이터 업데이트
                 this.updateAllPopupData(scores);
                 
+                // 서버 AI 모델 분석 스케줄링 (3초 주기)
+                this.scheduleServerAnalysis(video, scores);
+                
                 console.log("👤 [MediaPipe] 얼굴 감지됨, 점수:", scores);
                 
                 // 연속 실패 카운터 리셋
@@ -905,18 +908,32 @@ class MediaPipeAnalyzer {
     }
     
     /**
-     * 실시간 UI 업데이트
+     * 실시간 UI 업데이트 (가중 평균 점수 우선 표시)
      */
     updateRealtimeUI(scores) {
         try {
-            // 표정 점수 업데이트
-            this.updateExpressionScore(scores.expression);
-            this.updateConcentrationScore(scores.concentration);
-            this.updateGazeScore(scores.gaze);
-            this.updateBlinkingScore(scores.blinking);
-            this.updatePostureScore(scores.posture);
+            // 서버 분석 결과가 있으면 가중 평균 점수 사용, 없으면 MediaPipe 점수 사용
+            const displayScores = this.serverAnalysisResults ? {
+                expression: window.currentExpressionData?.weightedScore || scores.expression,
+                concentration: window.currentConcentrationData?.weightedScore || scores.concentration,
+                gaze: window.currentGazeData?.weightedScore || scores.gaze,
+                blinking: window.currentBlinkingData?.weightedScore || scores.blinking,
+                posture: window.currentPostureData?.weightedScore || scores.posture,
+                initiative: window.currentInitiativeData?.weightedScore || scores.initiative
+            } : scores;
             
-            console.log("📊 실시간 점수 업데이트:", scores);
+            // 표정 점수 업데이트
+            this.updateExpressionScore(displayScores.expression);
+            this.updateConcentrationScore(displayScores.concentration);
+            this.updateGazeScore(displayScores.gaze);
+            this.updateBlinkingScore(displayScores.blinking);
+            this.updatePostureScore(displayScores.posture);
+            
+            console.log("📊 실시간 점수 업데이트:", {
+                mediapipe: scores,
+                display: displayScores,
+                hasServerAnalysis: !!this.serverAnalysisResults
+            });
         } catch (error) {
             console.warn("⚠️ UI 업데이트 실패:", error);
         }

@@ -9,11 +9,11 @@
       <div class="gaze-summary">
         <div class="gaze-main">
           <div class="gaze-label">시선 상태</div>
-          <div id="gaze-main-value" class="gaze-main-value">-</div>
+          <div id="gaze-main-value" class="gaze-main-value">UI 모드</div>
         </div>
         <div class="gaze-stability">
           <div class="gaze-label">안정성 점수</div>
-          <div id="gaze-stability-value" class="gaze-stability-value">-%</div>
+          <div id="gaze-stability-value" class="gaze-stability-value">0%</div>
         </div>
         <div class="gaze-confidence">
           <div class="gaze-label">신뢰도</div>
@@ -33,13 +33,13 @@
       <div class="gaze-criteria">
         <div class="gaze-label">평가 기준</div>
         <div id="gaze-criteria-text" class="gaze-criteria-text">
-          시선 분석 데이터가 없습니다.
+          시선 분석 기능이 비활성화되어 있습니다.
         </div>
       </div>
       <div class="gaze-explanation">
         <div class="gaze-label">점수 계산 근거</div>
         <div id="gaze-explanation-text" class="gaze-explanation-text">
-          시선 분석 데이터가 없습니다.
+          시선 분석 기능이 비활성화되어 있습니다.
         </div>
       </div>
     </div>
@@ -64,6 +64,31 @@ function updateGazeLandmarksInfo() {
         };
     }
     
+    // 가중 평균 점수 우선 사용
+    if (gazeData?.weightedScore !== undefined) {
+        gazeData.score = gazeData.weightedScore;
+    }
+    
+    // 메인 값들 업데이트
+    if (gazeData?.isRealTime) {
+        document.getElementById('gaze-main-value').textContent = '실시간 분석 모드';
+        document.getElementById('gaze-stability-value').textContent = `${gazeData.score}%`;
+        document.getElementById('gaze-confidence-value').textContent = '85%';
+        
+        // 시선 방향 정보 업데이트
+        if (window.mediaPipeAnalyzer?.currentMediaPipeScores?.gazeDirection) {
+            const gazeDirection = window.mediaPipeAnalyzer.currentMediaPipeScores.gazeDirection;
+            document.getElementById('gaze-direction-info').textContent = gazeDirection.status || '중앙';
+        } else {
+            document.getElementById('gaze-direction-info').textContent = '중앙';
+        }
+    } else {
+        document.getElementById('gaze-main-value').textContent = 'UI 모드';
+        document.getElementById('gaze-stability-value').textContent = '0%';
+        document.getElementById('gaze-confidence-value').textContent = '-%';
+        document.getElementById('gaze-direction-info').textContent = '-';
+    }
+    
     // 실시간 시선 분석 정보 표시
     const landmarkInfo = [
         { 
@@ -80,6 +105,11 @@ function updateGazeLandmarksInfo() {
             name: '안정성 측정', 
             value: gazeData?.isRealTime ? `${gazeData.score}%` : '측정 중', 
             description: gazeData?.isRealTime ? '시선 변화량과 속도를 통한 안정성 측정' : '안정성 측정을 기다리는 중입니다.' 
+        },
+        { 
+            name: '분석 방식', 
+            value: gazeData?.isRealTime ? '가중 평균' : '-', 
+            description: gazeData?.isRealTime ? '서버 AI 모델(80%) + MediaPipe(20%)' : '분석 방식을 기다리는 중입니다.' 
         }
     ];
     
