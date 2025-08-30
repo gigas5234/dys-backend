@@ -315,35 +315,38 @@ function updateGazePopupContent() {
     // MediaPipe 데이터가 있으면 사용, 없으면 기본 데이터 생성
     let gazeData = window.currentGazeData;
     
-    // MediaPipe 데이터가 없으면 현재 점수로 생성
-    if (!gazeData && window.mediaPipeAnalyzer) {
-        const currentScores = window.mediaPipeAnalyzer.currentMediaPipeScores || {};
+    // MediaPipe 분석기에서 실시간 데이터 가져오기
+    if (window.mediaPipeAnalyzer && window.mediaPipeAnalyzer.currentMediaPipeScores) {
+        const currentScores = window.mediaPipeAnalyzer.currentMediaPipeScores;
         const gazeScore = currentScores.gaze || 0;
         
-        // 기본 시선 데이터 생성
+        // 실시간 시선 데이터 생성
         gazeData = {
             score: gazeScore,
             label: getScoreLabel(gazeScore),
             gazeDirection: {
                 x: 0.5,
-                y: 0.5,
+                y: 0.53,
                 distance: 0.184,
-                status: '중앙'
+                status: gazeScore >= 85 ? '중앙' : gazeScore >= 70 ? '중간' : '외곽'
             },
             eyeCenter: {
                 left: { x: 0.4, y: 0.5 },
                 right: { x: 0.6, y: 0.5 }
             },
-            lastUpdate: new Date().toISOString()
+            lastUpdate: new Date().toISOString(),
+            isRealTime: true
         };
         
         // 전역 변수에 저장
         window.currentGazeData = gazeData;
+        
+        console.log("📊 [팝업] 실시간 시선 데이터 업데이트:", gazeData);
     }
     
     if (!gazeData) {
-        document.getElementById('gaze-main-value').textContent = '데이터 없음';
-        document.getElementById('gaze-direction-value').textContent = '측정 불가';
+        document.getElementById('gaze-main-value').textContent = '분석 대기 중...';
+        document.getElementById('gaze-stability-value').textContent = '0%';
         return;
     }
     
@@ -353,10 +356,21 @@ function updateGazePopupContent() {
         mainValueEl.textContent = gazeData.label;
     }
     
-    // 시선 방향 업데이트
+    // 시선 안정성 점수 업데이트
+    const stabilityEl = document.getElementById('gaze-stability-value');
+    if (stabilityEl) {
+        stabilityEl.textContent = `${gazeData.score}%`;
+    }
+    
+    // 시선 방향 업데이트 (있는 경우)
     const directionEl = document.getElementById('gaze-direction-value');
     if (directionEl) {
         directionEl.textContent = gazeData.gazeDirection.status;
+    }
+    
+    // 실시간 데이터 표시
+    if (gazeData.isRealTime) {
+        console.log("✅ [팝업] 실시간 시선 데이터 표시 완료");
     }
 }
 
@@ -383,15 +397,14 @@ function closeConcentrationDetails() {
 }
 
 function updateConcentrationPopupContent() {
-    // MediaPipe 데이터가 있으면 사용, 없으면 기본 데이터 생성
+    // MediaPipe 분석기에서 실시간 데이터 가져오기
     let concentrationData = window.currentConcentrationData;
     
-    // MediaPipe 데이터가 없으면 현재 점수로 생성
-    if (!concentrationData && window.mediaPipeAnalyzer) {
-        const currentScores = window.mediaPipeAnalyzer.currentMediaPipeScores || {};
+    if (!concentrationData && window.mediaPipeAnalyzer && window.mediaPipeAnalyzer.currentMediaPipeScores) {
+        const currentScores = window.mediaPipeAnalyzer.currentMediaPipeScores;
         const concentrationScore = currentScores.concentration || 0;
         
-        // 기본 집중도 데이터 생성
+        // 실시간 집중도 데이터 생성
         concentrationData = {
             score: concentrationScore,
             label: getScoreLabel(concentrationScore),
@@ -400,19 +413,22 @@ function updateConcentrationPopupContent() {
                 headStability: concentrationScore * 0.9,
                 blinkRate: concentrationScore * 0.7
             },
-            lastUpdate: new Date().toISOString()
+            lastUpdate: new Date().toISOString(),
+            isRealTime: true
         };
         
         // 전역 변수에 저장
         window.currentConcentrationData = concentrationData;
+        
+        console.log("📊 [팝업] 실시간 집중도 데이터 업데이트:", concentrationData);
     }
     
     if (!concentrationData) {
-        document.getElementById('concentration-main-value').textContent = '데이터 없음';
+        document.getElementById('concentration-main-value').textContent = '분석 대기 중...';
         document.getElementById('concentration-score-value').textContent = '0%';
-        document.getElementById('concentration-factors').innerHTML = '<div class="no-data">집중도 분석 데이터가 없습니다.</div>';
-        document.getElementById('concentration-criteria-text').innerHTML = '집중도 분석 데이터가 없습니다.';
-        document.getElementById('concentration-explanation-text').innerHTML = '집중도 분석 데이터가 없습니다.';
+        document.getElementById('concentration-factors').innerHTML = '<div class="no-data">분석 대기 중...</div>';
+        document.getElementById('concentration-criteria-text').innerHTML = '분석 대기 중...';
+        document.getElementById('concentration-explanation-text').innerHTML = '분석 대기 중...';
         return;
     }
     
@@ -426,6 +442,11 @@ function updateConcentrationPopupContent() {
     const scoreEl = document.getElementById('concentration-score-value');
     if (scoreEl) {
         scoreEl.textContent = `${concentrationData.score}%`;
+    }
+    
+    // 실시간 데이터 표시
+    if (concentrationData.isRealTime) {
+        console.log("✅ [팝업] 실시간 집중도 데이터 표시 완료");
     }
     
     // HTML 팝업 파일의 함수들 사용
@@ -570,4 +591,178 @@ function generateComprehensiveScoreExplanation(analysis) {
     explanation += `<p>가장 개선이 필요한 영역: <strong>${lowestCategory.name}</strong> (${lowestCategory.score.toFixed(1)}%)</p>`;
     explanation += `<p>${lowestCategory.suggestion}</p>`;
     
-    explanation += `
+    explanation += `</div>`;
+    
+    return explanation;
+}
+
+function getLowestCategory(categories) {
+    const categoryScores = [
+        { name: '시각적 요소', score: categories.visual.average, suggestion: '표정, 시선, 자세, 깜빡임을 개선해보세요.' },
+        { name: '청각적 요소', score: categories.auditory.average, suggestion: '톤과 집중도를 개선해보세요.' },
+        { name: '대화 요소', score: categories.conversation.score, suggestion: '대화 주도권을 개선해보세요.' }
+    ];
+    
+    return categoryScores.reduce((lowest, current) => 
+        current.score < lowest.score ? current : lowest
+    );
+}
+
+// ===== 자세 상세 정보 팝업 =====
+function showPostureDetails() {
+    const popup = document.getElementById('posture-details-popup');
+    if (popup) {
+        popup.classList.add('active');
+        
+        // DOM 상태 확인
+        const domOk = checkAndRepairPopupDOM();
+        if (!domOk) {
+            console.warn("⚠️ [POPUP] DOM 상태 문제로 팝업 업데이트 제한");
+        }
+        
+        // 데이터 동기화 확인
+        const syncOk = checkPopupDataSync();
+        if (!syncOk.postureData) {
+            console.warn("⚠️ [POPUP] 자세 데이터가 없어서 강제 동기화 시도");
+            forcePopupDataSync();
+        }
+        
+        // MediaPipe 데이터로 업데이트
+        if (window.mediaPipeAnalyzer) {
+            window.mediaPipeAnalyzer.updatePosturePopupOnOpen();
+        }
+        
+        updatePosturePopupContent();
+    }
+}
+
+function closePostureDetails() {
+    const popup = document.getElementById('posture-details-popup');
+    if (popup) {
+        popup.classList.remove('active');
+    }
+}
+
+function updatePosturePopupContent() {
+    // MediaPipe 분석기에서 실시간 데이터 가져오기
+    let postureData = window.currentPostureData;
+    
+    if (!postureData && window.mediaPipeAnalyzer && window.mediaPipeAnalyzer.currentMediaPipeScores) {
+        const currentScores = window.mediaPipeAnalyzer.currentMediaPipeScores;
+        const postureScore = currentScores.posture || 0;
+        
+        // 실시간 자세 데이터 생성
+        postureData = {
+            score: postureScore,
+            label: getScoreLabel(postureScore),
+            stability: {
+                neckAngle: postureScore * 0.8,
+                shoulderLevel: postureScore * 0.9,
+                backCurve: postureScore * 0.7
+            },
+            lastUpdate: new Date().toISOString(),
+            isRealTime: true
+        };
+        
+        // 전역 변수에 저장
+        window.currentPostureData = postureData;
+        
+        console.log("📊 [팝업] 실시간 자세 데이터 업데이트:", postureData);
+    }
+    
+    if (!postureData) {
+        document.getElementById('posture-main-value').textContent = '분석 대기 중...';
+        document.getElementById('posture-stability-value').textContent = '측정 중';
+        return;
+    }
+    
+    // 자세 상태 업데이트
+    const mainValueEl = document.getElementById('posture-main-value');
+    if (mainValueEl) {
+        mainValueEl.textContent = postureData.label;
+    }
+    
+    // 자세 안정성 업데이트
+    const stabilityEl = document.getElementById('posture-stability-value');
+    if (stabilityEl) {
+        stabilityEl.textContent = `${postureData.score}%`;
+    }
+}
+
+function updateBlinkingPopupContent() {
+    // MediaPipe 데이터가 있으면 사용, 없으면 기본 데이터 생성
+    let blinkingData = window.currentBlinkingData;
+    
+    // MediaPipe 분석기에서 실시간 데이터 가져오기
+    if (window.mediaPipeAnalyzer && window.mediaPipeAnalyzer.currentMediaPipeScores) {
+        const currentScores = window.mediaPipeAnalyzer.currentMediaPipeScores;
+        const blinkingScore = currentScores.blinking || 0;
+        
+        // 깜빡임 통계 데이터 가져오기 (EAR 기반)
+        let blinkRate = 15; // 기본값
+        let blinkStatus = '정상';
+        
+        if (window.mediaPipeAnalyzer.blinkHistory && window.mediaPipeAnalyzer.blinkHistory.length > 0) {
+            const recentBlinks = window.mediaPipeAnalyzer.blinkHistory.filter(blink => 
+                Date.now() - blink.time < 60000
+            );
+            blinkRate = recentBlinks.length;
+            blinkStatus = blinkRate >= 10 && blinkRate <= 20 ? '정상' : blinkRate < 10 ? '부족' : '과다';
+        }
+        
+        // 실시간 깜빡임 데이터 생성
+        blinkingData = {
+            score: blinkingScore,
+            label: getScoreLabel(blinkingScore),
+            rate: {
+                current: blinkRate,
+                normal: 15,
+                status: blinkStatus
+            },
+            lastUpdate: new Date().toISOString(),
+            isRealTime: true
+        };
+        
+        // 전역 변수에 저장
+        window.currentBlinkingData = blinkingData;
+        
+        console.log("📊 [팝업] 실시간 깜빡임 데이터 업데이트:", blinkingData);
+    }
+    
+    if (!blinkingData) {
+        document.getElementById('blinking-main-value').textContent = '분석 대기 중...';
+        document.getElementById('blinking-rate-value').textContent = '0회/분';
+        return;
+    }
+    
+    // 깜빡임 상태 업데이트
+    const mainValueEl = document.getElementById('blinking-main-value');
+    if (mainValueEl) {
+        mainValueEl.textContent = blinkingData.label;
+    }
+    
+    // 깜빡임 비율 업데이트
+    const rateEl = document.getElementById('blinking-rate-value');
+    if (rateEl) {
+        rateEl.textContent = `${blinkingData.rate.current}회/분 (${blinkingData.rate.status})`;
+    }
+    
+    // 실시간 데이터 표시
+    if (blinkingData.isRealTime) {
+        console.log("✅ [팝업] 실시간 깜빡임 데이터 표시 완료");
+    }
+}
+
+// 전역 함수로 노출 (HTML에서 직접 호출 가능하도록)
+window.showExpressionDetails = showExpressionDetails;
+window.closeExpressionDetails = closeExpressionDetails;
+window.showGazeDetails = showGazeDetails;
+window.closeGazeDetails = closeGazeDetails;
+window.showConcentrationDetails = showConcentrationDetails;
+window.closeConcentrationDetails = closeConcentrationDetails;
+window.showBlinkingDetails = showBlinkingDetails;
+window.closeBlinkingDetails = closeBlinkingDetails;
+window.showPostureDetails = showPostureDetails;
+window.closePostureDetails = closePostureDetails;
+window.showComprehensiveScoreDetails = showComprehensiveScoreDetails;
+window.closeComprehensiveScoreDetails = closeComprehensiveScoreDetails;

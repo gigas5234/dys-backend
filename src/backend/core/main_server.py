@@ -1712,6 +1712,97 @@ async def get_calibration_data(user_id: str, profile_name: str = "default"):
             "message": f"캘리브레이션 데이터 조회 중 오류 발생: {str(e)}"
         }
 
+# 새로운 Supabase 캘리브레이션 API 엔드포인트
+class SupabaseCalibrationRequest(BaseModel):
+    user_id: str
+    device_id: str
+    profile_name: str = "default"
+    calibration_data: Dict[str, Any]
+
+@app.post("/api/supabase/calibration")
+@app.post("/supabase/calibration")
+async def save_supabase_calibration(request: SupabaseCalibrationRequest):
+    """새로운 Supabase camera_calibrations 테이블에 캘리브레이션 데이터 저장"""
+    try:
+        if not SUPABASE_AVAILABLE:
+            return {
+                "success": False,
+                "message": "Supabase 연결이 불가능합니다"
+            }
+        
+        # Supabase에 캘리브레이션 데이터 저장
+        calibration_insert_data = {
+            "user_id": request.user_id,
+            "device_id": request.device_id,
+            "profile_name": request.profile_name,
+            "center_h": request.calibration_data.get("center_h", 0.5),
+            "center_v": request.calibration_data.get("center_v", 0.53),
+            "center_ear": request.calibration_data.get("center_ear", 0.22),
+            "band_center_half": request.calibration_data.get("band_center_half", 0.08),
+            "band_mid_half": request.calibration_data.get("band_mid_half", 0.18),
+            "blink_ear_threshold": request.calibration_data.get("blink_ear_threshold", 0.19),
+            "blink_closed_threshold": request.calibration_data.get("blink_closed_threshold", 0.22),
+            "saccade_threshold": request.calibration_data.get("saccade_threshold", 0.045),
+            "focus_drift_seconds": request.calibration_data.get("focus_drift_seconds", 2.0),
+            "neck_length_baseline": request.calibration_data.get("neck_length_baseline", 0.18),
+            "neck_angle_baseline": request.calibration_data.get("neck_angle_baseline", 12.0),
+            "chin_forward_baseline": request.calibration_data.get("chin_forward_baseline", 0.02),
+            "neck_tilt_baseline": request.calibration_data.get("neck_tilt_baseline", 0.005),
+            "shoulder_width_baseline": request.calibration_data.get("shoulder_width_baseline", 0.28),
+            "torso_height_baseline": request.calibration_data.get("torso_height_baseline", 0.38),
+            "back_curve_baseline": request.calibration_data.get("back_curve_baseline", 8.0),
+            "shoulder_blade_position": request.calibration_data.get("shoulder_blade_position", 4.0),
+            "quality_score": request.calibration_data.get("quality_score", 0.85),
+            "description": request.calibration_data.get("description", "개인 캘리브레이션"),
+            "statistics": request.calibration_data.get("statistics", {}),
+            "version": 1
+        }
+        
+        # Supabase에 캘리브레이션 데이터 삽입
+        result = supabase.table("camera_calibrations").insert(calibration_insert_data).execute()
+        
+        if result.data:
+            calibration_id = result.data[0]["id"]
+            print(f"Supabase 캘리브레이션 데이터 저장 완료: {request.user_id}, device_id: {request.device_id}")
+            
+            # camera_calibration_active 테이블에 활성 매핑 추가
+            active_data = {
+                "user_id": request.user_id,
+                "device_id": request.device_id,
+                "profile_name": request.profile_name,
+                "calibration_id": calibration_id
+            }
+            
+            # 기존 활성 매핑이 있으면 업데이트, 없으면 삽입
+            existing_active = supabase.table("camera_calibration_active").select("*").eq("user_id", request.user_id).eq("device_id", request.device_id).eq("profile_name", request.profile_name).execute()
+            
+            if existing_active.data:
+                # 업데이트
+                supabase.table("camera_calibration_active").update({"calibration_id": calibration_id}).eq("user_id", request.user_id).eq("device_id", request.device_id).eq("profile_name", request.profile_name).execute()
+            else:
+                # 삽입
+                supabase.table("camera_calibration_active").insert(active_data).execute()
+            
+            return {
+                "success": True,
+                "message": "Supabase 캘리브레이션 데이터 저장 완료",
+                "calibration_id": calibration_id,
+                "user_id": request.user_id,
+                "device_id": request.device_id
+            }
+        else:
+            return {
+                "success": False,
+                "message": "Supabase 캘리브레이션 데이터 저장 실패"
+            }
+            
+    except Exception as e:
+        print(f"Supabase 캘리브레이션 저장 오류: {e}")
+        return {
+            "success": False,
+            "message": f"Supabase 저장 중 오류 발생: {str(e)}"
+        }
+
 @app.get("/api/calibration/user/{user_id}")
 async def get_user_calibration_data(user_id: str, profile_name: str = "default"):
     """사용자 캘리브레이션 데이터 조회 (기존 API와 호환)"""

@@ -43,14 +43,51 @@
 function updateConcentrationFactorsInfo() {
     const factorsDiv = document.getElementById('concentration-factors');
     
-    // 집중도 분석에 사용되는 요소들
+    // MediaPipe 분석기에서 실시간 데이터 가져오기
+    let concentrationData = window.currentConcentrationData;
+    
+    if (!concentrationData && window.mediaPipeAnalyzer && window.mediaPipeAnalyzer.currentMediaPipeScores) {
+        const currentScores = window.mediaPipeAnalyzer.currentMediaPipeScores;
+        const concentrationScore = currentScores.concentration || 0;
+        
+        concentrationData = {
+            score: concentrationScore,
+            isRealTime: true
+        };
+    }
+    
+    // 실시간 집중도 분석 요소들
     const factorInfo = [
-        { name: '시선 안정성', value: '35%', description: '시선이 한 곳에 머무는 정도' },
-        { name: '시선 집중도', value: '35%', description: '시선이 화면 중앙에 집중되는 정도' },
-        { name: '표정 따뜻함', value: '30%', description: '긍정적인 표정으로 집중력 표현' },
-        { name: '눈동자 추적', value: '실시간', description: '눈동자 움직임으로 집중 상태 판단' },
-        { name: '시선 이탈 시간', value: '2초 이내', description: '시선이 화면을 벗어나는 시간' },
-        { name: '집중 지속성', value: '연속성', description: '지속적인 집중 상태 유지' }
+        { 
+            name: '시선 안정성', 
+            value: concentrationData?.isRealTime ? '35%' : '대기 중', 
+            description: concentrationData?.isRealTime ? '시선이 한 곳에 머무는 정도' : '시선 안정성 분석을 기다리는 중' 
+        },
+        { 
+            name: '시선 집중도', 
+            value: concentrationData?.isRealTime ? '35%' : '대기 중', 
+            description: concentrationData?.isRealTime ? '시선이 화면 중앙에 집중되는 정도' : '시선 집중도 분석을 기다리는 중' 
+        },
+        { 
+            name: '표정 따뜻함', 
+            value: concentrationData?.isRealTime ? '30%' : '대기 중', 
+            description: concentrationData?.isRealTime ? '긍정적인 표정으로 집중력 표현' : '표정 분석을 기다리는 중' 
+        },
+        { 
+            name: '눈동자 추적', 
+            value: concentrationData?.isRealTime ? '실시간' : '대기 중', 
+            description: concentrationData?.isRealTime ? '눈동자 움직임으로 집중 상태 판단' : '눈동자 추적을 기다리는 중' 
+        },
+        { 
+            name: '시선 이탈 시간', 
+            value: concentrationData?.isRealTime ? '2초 이내' : '측정 중', 
+            description: concentrationData?.isRealTime ? '시선이 화면을 벗어나는 시간' : '시선 이탈 시간을 측정하는 중' 
+        },
+        { 
+            name: '집중 지속성', 
+            value: concentrationData?.isRealTime ? '연속성' : '분석 중', 
+            description: concentrationData?.isRealTime ? '지속적인 집중 상태 유지' : '집중 지속성을 분석하는 중' 
+        }
     ];
     
     let html = '';
@@ -65,6 +102,10 @@ function updateConcentrationFactorsInfo() {
     });
     
     factorsDiv.innerHTML = html;
+    
+    if (concentrationData?.isRealTime) {
+        console.log("✅ [팝업] 실시간 집중도 요소 정보 표시 완료");
+    }
 }
 
 function updateConcentrationCriteriaInfo() {
