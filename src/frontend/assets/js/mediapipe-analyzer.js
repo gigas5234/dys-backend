@@ -1432,18 +1432,16 @@ class MediaPipeAnalyzer {
                 angry: 0.0       // 분노 - 최저 점수
             };
             
-            // 가중 평균 점수 계산 (데이팅 친화적)
+            // 가중 평균 점수 계산 (데이팅 친화적) - 수정된 로직
             let weightedScore = 0;
-            let totalWeight = 0;
             
             Object.entries(expressions).forEach(([expression, probability]) => {
                 const weight = datingScoreWeights[expression] || 0.5;
                 weightedScore += probability * weight;
-                totalWeight += weight;
             });
             
-            // 최종 점수 계산 (0-100)
-            const finalScore = totalWeight > 0 ? Math.round((weightedScore / totalWeight) * 100) : 50;
+            // 최종 점수 계산 (0-100) - 확률의 합이 1이므로 가중치 합으로 나눌 필요 없음
+            const finalScore = Math.round(weightedScore * 100);
             
             // 가장 높은 확률의 표정 찾기 (신뢰도용)
             let maxExpression = 'neutral';
@@ -1497,39 +1495,57 @@ class MediaPipeAnalyzer {
                 };
             }
             
-            // 더 정교한 랜드마크 분석
+            // 더 정교한 랜드마크 분석 (올바른 MediaPipe 인덱스 사용)
             // 입술 분석 (미소, 슬픔, 분노, 놀람)
-            const mouthLeft = landmarks[61];
-            const mouthRight = landmarks[291];
-            const mouthTop = landmarks[13];
-            const mouthBottom = landmarks[14];
-            const mouthCenter = landmarks[0]; // 입술 중앙
+            const mouthLeft = landmarks[61];      // 입술 왼쪽
+            const mouthRight = landmarks[291];    // 입술 오른쪽
+            const mouthTop = landmarks[13];       // 입술 위
+            const mouthBottom = landmarks[14];    // 입술 아래
+            const mouthCenter = landmarks[0];     // 코 끝 (중앙 기준점)
             
             const mouthWidth = Math.abs(mouthRight.x - mouthLeft.x);
             const mouthHeight = Math.abs(mouthTop.y - mouthBottom.y);
             const smileRatio = mouthWidth / (mouthHeight + 0.001);
             
-            // 입술 모서리 분석 (미소 강도)
-            const leftCorner = landmarks[78];
-            const rightCorner = landmarks[308];
+            // 랜드마크 값 디버깅 (3초마다)
+            if (!this.lastLandmarkDebugTime || Date.now() - this.lastLandmarkDebugTime > 3000) {
+                console.log("🔍 [MediaPipe] 랜드마크 값 디버깅:", {
+                    mouthLeft: { x: mouthLeft.x.toFixed(4), y: mouthLeft.y.toFixed(4) },
+                    mouthRight: { x: mouthRight.x.toFixed(4), y: mouthRight.y.toFixed(4) },
+                    mouthTop: { x: mouthTop.x.toFixed(4), y: mouthTop.y.toFixed(4) },
+                    mouthBottom: { x: mouthBottom.x.toFixed(4), y: mouthBottom.y.toFixed(4) },
+                    mouthCenter: { x: mouthCenter.x.toFixed(4), y: mouthCenter.y.toFixed(4) },
+                    mouthWidth: mouthWidth.toFixed(4),
+                    mouthHeight: mouthHeight.toFixed(4),
+                    smileRatio: smileRatio.toFixed(4),
+                    leftCorner: { x: leftCorner.x.toFixed(4), y: leftCorner.y.toFixed(4) },
+                    rightCorner: { x: rightCorner.x.toFixed(4), y: rightCorner.y.toFixed(4) },
+                    smileIntensity: smileIntensity.toFixed(4)
+                });
+                this.lastLandmarkDebugTime = Date.now();
+            }
+            
+            // 입술 모서리 분석 (미소 강도) - 올바른 인덱스
+            const leftCorner = landmarks[78];     // 왼쪽 입술 모서리
+            const rightCorner = landmarks[308];   // 오른쪽 입술 모서리
             const cornerHeight = (leftCorner.y + rightCorner.y) / 2;
             const smileIntensity = Math.max(0, (cornerHeight - mouthCenter.y) * 10);
             
-            // 눈썹 분석 (분노, 슬픔, 놀람)
-            const leftEyebrow = landmarks[70];
-            const rightEyebrow = landmarks[300];
-            const leftEye = landmarks[159];
-            const rightEye = landmarks[386];
+            // 눈썹 분석 (분노, 슬픔, 놀람) - 올바른 인덱스
+            const leftEyebrow = landmarks[70];    // 왼쪽 눈썹
+            const rightEyebrow = landmarks[300];  // 오른쪽 눈썹
+            const leftEye = landmarks[159];       // 왼쪽 눈
+            const rightEye = landmarks[386];      // 오른쪽 눈
             const eyebrowDistance = (
                 Math.abs(leftEyebrow.y - leftEye.y) + 
                 Math.abs(rightEyebrow.y - rightEye.y)
             ) / 2;
             
-            // 눈 분석 (깜빡임, 집중도)
-            const leftEyeTop = landmarks[386];
-            const leftEyeBottom = landmarks[374];
-            const rightEyeTop = landmarks[159];
-            const rightEyeBottom = landmarks[145];
+            // 눈 분석 (깜빡임, 집중도) - 올바른 인덱스
+            const leftEyeTop = landmarks[386];    // 왼쪽 눈 위
+            const leftEyeBottom = landmarks[374]; // 왼쪽 눈 아래
+            const rightEyeTop = landmarks[159];   // 오른쪽 눈 위
+            const rightEyeBottom = landmarks[145]; // 오른쪽 눈 아래
             const leftEyeOpen = Math.abs(leftEyeTop.y - leftEyeBottom.y);
             const rightEyeOpen = Math.abs(rightEyeTop.y - rightEyeBottom.y);
             const eyeOpenness = (leftEyeOpen + rightEyeOpen) / 2;
