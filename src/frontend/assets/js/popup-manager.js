@@ -12,6 +12,12 @@ function showExpressionDetails() {
     const popup = document.getElementById('expression-details-popup');
     if (popup) {
         popup.classList.add('active');
+        
+        // MediaPipe 데이터로 업데이트
+        if (window.mediaPipeAnalyzer) {
+            window.mediaPipeAnalyzer.updateExpressionPopupOnOpen();
+        }
+        
         updateExpressionPopupContent();
     }
 }
