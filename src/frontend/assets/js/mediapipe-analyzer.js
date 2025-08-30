@@ -426,7 +426,7 @@ class MediaPipeAnalyzer {
      * 하이브리드 모드 초기화
      */
     initializeHybridMode() {
-        console.log("🎯 하이브리드 모드 초기화: MediaPipe(실시간) + HTTP(모델 분석)");
+        console.log("🔄 [MediaPipe] 하이브리드 모드 초기화 시작");
         
         // 서버 분석 관련 변수들
         this.lastServerAnalysis = 0;
@@ -445,7 +445,10 @@ class MediaPipeAnalyzer {
             initiative: []
         };
         
-        console.log("✅ 하이브리드 모드 준비 완료");
+        // MediaPipe 초기화
+        this.initializeMediaPipe();
+        
+        console.log("✅ [MediaPipe] 하이브리드 모드 초기화 완료");
     }
     
     /**
@@ -553,8 +556,10 @@ class MediaPipeAnalyzer {
      * 실시간 분석 루프
      */
     async analysisLoop(video) {
-        // 카메라 상태 상세 로깅
-        this.logCameraStatus(video);
+        // 카메라 상태 상세 로깅 (주기적으로만)
+        if (Math.random() < 0.1) { // 10% 확률로만 로그 출력
+            this.logCameraStatus(video);
+        }
         
         if (!this.isMediaPipeReady || !this.faceLandmarker) {
             console.warn("⚠️ [MediaPipe] 아직 준비되지 않음");
@@ -565,16 +570,6 @@ class MediaPipeAnalyzer {
         // 비디오 상태 확인
         if (!video || video.readyState !== 4 || video.paused || video.ended) {
             console.warn("⚠️ [MediaPipe] 비디오가 준비되지 않음, 1초 후 재시도");
-            console.log("🔍 [카메라] 비디오 상태:", {
-                exists: !!video,
-                readyState: video?.readyState,
-                paused: video?.paused,
-                ended: video?.ended,
-                currentTime: video?.currentTime,
-                duration: video?.duration,
-                src: video?.src,
-                srcObject: !!video?.srcObject
-            });
             setTimeout(() => this.analysisLoop(video), 1000);
             return;
         }
@@ -591,26 +586,41 @@ class MediaPipeAnalyzer {
                 // 실시간 점수 계산
                 const scores = this.calculateRealtimeScores(landmarks);
                 
+                // 현재 점수 저장
+                this.currentMediaPipeScores = scores;
+                
                 // UI 업데이트
                 this.updateRealtimeUI(scores);
                 
                 // 분석 상태 업데이트 (실제 동작 내용 표시)
                 this.updateAnalysisStatus(scores);
                 
-                // 서버 분석 스케줄링 (임시 비활성화)
-                this.scheduleServerAnalysis(video, scores);
+                // 팝업 데이터 업데이트
+                this.updateAllPopupData(scores);
                 
                 console.log("👤 [MediaPipe] 얼굴 감지됨, 점수:", scores);
+                
+                // 연속 실패 카운터 리셋
+                this.consecutiveFailures = 0;
             } else {
                 // 얼굴이 감지되지 않은 경우
-                this.clearRealtimeUI();
-                console.log("❌ [MediaPipe] 얼굴이 감지되지 않음");
+                this.consecutiveFailures++;
+                console.log(`❌ [MediaPipe] 얼굴이 감지되지 않음 (${this.consecutiveFailures}회 연속)`);
+                
+                // 연속 실패가 많으면 UI 클리어
+                if (this.consecutiveFailures >= 10) {
+                    this.clearRealtimeUI();
+                    this.resetAnalysisStatus();
+                }
             }
             
         } catch (error) {
             console.error("❌ [MediaPipe] 분석 중 오류:", error);
-            // 오류 발생시 2초 후 재시도
-            setTimeout(() => this.analysisLoop(video), 2000);
+            this.consecutiveFailures++;
+            
+            // 오류 발생시 재시도 간격 조정
+            const retryDelay = this.consecutiveFailures >= 20 ? 5000 : 2000;
+            setTimeout(() => this.analysisLoop(video), retryDelay);
             return;
         }
         
