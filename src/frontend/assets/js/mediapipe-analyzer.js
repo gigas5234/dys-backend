@@ -574,6 +574,29 @@ class MediaPipeAnalyzer {
                 hiddenVideo.addEventListener('loadeddata', resolve, { once: true });
             });
             
+            // 백그라운드 카메라 강제 재생
+            try {
+                await hiddenVideo.play();
+                console.log("✅ [MediaPipe] 백그라운드 카메라 재생 시작");
+            } catch (playError) {
+                console.warn("⚠️ [MediaPipe] 백그라운드 카메라 자동 재생 실패, 사용자 상호작용 대기");
+                
+                // 사용자 상호작용 후 재생 시도
+                const startPlayback = async () => {
+                    try {
+                        await hiddenVideo.play();
+                        console.log("✅ [MediaPipe] 사용자 상호작용 후 백그라운드 카메라 재생 시작");
+                        document.removeEventListener('click', startPlayback);
+                        document.removeEventListener('keydown', startPlayback);
+                    } catch (err) {
+                        console.error("❌ [MediaPipe] 백그라운드 카메라 재생 실패:", err);
+                    }
+                };
+                
+                document.addEventListener('click', startPlayback, { once: true });
+                document.addEventListener('keydown', startPlayback, { once: true });
+            }
+            
             console.log("✅ [MediaPipe] 백그라운드 카메라 준비 완료, 분석 시작");
             
             // 실시간 분석 루프 시작 (숨겨진 카메라 비디오 사용)
@@ -597,7 +620,7 @@ class MediaPipeAnalyzer {
         }
         
         // 백그라운드 카메라 상태 확인
-        if (!video || video.readyState !== 4 || video.paused || video.ended) {
+        if (!video || video.readyState !== 4 || video.ended) {
             console.warn("⚠️ [MediaPipe] 백그라운드 카메라가 준비되지 않음, 1초 후 재시도");
             console.log("📹 [카메라] 상태:", {
                 exists: !!video,
@@ -610,6 +633,19 @@ class MediaPipeAnalyzer {
             });
             setTimeout(() => this.analysisLoop(video), 1000);
             return;
+        }
+        
+        // 카메라가 일시정지된 경우 재생 시도
+        if (video && video.paused) {
+            console.log("🔄 [MediaPipe] 백그라운드 카메라 재생 시도...");
+            try {
+                await video.play();
+                console.log("✅ [MediaPipe] 백그라운드 카메라 재생 성공");
+            } catch (playError) {
+                console.warn("⚠️ [MediaPipe] 백그라운드 카메라 재생 실패:", playError);
+                setTimeout(() => this.analysisLoop(video), 1000);
+                return;
+            }
         }
         
         try {
