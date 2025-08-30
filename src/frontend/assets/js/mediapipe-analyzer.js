@@ -1069,9 +1069,9 @@ class MediaPipeAnalyzer {
         try {
             console.log("🧠 서버 표정 분석 요청...");
             
-            // 절대 URL로 변경
+            // 올바른 API 엔드포인트 사용
             const baseUrl = window.location.origin;
-            const response = await fetch(`${baseUrl}/api/expression/analyze`, {
+            const response = await fetch(`${baseUrl}/api/analyze/expression`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -1536,75 +1536,80 @@ class MediaPipeAnalyzer {
             // 이전 랜드마크 업데이트
             this.previousLandmarks = landmarks;
             
-            // 8가지 표정 확률 계산 (더 정교한 알고리즘)
+            // 8가지 표정 확률 계산 (더 관대한 임계값으로 수정)
             const expressions = {
-                // 미소 (입술 곡률 + 모서리 올라감)
-                happy: Math.max(0, Math.min(1, 
-                    (smileRatio - 1.2) * 1.5 + 
-                    smileIntensity * 0.3 + 
-                    (averageChange > 0.01 ? 0.1 : 0)
+                // 행복 (미소, 눈꺼풀 올라감, 볼 올라감)
+                happy: Math.max(0.05, Math.min(1, 
+                    (smileRatio - 1.0) * 0.8 + 
+                    smileIntensity * 2.0 + 
+                    (eyebrowDistance - 0.06) * 1.5
                 )),
                 
-                // 슬픔 (입술 아래로, 눈썹 내려감, 눈 반개)
-                sad: Math.max(0, Math.min(1, 
-                    (1.5 - smileRatio) * 0.8 + 
-                    (0.1 - eyebrowDistance) * 5 + 
-                    (0.02 - eyeOpenness) * 10
+                // 슬픔 (입술 내려감, 눈썹 내려감, 볼 내려감)
+                sad: Math.max(0.05, Math.min(1, 
+                    (1.3 - smileRatio) * 0.6 + 
+                    (0.08 - eyebrowDistance) * 3 + 
+                    (0.015 - eyeOpenness) * 4
                 )),
                 
                 // 분노 (눈썹 내려감, 입술 꾹 다물음, 이마 주름)
-                angry: Math.max(0, Math.min(1, 
-                    (0.05 - eyebrowDistance) * 8 + 
-                    (1.1 - smileRatio) * 1.5 + 
-                    foreheadTension * 5
+                angry: Math.max(0.05, Math.min(1, 
+                    (0.06 - eyebrowDistance) * 4 + 
+                    (1.0 - smileRatio) * 0.8 + 
+                    foreheadTension * 2
                 )),
                 
                 // 놀람 (입술 벌어짐, 눈썹 올라감, 눈 크게 뜸)
-                surprised: Math.max(0, Math.min(1, 
-                    (smileRatio - 1.8) * 1.2 + 
-                    (eyebrowDistance - 0.15) * 6 + 
-                    (eyeOpenness - 0.03) * 8
+                surprised: Math.max(0.05, Math.min(1, 
+                    (smileRatio - 1.5) * 0.6 + 
+                    (eyebrowDistance - 0.10) * 3 + 
+                    (eyeOpenness - 0.020) * 3
                 )),
                 
                 // 두려움 (눈썹 올라감, 입술 약간 벌어짐, 눈 반개)
-                fearful: Math.max(0, Math.min(1, 
-                    (eyebrowDistance - 0.12) * 4 + 
-                    (smileRatio - 1.3) * 0.3 + 
-                    (0.02 - eyeOpenness) * 5
+                fearful: Math.max(0.05, Math.min(1, 
+                    (eyebrowDistance - 0.08) * 2.5 + 
+                    (smileRatio - 1.1) * 0.2 + 
+                    (0.015 - eyeOpenness) * 2
                 )),
                 
                 // 혐오 (코 주름, 입술 오므림, 눈썹 내려감)
-                disgusted: Math.max(0, Math.min(1, 
-                    noseWrinkleIntensity * 6 + 
-                    (1.0 - smileRatio) * 1.2 + 
-                    (0.08 - eyebrowDistance) * 3
+                disgusted: Math.max(0.05, Math.min(1, 
+                    noseWrinkleIntensity * 3 + 
+                    (0.9 - smileRatio) * 0.6 + 
+                    (0.07 - eyebrowDistance) * 1.5
                 )),
                 
                 // 중립 (기본 상태, 변화량 적음)
-                neutral: Math.max(0, Math.min(1, 
-                    0.6 - Math.abs(smileRatio - 1.4) * 0.3 - 
-                    Math.abs(eyebrowDistance - 0.08) * 2 - 
-                    (averageChange > 0.02 ? 0.2 : 0)
+                neutral: Math.max(0.05, Math.min(1, 
+                    0.4 - Math.abs(smileRatio - 1.2) * 0.15 - 
+                    Math.abs(eyebrowDistance - 0.07) * 1.0 - 
+                    (averageChange > 0.01 ? 0.05 : 0)
                 )),
                 
                 // 경멸 (입술 한쪽 올라감, 코 주름, 눈썹 약간 올라감)
-                contempt: Math.max(0, Math.min(1, 
-                    noseWrinkleIntensity * 3 + 
-                    Math.abs(smileRatio - 1.3) * 0.6 + 
-                    (eyebrowDistance - 0.1) * 2
+                contempt: Math.max(0.05, Math.min(1, 
+                    noseWrinkleIntensity * 1.5 + 
+                    Math.abs(smileRatio - 1.1) * 0.3 + 
+                    (eyebrowDistance - 0.08) * 1.0
                 ))
             };
             
-            // 확률 정규화 (합이 1이 되도록)
+            // 확률 정규화 (합이 1이 되도록, 최소값 보장)
             const total = Object.values(expressions).reduce((sum, val) => sum + val, 0);
             if (total > 0) {
                 Object.keys(expressions).forEach(key => {
                     expressions[key] = expressions[key] / total;
                 });
+            } else {
+                // 모든 값이 0인 경우 기본값 설정
+                Object.keys(expressions).forEach(key => {
+                    expressions[key] = 0.125; // 8개 감정이므로 1/8
+                });
             }
             
-            // 디버깅 정보 (5초마다 출력)
-            if (!this.lastDebugTime || Date.now() - this.lastDebugTime > 5000) {
+            // 디버깅 정보 (3초마다 출력, 더 자세한 정보)
+            if (!this.lastDebugTime || Date.now() - this.lastDebugTime > 3000) {
                 console.log("🔍 [MediaPipe] 랜드마크 분석 디버그:", {
                     smileRatio: smileRatio.toFixed(3),
                     smileIntensity: smileIntensity.toFixed(3),
@@ -1613,9 +1618,11 @@ class MediaPipeAnalyzer {
                     noseWrinkleIntensity: noseWrinkleIntensity.toFixed(3),
                     foreheadTension: foreheadTension.toFixed(3),
                     averageChange: averageChange.toFixed(4),
+                    totalExpressions: Object.values(expressions).reduce((sum, val) => sum + val, 0).toFixed(3),
                     expressions: Object.fromEntries(
                         Object.entries(expressions).map(([k, v]) => [k, v.toFixed(3)])
-                    )
+                    ),
+                    topEmotion: Object.entries(expressions).reduce((a, b) => expressions[a[0]] > expressions[b[0]] ? a : b)[0]
                 });
                 this.lastDebugTime = Date.now();
             }
@@ -2570,8 +2577,6 @@ class MediaPipeAnalyzer {
             label: this.getScoreLabel(scores.posture),
             headTilt: this.getHeadTiltData(scores),
             stability: this.getHeadStabilityScore(scores),
-            lastUpdate: new Date().toISOString(),
-            isRealTime: true
         };
         
         window.currentPostureData = postureData;
@@ -2583,13 +2588,15 @@ class MediaPipeAnalyzer {
     }
     
     /**
-     * 주도성 팝업 데이터 업데이트
+     * 대화 주도권 팝업 데이터 업데이트
      */
     updateInitiativePopupData(scores) {
         const initiativeData = {
             score: scores.initiative,
             label: this.getScoreLabel(scores.initiative),
-            factors: this.getInitiativeFactors(scores),
+            userInitiativeScore: scores.initiative,
+            status: this.getInitiativeStatus(scores.initiative),
+            stats: this.getInitiativeStats(scores),
             lastUpdate: new Date().toISOString(),
             isRealTime: true
         };
@@ -2703,6 +2710,26 @@ class MediaPipeAnalyzer {
         }
     }
     
+    /**
+     * 대화 주도권 팝업이 열릴 때 호출되는 메서드
+     */
+    updateInitiativePopupOnOpen() {
+        if (this.currentMediaPipeScores && Object.keys(this.currentMediaPipeScores).length > 0) {
+            this.updateInitiativePopupData(this.currentMediaPipeScores);
+        } else {
+            console.log("⚠️ [팝업] 대화 주도권 데이터가 없어서 기본값 사용");
+            const defaultScores = {
+                expression: 75,
+                concentration: 70,
+                gaze: 80,
+                blinking: 85,
+                posture: 75,
+                initiative: 70
+            };
+            this.updateInitiativePopupData(defaultScores);
+        }
+    }
+    
     // 헬퍼 메서드들
     getMainExpression(scores) {
         return 'neutral'; // 기본값
@@ -2780,6 +2807,23 @@ class MediaPipeAnalyzer {
             expression: scores.expression * 0.8,
             gaze: scores.gaze * 0.9,
             concentration: scores.concentration * 0.7
+        };
+    }
+    
+    getInitiativeStatus(score) {
+        if (score >= 85) return '매우 적극적';
+        if (score >= 70) return '적극적';
+        if (score >= 50) return '보통';
+        if (score >= 30) return '소극적';
+        return '매우 소극적';
+    }
+    
+    getInitiativeStats(scores) {
+        return {
+            expression: scores.expression,
+            gaze: scores.gaze,
+            concentration: scores.concentration,
+            average: Math.round((scores.expression + scores.gaze + scores.concentration) / 3)
         };
     }
     

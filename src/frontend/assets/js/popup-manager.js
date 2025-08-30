@@ -922,9 +922,11 @@ function showInitiativeDetails() {
             forcePopupDataSync();
         }
         
-        // MediaPipe 데이터로 업데이트
-        if (window.mediaPipeAnalyzer) {
+        // MediaPipe 데이터로 업데이트 (함수가 없을 수 있으므로 안전하게 처리)
+        if (window.mediaPipeAnalyzer && typeof window.mediaPipeAnalyzer.updateInitiativePopupOnOpen === 'function') {
             window.mediaPipeAnalyzer.updateInitiativePopupOnOpen();
+        } else {
+            console.log("⚠️ [팝업] updateInitiativePopupOnOpen 함수를 찾을 수 없습니다");
         }
         
         updateInitiativePopupContent();
