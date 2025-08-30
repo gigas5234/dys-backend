@@ -540,7 +540,7 @@ class MediaPipeAnalyzer {
         try {
             // 현재 프레임 분석
             const startTimeMs = performance.now();
-            const results = await this.faceLandmarker.detectAsync(video, startTimeMs);
+            const results = await this.faceLandmarker.detect(video, startTimeMs);
             
             if (results.faceLandmarks && results.faceLandmarks.length > 0) {
                 // 얼굴이 감지된 경우
