@@ -455,7 +455,7 @@ class MediaPipeAnalyzer {
                     },
                     outputFaceBlendshapes: false,
                     outputFacialTransformationMatrixes: false,
-                    runningMode: 'VIDEO',
+                    runningMode: 'IMAGE',
                     numFaces: 1
                 });
                 
@@ -477,7 +477,7 @@ class MediaPipeAnalyzer {
                     },
                     outputFaceBlendshapes: false,
                     outputFacialTransformationMatrixes: false,
-                    runningMode: 'VIDEO',
+                    runningMode: 'IMAGE',
                     numFaces: 1
                 });
                 

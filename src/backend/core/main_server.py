@@ -716,6 +716,27 @@ async def send_message(
         
         print(f"✅ [SEND_MESSAGE] 사용자 메시지 저장 성공: {message_id}")
         
+        # Vector DB에 사용자 메시지 저장
+        if VECTOR_SERVICE_AVAILABLE and vector_service.is_initialized:
+            try:
+                print(f"💾 [SEND_MESSAGE] Vector DB에 사용자 메시지 저장 중...")
+                vector_success = await vector_service.store_text_with_embedding(
+                    text=message.content,
+                    content_type="user_message",
+                    content_id=message_id,
+                    metadata={
+                        "session_id": session_id,
+                        "user_id": final_user_id,
+                        "role": "user"
+                    }
+                )
+                if vector_success:
+                    print(f"✅ [SEND_MESSAGE] Vector DB 사용자 메시지 저장 성공")
+                else:
+                    print(f"⚠️ [SEND_MESSAGE] Vector DB 사용자 메시지 저장 실패")
+            except Exception as vector_error:
+                print(f"❌ [SEND_MESSAGE] Vector DB 사용자 메시지 저장 오류: {vector_error}")
+        
         # OpenAI GPT-4o-mini로 AI 응답 생성
         print(f"🤖 [SEND_MESSAGE] GPT 호출 시작 - 메시지: {message.content[:50]}...")
         ai_response = await generate_ai_response(message.content, session_id)
@@ -731,6 +752,27 @@ async def send_message(
         )
         
         print(f"✅ [SEND_MESSAGE] AI 응답 저장 성공: {ai_message_id}")
+        
+        # Vector DB에 AI 응답 저장
+        if VECTOR_SERVICE_AVAILABLE and vector_service.is_initialized:
+            try:
+                print(f"💾 [SEND_MESSAGE] Vector DB에 AI 응답 저장 중...")
+                vector_success = await vector_service.store_text_with_embedding(
+                    text=ai_response,
+                    content_type="ai_response",
+                    content_id=ai_message_id,
+                    metadata={
+                        "session_id": session_id,
+                        "user_id": final_user_id,
+                        "role": "assistant"
+                    }
+                )
+                if vector_success:
+                    print(f"✅ [SEND_MESSAGE] Vector DB AI 응답 저장 성공")
+                else:
+                    print(f"⚠️ [SEND_MESSAGE] Vector DB AI 응답 저장 실패")
+            except Exception as vector_error:
+                print(f"❌ [SEND_MESSAGE] Vector DB AI 응답 저장 오류: {vector_error}")
         
         result = {
             "ok": True,
