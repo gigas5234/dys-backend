@@ -7,11 +7,89 @@
 let currentExpressionData = null;
 // MediaPipe-related data variables removed for UI-only mode
 
+/**
+ * 데이터 동기화 상태 확인
+ */
+function checkPopupDataSync() {
+    const syncStatus = {
+        expressionData: !!window.currentExpressionData,
+        gazeData: !!window.currentGazeData,
+        concentrationData: !!window.currentConcentrationData,
+        blinkingData: !!window.currentBlinkingData,
+        postureData: !!window.currentPostureData,
+        mediaPipeScores: !!(window.mediaPipeAnalyzer && window.mediaPipeAnalyzer.currentMediaPipeScores)
+    };
+    
+    console.log(`📊 [POPUP_SYNC] 팝업 데이터 동기화 상태:`, syncStatus);
+    return syncStatus;
+}
+
+/**
+ * 강제 팝업 데이터 동기화
+ */
+function forcePopupDataSync() {
+    console.log("🔄 [POPUP_SYNC] 강제 팝업 데이터 동기화 시작");
+    
+    if (!window.mediaPipeAnalyzer || !window.mediaPipeAnalyzer.currentMediaPipeScores) {
+        console.warn("⚠️ [POPUP_SYNC] MediaPipe 점수가 없음");
+        return false;
+    }
+    
+    // 모든 팝업 데이터 강제 업데이트
+    window.mediaPipeAnalyzer.updateAllPopupData(window.mediaPipeAnalyzer.currentMediaPipeScores);
+    
+    console.log("✅ [POPUP_SYNC] 강제 팝업 데이터 동기화 완료");
+    return true;
+}
+
+/**
+ * DOM 요소 존재 확인 및 복구
+ */
+function checkAndRepairPopupDOM() {
+    const requiredElements = [
+        'expression-main-value', 'expression-confidence-value', 'expression-probabilities',
+        'gaze-main-value', 'gaze-confidence-value', 'gaze-direction-info',
+        'concentration-main-value', 'concentration-confidence-value', 'concentration-factors',
+        'blinking-main-value', 'blinking-confidence-value', 'blinking-rate-info',
+        'posture-main-value', 'posture-confidence-value', 'posture-stability-info'
+    ];
+    
+    const missingElements = [];
+    
+    for (const elementId of requiredElements) {
+        const element = document.getElementById(elementId);
+        if (!element) {
+            missingElements.push(elementId);
+        }
+    }
+    
+    if (missingElements.length > 0) {
+        console.warn(`⚠️ [POPUP_DOM] 누락된 팝업 요소들:`, missingElements);
+        return false;
+    }
+    
+    console.log("✅ [POPUP_DOM] 모든 팝업 요소 존재 확인");
+    return true;
+}
+
 // ===== 표정 상세 정보 팝업 =====
 function showExpressionDetails() {
     const popup = document.getElementById('expression-details-popup');
     if (popup) {
         popup.classList.add('active');
+        
+        // DOM 상태 확인
+        const domOk = checkAndRepairPopupDOM();
+        if (!domOk) {
+            console.warn("⚠️ [POPUP] DOM 상태 문제로 팝업 업데이트 제한");
+        }
+        
+        // 데이터 동기화 확인
+        const syncOk = checkPopupDataSync();
+        if (!syncOk.expressionData) {
+            console.warn("⚠️ [POPUP] 표정 데이터가 없어서 강제 동기화 시도");
+            forcePopupDataSync();
+        }
         
         // MediaPipe 데이터로 업데이트
         if (window.mediaPipeAnalyzer) {
@@ -203,6 +281,19 @@ function showGazeDetails() {
     const popup = document.getElementById('gaze-details-popup');
     if (popup) {
         popup.classList.add('active');
+        
+        // DOM 상태 확인
+        const domOk = checkAndRepairPopupDOM();
+        if (!domOk) {
+            console.warn("⚠️ [POPUP] DOM 상태 문제로 팝업 업데이트 제한");
+        }
+        
+        // 데이터 동기화 확인
+        const syncOk = checkPopupDataSync();
+        if (!syncOk.gazeData) {
+            console.warn("⚠️ [POPUP] 시선 데이터가 없어서 강제 동기화 시도");
+            forcePopupDataSync();
+        }
         
         // MediaPipe 데이터로 업데이트
         if (window.mediaPipeAnalyzer) {
@@ -479,274 +570,4 @@ function generateComprehensiveScoreExplanation(analysis) {
     explanation += `<p>가장 개선이 필요한 영역: <strong>${lowestCategory.name}</strong> (${lowestCategory.score.toFixed(1)}%)</p>`;
     explanation += `<p>${lowestCategory.suggestion}</p>`;
     
-    explanation += `</div>`;
-    
-    return explanation;
-}
-
-function getLowestCategory(categories) {
-    const categoryScores = [
-        { name: '시각적 요소', score: categories.visual.average, suggestion: '표정, 시선, 자세, 깜빡임을 더 자연스럽게 조절해보세요.' },
-        { name: '청각적 요소', score: categories.auditory.average, suggestion: '음성 톤과 집중도를 개선하여 더 명확한 소통을 해보세요.' },
-        { name: '대화 요소', score: categories.conversation.score, suggestion: '대화 주도권을 적절히 조절하여 균형잡힌 대화를 해보세요.' }
-    ];
-    
-    return categoryScores.reduce((lowest, current) => 
-        current.score < lowest.score ? current : lowest
-    );
-}
-
-function updateBlinkingPopupContent() {
-    // MediaPipe 데이터가 있으면 사용, 없으면 기본 데이터 생성
-    let blinkingData = window.currentBlinkingData;
-    
-    // MediaPipe 데이터가 없으면 현재 점수로 생성
-    if (!blinkingData && window.mediaPipeAnalyzer) {
-        const currentScores = window.mediaPipeAnalyzer.currentMediaPipeScores || {};
-        const blinkingScore = currentScores.blinking || 0;
-        
-        // 기본 깜빡임 데이터 생성
-        blinkingData = {
-            score: blinkingScore,
-            label: getScoreLabel(blinkingScore),
-            blinkRate: blinkingScore * 0.01, // 분당 깜빡임 횟수
-            explanation: generateBlinkingExplanation(blinkingScore),
-            lastUpdate: new Date().toISOString()
-        };
-        
-        // 전역 변수에 저장
-        window.currentBlinkingData = blinkingData;
-    }
-    
-    if (!blinkingData) {
-        document.getElementById('blinking-main-value').textContent = '데이터 없음';
-        document.getElementById('blinking-rate-value').textContent = '0회/분';
-        document.getElementById('blinking-factors').innerHTML = '<div class="no-data">깜빡임 분석 데이터가 없습니다.</div>';
-        document.getElementById('blinking-criteria-text').innerHTML = '깜빡임 분석 데이터가 없습니다.';
-        document.getElementById('blinking-explanation-text').innerHTML = '깜빡임 분석 데이터가 없습니다.';
-        return;
-    }
-    
-    // 깜빡임 상태 업데이트
-    const mainValueEl = document.getElementById('blinking-main-value');
-    if (mainValueEl) {
-        mainValueEl.textContent = blinkingData.label;
-    }
-    
-    // 깜빡임 속도 업데이트
-    const rateEl = document.getElementById('blinking-rate-value');
-    if (rateEl) {
-        rateEl.textContent = `${blinkingData.blinkRate.toFixed(1)}회/분`;
-    }
-    
-    // HTML 팝업 파일의 함수들 사용
-    if (typeof window.updateBlinkingFactorsInfo === 'function') {
-        window.updateBlinkingFactorsInfo();
-    }
-    if (typeof window.updateBlinkingCriteriaInfo === 'function') {
-        window.updateBlinkingCriteriaInfo();
-    }
-    if (typeof window.updateBlinkingExplanationInfo === 'function') {
-        window.updateBlinkingExplanationInfo();
-    }
-}
-
-// ===== 자세 상세 정보 팝업 (UI-only mode) =====
-function showPostureDetails() {
-    const popup = document.getElementById('posture-details-popup');
-    if (popup) {
-        popup.classList.add('active');
-        
-        // MediaPipe 데이터로 업데이트
-        if (window.mediaPipeAnalyzer) {
-            window.mediaPipeAnalyzer.updatePosturePopupOnOpen();
-        }
-        
-        updatePosturePopupContent();
-    }
-}
-
-function closePostureDetails() {
-    const popup = document.getElementById('posture-details-popup');
-    if (popup) {
-        popup.classList.remove('active');
-    }
-}
-
-function updatePosturePopupContent() {
-    // MediaPipe 데이터가 있으면 사용, 없으면 기본 데이터 생성
-    let postureData = window.currentPostureData;
-    
-    // MediaPipe 데이터가 없으면 현재 점수로 생성
-    if (!postureData && window.mediaPipeAnalyzer) {
-        const currentScores = window.mediaPipeAnalyzer.currentMediaPipeScores || {};
-        const postureScore = currentScores.posture || 0;
-        
-        // 기본 자세 데이터 생성
-        postureData = {
-            score: postureScore,
-            label: getScoreLabel(postureScore),
-            headTilt: {
-                angle: 0.5,
-                direction: '중앙',
-                stability: postureScore / 100
-            },
-            stability: postureScore,
-            lastUpdate: new Date().toISOString()
-        };
-        
-        // 전역 변수에 저장
-        window.currentPostureData = postureData;
-    }
-    
-    if (!postureData) {
-        document.getElementById('posture-main-value').textContent = '데이터 없음';
-        document.getElementById('posture-score-value').textContent = '0%';
-        document.getElementById('posture-factors').innerHTML = '<div class="no-data">자세 분석 데이터가 없습니다.</div>';
-        document.getElementById('posture-criteria-text').innerHTML = '자세 분석 데이터가 없습니다.';
-        document.getElementById('posture-explanation-text').innerHTML = '자세 분석 데이터가 없습니다.';
-        return;
-    }
-    
-    // 자세 상태 업데이트
-    const mainValueEl = document.getElementById('posture-main-value');
-    if (mainValueEl) {
-        mainValueEl.textContent = postureData.label;
-    }
-    
-    // 자세 점수 업데이트
-    const scoreEl = document.getElementById('posture-score-value');
-    if (scoreEl) {
-        scoreEl.textContent = `${postureData.score}%`;
-    }
-    
-    // HTML 팝업 파일의 함수들 사용
-    if (typeof window.updatePostureFactorsInfo === 'function') {
-        window.updatePostureFactorsInfo();
-    }
-    if (typeof window.updatePostureCriteriaInfo === 'function') {
-        window.updatePostureCriteriaInfo();
-    }
-    if (typeof window.updatePostureExplanationInfo === 'function') {
-        window.updatePostureExplanationInfo();
-    }
-}
-
-// ===== 팝업 외부 클릭 시 닫기 =====
-document.addEventListener('click', function(event) {
-    const popups = [
-        'expression-details-popup',
-        'gaze-details-popup', 
-        'concentration-details-popup',
-        'posture-details-popup',
-        'blinking-details-popup',
-        'initiative-details-popup',
-        'comprehensive-score-details-popup'
-    ];
-    
-    popups.forEach(popupId => {
-        const popup = document.getElementById(popupId);
-        if (popup && event.target === popup) {
-            const closeFunction = popupId.replace('-details-popup', 'Details');
-            if (typeof window[`close${closeFunction.charAt(0).toUpperCase() + closeFunction.slice(1)}`] === 'function') {
-                window[`close${closeFunction.charAt(0).toUpperCase() + closeFunction.slice(1)}`]();
-            }
-        }
-    });
-});
-
-// 전역 스코프에 노출
-window.PopupManager = {
-    showExpressionDetails,
-    closeExpressionDetails,
-    showGazeDetails,
-    closeGazeDetails,
-    showConcentrationDetails,
-    closeConcentrationDetails,
-    showPostureDetails,
-    closePostureDetails,
-    showBlinkingDetails,
-    closeBlinkingDetails,
-    updateExpressionPopupContent,
-    updateGazePopupContent,
-    updateConcentrationPopupContent,
-    updatePosturePopupContent,
-    updateBlinkingPopupContent
-};
-
-// 깜빡임 함수들을 전역 스코프에 직접 노출
-window.showBlinkingDetails = showBlinkingDetails;
-window.closeBlinkingDetails = closeBlinkingDetails;
-
-// 누락된 함수들 추가 (팝업 HTML에서 정의됨)
-function showInitiativeDetails() {
-    const popup = document.getElementById('initiative-details-popup');
-    if (popup) {
-        popup.classList.add('active');
-        if (typeof updateInitiativePopupContent === 'function') {
-            updateInitiativePopupContent();
-        }
-    }
-}
-
-function closeInitiativeDetails() {
-    const popup = document.getElementById('initiative-details-popup');
-    if (popup) {
-        popup.classList.remove('active');
-    }
-}
-
-function showComprehensiveScoreDetails() {
-    const popup = document.getElementById('comprehensive-score-details-popup');
-    if (popup) {
-        popup.classList.add('active');
-        if (typeof updateComprehensiveScorePopupContent === 'function') {
-            updateComprehensiveScorePopupContent();
-        }
-    }
-}
-
-function closeComprehensiveScoreDetails() {
-    const popup = document.getElementById('comprehensive-score-details-popup');
-    if (popup) {
-        popup.classList.remove('active');
-    }
-}
-
-// 전역 스코프에 노출
-window.showInitiativeDetails = showInitiativeDetails;
-window.closeInitiativeDetails = closeInitiativeDetails;
-window.showComprehensiveScoreDetails = showComprehensiveScoreDetails;
-window.closeComprehensiveScoreDetails = closeComprehensiveScoreDetails;
-
-// ===== 종합 점수 탭 관리 =====
-function showComprehensiveTab(tabName) {
-    // 모든 탭 버튼에서 active 클래스 제거
-    document.querySelectorAll('#comprehensive-score-details-popup .tab-btn').forEach(btn => {
-        btn.classList.remove('active');
-    });
-    
-    // 모든 탭 패널 숨기기
-    document.querySelectorAll('#comprehensive-score-details-popup .tab-pane').forEach(pane => {
-        pane.classList.remove('active');
-    });
-    
-    // 선택된 탭 버튼 활성화
-    const activeBtn = document.querySelector(`#comprehensive-score-details-popup .tab-btn[onclick="showComprehensiveTab('${tabName}')"]`);
-    if (activeBtn) {
-        activeBtn.classList.add('active');
-    }
-    
-    // 선택된 탭 패널 표시
-    const activePane = document.getElementById(`comprehensive-${tabName}-tab`);
-    if (activePane) {
-        activePane.classList.add('active');
-    }
-    
-    console.log(`[PopupManager] 종합 점수 탭 전환: ${tabName}`);
-}
-
-// 전역 함수로 등록
-window.showComprehensiveTab = showComprehensiveTab;
-
-console.log('[POPUP-MANAGER] 팝업 관리자 모듈 로드 완료');
+    explanation += `
