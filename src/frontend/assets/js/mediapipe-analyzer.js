@@ -847,6 +847,7 @@ class MediaPipeAnalyzer {
                 this.updateAllPopupData(scores);
                 
                 // 서버 AI 모델 분석 스케줄링 (3초 주기)
+                console.log("🔄 [디버그] 서버 분석 스케줄링 시도...");
                 this.scheduleServerAnalysis(video, scores);
                 
                 console.log("👤 [MediaPipe] 얼굴 감지됨, 점수:", scores);
@@ -1035,11 +1036,21 @@ class MediaPipeAnalyzer {
         
         if (this.isServerAnalysisRunning || 
             (now - this.lastServerAnalysis) < this.serverAnalysisInterval) {
+            console.log("⏰ [디버그] 서버 분석 대기 중:", {
+                isRunning: this.isServerAnalysisRunning,
+                timeSinceLast: now - this.lastServerAnalysis,
+                interval: this.serverAnalysisInterval
+            });
             return; // 아직 시간 안됨
         }
         
         this.lastServerAnalysis = now;
         this.isServerAnalysisRunning = true;
+        
+        console.log("🚀 [디버그] 서버 분석 시작:", {
+            timestamp: now,
+            mediapipeScores: mediapipeScores
+        });
         
         try {
             await this.sendFrameToServer(video, mediapipeScores);
@@ -1047,6 +1058,7 @@ class MediaPipeAnalyzer {
             console.warn("⚠️ 서버 분석 실패, MediaPipe로만 계속 진행:", error);
         } finally {
             this.isServerAnalysisRunning = false;
+            console.log("✅ [디버그] 서버 분석 완료");
         }
     }
     
@@ -1068,10 +1080,17 @@ class MediaPipeAnalyzer {
         
         try {
             console.log("🧠 서버 표정 분석 요청...");
+            console.log("🔍 [디버그] 요청 URL:", `${window.location.origin}/api/analysis/expression`);
+            console.log("🔍 [디버그] 요청 데이터 크기:", JSON.stringify({
+                image: imageData.substring(0, 100) + "...",
+                mediapipe_scores: mediapipeScores,
+                timestamp: Date.now(),
+                user_id: window.userId || 'anonymous'
+            }).length, "bytes");
             
             // 올바른 API 엔드포인트 사용
             const baseUrl = window.location.origin;
-            const response = await fetch(`${baseUrl}/api/analyze/expression`, {
+            const response = await fetch(`${baseUrl}/api/analysis/expression`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -1086,9 +1105,12 @@ class MediaPipeAnalyzer {
             
             if (response.ok) {
                 const result = await response.json();
+                console.log("✅ [디버그] 서버 분석 성공:", result);
                 this.handleServerAnalysisResult(result);
             } else {
                 console.warn("⚠️ 서버 분석 응답 오류:", response.status, response.statusText);
+                console.log("🔍 [디버그] 응답 헤더:", Object.fromEntries(response.headers.entries()));
+                console.log("🔍 [디버그] 응답 URL:", response.url);
                 // 서버 오류시 MediaPipe 점수만 사용
                 this.handleServerAnalysisResult({
                     model_scores: mediapipeScores,
@@ -1128,6 +1150,14 @@ class MediaPipeAnalyzer {
      */
     handleServerAnalysisResult(result) {
         console.log("🎯 서버 분석 결과:", result);
+        console.log("🔍 [디버그] 서버 분석 결과 상세:", {
+            hasModelScores: !!result.model_scores,
+            hasMediapipeScores: !!result.mediapipe_scores,
+            modelScores: result.model_scores,
+            mediapipeScores: result.mediapipe_scores,
+            isAnomaly: result.is_anomaly,
+            feedback: result.feedback
+        });
         
         this.serverAnalysisResults = result;
         
@@ -1624,6 +1654,21 @@ class MediaPipeAnalyzer {
                     ),
                     topEmotion: Object.entries(expressions).reduce((a, b) => expressions[a[0]] > expressions[b[0]] ? a : b)[0]
                 });
+                
+                // 8-감정 분석 결과 상세 로그
+                console.log("🎭 [MediaPipe] 8-감정 분석 결과:", {
+                    happy: expressions.happy.toFixed(3),
+                    sad: expressions.sad.toFixed(3),
+                    angry: expressions.angry.toFixed(3),
+                    surprised: expressions.surprised.toFixed(3),
+                    fearful: expressions.fearful.toFixed(3),
+                    disgusted: expressions.disgusted.toFixed(3),
+                    neutral: expressions.neutral.toFixed(3),
+                    contempt: expressions.contempt.toFixed(3),
+                    totalSum: Object.values(expressions).reduce((sum, val) => sum + val, 0).toFixed(3),
+                    dominantEmotion: Object.entries(expressions).reduce((a, b) => expressions[a[0]] > expressions[b[0]] ? a : b)[0]
+                });
+                
                 this.lastDebugTime = Date.now();
             }
             
