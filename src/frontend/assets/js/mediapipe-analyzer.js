@@ -1925,6 +1925,66 @@ class MediaPipeAnalyzer {
         }
     }
     
+    /**
+     * 깜빡임 팝업이 열릴 때 호출되는 메서드
+     */
+    updateBlinkingPopupOnOpen() {
+        if (this.currentMediaPipeScores && Object.keys(this.currentMediaPipeScores).length > 0) {
+            this.updateBlinkingPopupData(this.currentMediaPipeScores);
+        } else {
+            console.log("⚠️ [팝업] 깜빡임 데이터가 없어서 기본값 사용");
+            const defaultScores = {
+                expression: 75,
+                concentration: 70,
+                gaze: 80,
+                blinking: 85,
+                posture: 75,
+                initiative: 70
+            };
+            this.updateBlinkingPopupData(defaultScores);
+        }
+    }
+    
+    /**
+     * 자세 팝업이 열릴 때 호출되는 메서드
+     */
+    updatePosturePopupOnOpen() {
+        if (this.currentMediaPipeScores && Object.keys(this.currentMediaPipeScores).length > 0) {
+            this.updatePosturePopupData(this.currentMediaPipeScores);
+        } else {
+            console.log("⚠️ [팝업] 자세 데이터가 없어서 기본값 사용");
+            const defaultScores = {
+                expression: 75,
+                concentration: 70,
+                gaze: 80,
+                blinking: 85,
+                posture: 75,
+                initiative: 70
+            };
+            this.updatePosturePopupData(defaultScores);
+        }
+    }
+    
+    /**
+     * 집중도 팝업이 열릴 때 호출되는 메서드
+     */
+    updateConcentrationPopupOnOpen() {
+        if (this.currentMediaPipeScores && Object.keys(this.currentMediaPipeScores).length > 0) {
+            this.updateConcentrationPopupData(this.currentMediaPipeScores);
+        } else {
+            console.log("⚠️ [팝업] 집중도 데이터가 없어서 기본값 사용");
+            const defaultScores = {
+                expression: 75,
+                concentration: 70,
+                gaze: 80,
+                blinking: 85,
+                posture: 75,
+                initiative: 70
+            };
+            this.updateConcentrationPopupData(defaultScores);
+        }
+    }
+    
     // 헬퍼 메서드들
     getMainExpression(scores) {
         return 'neutral'; // 기본값

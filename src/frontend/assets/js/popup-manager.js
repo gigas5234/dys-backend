@@ -274,6 +274,12 @@ function showConcentrationDetails() {
     const popup = document.getElementById('concentration-details-popup');
     if (popup) {
         popup.classList.add('active');
+        
+        // MediaPipe 데이터로 업데이트
+        if (window.mediaPipeAnalyzer) {
+            window.mediaPipeAnalyzer.updateConcentrationPopupOnOpen();
+        }
+        
         updateConcentrationPopupContent();
     }
 }
@@ -286,12 +292,50 @@ function closeConcentrationDetails() {
 }
 
 function updateConcentrationPopupContent() {
-    // UI-only mode: 기본 데이터 표시
-    document.getElementById('concentration-main-value').textContent = 'UI 모드';
-    document.getElementById('concentration-score-value').textContent = '0%';
-    document.getElementById('concentration-factors').innerHTML = '<div class="no-data">집중도 분석 기능이 비활성화되어 있습니다.</div>';
-    document.getElementById('concentration-criteria-text').innerHTML = '집중도 분석 기능이 비활성화되어 있습니다.';
-    document.getElementById('concentration-explanation-text').innerHTML = '집중도 분석 기능이 비활성화되어 있습니다.';
+    // MediaPipe 데이터가 있으면 사용, 없으면 기본 데이터 생성
+    let concentrationData = window.currentConcentrationData;
+    
+    // MediaPipe 데이터가 없으면 현재 점수로 생성
+    if (!concentrationData && window.mediaPipeAnalyzer) {
+        const currentScores = window.mediaPipeAnalyzer.currentMediaPipeScores || {};
+        const concentrationScore = currentScores.concentration || 0;
+        
+        // 기본 집중도 데이터 생성
+        concentrationData = {
+            score: concentrationScore,
+            label: getScoreLabel(concentrationScore),
+            factors: {
+                eyeOpenness: concentrationScore * 0.8,
+                headStability: concentrationScore * 0.9,
+                blinkRate: concentrationScore * 0.7
+            },
+            lastUpdate: new Date().toISOString()
+        };
+        
+        // 전역 변수에 저장
+        window.currentConcentrationData = concentrationData;
+    }
+    
+    if (!concentrationData) {
+        document.getElementById('concentration-main-value').textContent = '데이터 없음';
+        document.getElementById('concentration-score-value').textContent = '0%';
+        document.getElementById('concentration-factors').innerHTML = '<div class="no-data">집중도 분석 데이터가 없습니다.</div>';
+        document.getElementById('concentration-criteria-text').innerHTML = '집중도 분석 데이터가 없습니다.';
+        document.getElementById('concentration-explanation-text').innerHTML = '집중도 분석 데이터가 없습니다.';
+        return;
+    }
+    
+    // 집중도 상태 업데이트
+    const mainValueEl = document.getElementById('concentration-main-value');
+    if (mainValueEl) {
+        mainValueEl.textContent = concentrationData.label;
+    }
+    
+    // 집중도 점수 업데이트
+    const scoreEl = document.getElementById('concentration-score-value');
+    if (scoreEl) {
+        scoreEl.textContent = `${concentrationData.score}%`;
+    }
     
     // HTML 팝업 파일의 함수들 사용
     if (typeof window.updateConcentrationFactorsInfo === 'function') {
@@ -310,6 +354,12 @@ function showBlinkingDetails() {
     const popup = document.getElementById('blinking-details-popup');
     if (popup) {
         popup.classList.add('active');
+        
+        // MediaPipe 데이터로 업데이트
+        if (window.mediaPipeAnalyzer) {
+            window.mediaPipeAnalyzer.updateBlinkingPopupOnOpen();
+        }
+        
         updateBlinkingPopupContent();
     }
 }
@@ -319,6 +369,12 @@ function closeBlinkingDetails() {
     if (popup) {
         popup.classList.remove('active');
     }
+}
+
+function generateBlinkingExplanation(score) {
+    if (score >= 80) return "적절한 깜빡임으로 눈이 건강합니다.";
+    if (score >= 60) return "깜빡임이 다소 적습니다.";
+    return "깜빡임이 너무 적어 눈이 건조할 수 있습니다.";
 }
 
 // 대화 주도권 관련 함수들은 initiative-details-popup.html에서 관리
@@ -441,12 +497,47 @@ function getLowestCategory(categories) {
 }
 
 function updateBlinkingPopupContent() {
-    // UI-only mode: 기본 데이터 표시
-    document.getElementById('blinking-main-value').textContent = 'UI 모드';
-    document.getElementById('blinking-rate-value').textContent = '0회/분';
-    document.getElementById('blinking-factors').innerHTML = '<div class="no-data">깜빡임 분석 기능이 비활성화되어 있습니다.</div>';
-    document.getElementById('blinking-criteria-text').innerHTML = '깜빡임 분석 기능이 비활성화되어 있습니다.';
-    document.getElementById('blinking-explanation-text').innerHTML = '깜빡임 분석 기능이 비활성화되어 있습니다.';
+    // MediaPipe 데이터가 있으면 사용, 없으면 기본 데이터 생성
+    let blinkingData = window.currentBlinkingData;
+    
+    // MediaPipe 데이터가 없으면 현재 점수로 생성
+    if (!blinkingData && window.mediaPipeAnalyzer) {
+        const currentScores = window.mediaPipeAnalyzer.currentMediaPipeScores || {};
+        const blinkingScore = currentScores.blinking || 0;
+        
+        // 기본 깜빡임 데이터 생성
+        blinkingData = {
+            score: blinkingScore,
+            label: getScoreLabel(blinkingScore),
+            blinkRate: blinkingScore * 0.01, // 분당 깜빡임 횟수
+            explanation: generateBlinkingExplanation(blinkingScore),
+            lastUpdate: new Date().toISOString()
+        };
+        
+        // 전역 변수에 저장
+        window.currentBlinkingData = blinkingData;
+    }
+    
+    if (!blinkingData) {
+        document.getElementById('blinking-main-value').textContent = '데이터 없음';
+        document.getElementById('blinking-rate-value').textContent = '0회/분';
+        document.getElementById('blinking-factors').innerHTML = '<div class="no-data">깜빡임 분석 데이터가 없습니다.</div>';
+        document.getElementById('blinking-criteria-text').innerHTML = '깜빡임 분석 데이터가 없습니다.';
+        document.getElementById('blinking-explanation-text').innerHTML = '깜빡임 분석 데이터가 없습니다.';
+        return;
+    }
+    
+    // 깜빡임 상태 업데이트
+    const mainValueEl = document.getElementById('blinking-main-value');
+    if (mainValueEl) {
+        mainValueEl.textContent = blinkingData.label;
+    }
+    
+    // 깜빡임 속도 업데이트
+    const rateEl = document.getElementById('blinking-rate-value');
+    if (rateEl) {
+        rateEl.textContent = `${blinkingData.blinkRate.toFixed(1)}회/분`;
+    }
     
     // HTML 팝업 파일의 함수들 사용
     if (typeof window.updateBlinkingFactorsInfo === 'function') {
@@ -465,6 +556,12 @@ function showPostureDetails() {
     const popup = document.getElementById('posture-details-popup');
     if (popup) {
         popup.classList.add('active');
+        
+        // MediaPipe 데이터로 업데이트
+        if (window.mediaPipeAnalyzer) {
+            window.mediaPipeAnalyzer.updatePosturePopupOnOpen();
+        }
+        
         updatePosturePopupContent();
     }
 }
@@ -477,12 +574,51 @@ function closePostureDetails() {
 }
 
 function updatePosturePopupContent() {
-    // UI-only mode: 기본 데이터 표시
-    document.getElementById('posture-main-value').textContent = 'UI 모드';
-    document.getElementById('posture-score-value').textContent = '0%';
-    document.getElementById('posture-factors').innerHTML = '<div class="no-data">자세 분석 기능이 비활성화되어 있습니다.</div>';
-    document.getElementById('posture-criteria-text').innerHTML = '자세 분석 기능이 비활성화되어 있습니다.';
-    document.getElementById('posture-explanation-text').innerHTML = '자세 분석 기능이 비활성화되어 있습니다.';
+    // MediaPipe 데이터가 있으면 사용, 없으면 기본 데이터 생성
+    let postureData = window.currentPostureData;
+    
+    // MediaPipe 데이터가 없으면 현재 점수로 생성
+    if (!postureData && window.mediaPipeAnalyzer) {
+        const currentScores = window.mediaPipeAnalyzer.currentMediaPipeScores || {};
+        const postureScore = currentScores.posture || 0;
+        
+        // 기본 자세 데이터 생성
+        postureData = {
+            score: postureScore,
+            label: getScoreLabel(postureScore),
+            headTilt: {
+                angle: 0.5,
+                direction: '중앙',
+                stability: postureScore / 100
+            },
+            stability: postureScore,
+            lastUpdate: new Date().toISOString()
+        };
+        
+        // 전역 변수에 저장
+        window.currentPostureData = postureData;
+    }
+    
+    if (!postureData) {
+        document.getElementById('posture-main-value').textContent = '데이터 없음';
+        document.getElementById('posture-score-value').textContent = '0%';
+        document.getElementById('posture-factors').innerHTML = '<div class="no-data">자세 분석 데이터가 없습니다.</div>';
+        document.getElementById('posture-criteria-text').innerHTML = '자세 분석 데이터가 없습니다.';
+        document.getElementById('posture-explanation-text').innerHTML = '자세 분석 데이터가 없습니다.';
+        return;
+    }
+    
+    // 자세 상태 업데이트
+    const mainValueEl = document.getElementById('posture-main-value');
+    if (mainValueEl) {
+        mainValueEl.textContent = postureData.label;
+    }
+    
+    // 자세 점수 업데이트
+    const scoreEl = document.getElementById('posture-score-value');
+    if (scoreEl) {
+        scoreEl.textContent = `${postureData.score}%`;
+    }
     
     // HTML 팝업 파일의 함수들 사용
     if (typeof window.updatePostureFactorsInfo === 'function') {
