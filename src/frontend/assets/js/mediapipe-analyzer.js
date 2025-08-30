@@ -85,7 +85,16 @@ class MediaPipeAnalyzer {
         
         // 하이브리드 모드 초기화
         this.initializeHybridMode();
-        this.initializeMediaPipe(); // MediaPipe 실제 초기화
+        
+        // MediaPipe 초기화를 비동기로 실행
+        this.initializeMediaPipe().then(success => {
+            if (success) {
+                console.log("✅ [MediaPipe] 초기화 성공 - 분석 시작");
+            } else {
+                console.log("❌ [MediaPipe] 초기화 실패 - 기본 모드로 동작");
+            }
+        });
+        
         return; // WebSocket 비활성화
         
         try {
@@ -1732,6 +1741,305 @@ class MediaPipeAnalyzer {
             4: 'HAVE_ENOUGH_DATA'
         };
         return states[readyState] || 'UNKNOWN';
+    }
+
+    /**
+     * 모든 팝업 데이터 업데이트
+     */
+    updateAllPopupData(scores) {
+        // 전역 변수에 현재 점수 저장
+        this.currentMediaPipeScores = scores;
+        
+        // 각 메트릭별 팝업 데이터 업데이트
+        this.updateExpressionPopupData(scores);
+        this.updateGazePopupData(scores);
+        this.updateConcentrationPopupData(scores);
+        this.updateBlinkingPopupData(scores);
+        this.updatePosturePopupData(scores);
+        this.updateInitiativePopupData(scores);
+        
+        console.log("📊 [팝업] 모든 팝업 데이터 업데이트 완료:", scores);
+    }
+    
+    /**
+     * 표정 팝업 데이터 업데이트
+     */
+    updateExpressionPopupData(scores) {
+        const expressionData = {
+            expression: this.getMainExpression(scores),
+            confidence: scores.expression / 100,
+            score: {
+                score: scores.expression,
+                label: this.getScoreLabel(scores.expression)
+            },
+            probabilities: this.getAveragedExpressions(scores),
+            lastUpdate: new Date().toISOString()
+        };
+        
+        // 전역 변수에 저장
+        window.currentExpressionData = expressionData;
+        
+        // 팝업이 열려있으면 UI 업데이트
+        const popup = document.getElementById('expression-details-popup');
+        if (popup && popup.classList.contains('active')) {
+            this.updateExpressionPopupUI(expressionData);
+        }
+    }
+    
+    /**
+     * 시선 팝업 데이터 업데이트
+     */
+    updateGazePopupData(scores) {
+        const gazeData = {
+            score: scores.gaze,
+            label: this.getScoreLabel(scores.gaze),
+            gazeDirection: this.getGazeDirection(scores),
+            eyeCenter: this.getEyeCenterData(scores),
+            lastUpdate: new Date().toISOString()
+        };
+        
+        window.currentGazeData = gazeData;
+        
+        const popup = document.getElementById('gaze-details-popup');
+        if (popup && popup.classList.contains('active')) {
+            this.updateGazePopupUI(gazeData);
+        }
+    }
+    
+    /**
+     * 집중도 팝업 데이터 업데이트
+     */
+    updateConcentrationPopupData(scores) {
+        const concentrationData = {
+            score: scores.concentration,
+            label: this.getScoreLabel(scores.concentration),
+            factors: this.getConcentrationFactors(scores),
+            lastUpdate: new Date().toISOString()
+        };
+        
+        window.currentConcentrationData = concentrationData;
+        
+        const popup = document.getElementById('concentration-details-popup');
+        if (popup && popup.classList.contains('active')) {
+            this.updateConcentrationPopupUI(concentrationData);
+        }
+    }
+    
+    /**
+     * 깜빡임 팝업 데이터 업데이트
+     */
+    updateBlinkingPopupData(scores) {
+        const blinkingData = {
+            score: scores.blinking,
+            label: this.getScoreLabel(scores.blinking),
+            blinkRate: this.calculateBlinkRate(scores),
+            explanation: this.generateBlinkingExplanation(scores.blinking),
+            lastUpdate: new Date().toISOString()
+        };
+        
+        window.currentBlinkingData = blinkingData;
+        
+        const popup = document.getElementById('blinking-details-popup');
+        if (popup && popup.classList.contains('active')) {
+            this.updateBlinkingPopupUI(blinkingData);
+        }
+    }
+    
+    /**
+     * 자세 팝업 데이터 업데이트
+     */
+    updatePosturePopupData(scores) {
+        const postureData = {
+            score: scores.posture,
+            label: this.getScoreLabel(scores.posture),
+            headTilt: this.getHeadTiltData(scores),
+            stability: this.getHeadStabilityScore(scores),
+            lastUpdate: new Date().toISOString()
+        };
+        
+        window.currentPostureData = postureData;
+        
+        const popup = document.getElementById('posture-details-popup');
+        if (popup && popup.classList.contains('active')) {
+            this.updatePosturePopupUI(postureData);
+        }
+    }
+    
+    /**
+     * 주도성 팝업 데이터 업데이트
+     */
+    updateInitiativePopupData(scores) {
+        const initiativeData = {
+            score: scores.initiative,
+            label: this.getScoreLabel(scores.initiative),
+            factors: this.getInitiativeFactors(scores),
+            lastUpdate: new Date().toISOString()
+        };
+        
+        window.currentInitiativeData = initiativeData;
+        
+        const popup = document.getElementById('initiative-details-popup');
+        if (popup && popup.classList.contains('active')) {
+            this.updateInitiativePopupUI(initiativeData);
+        }
+    }
+    
+    /**
+     * 표정 팝업이 열릴 때 호출되는 메서드
+     */
+    updateExpressionPopupOnOpen() {
+        if (this.currentMediaPipeScores && Object.keys(this.currentMediaPipeScores).length > 0) {
+            this.updateExpressionPopupData(this.currentMediaPipeScores);
+        } else {
+            console.log("⚠️ [팝업] 표정 데이터가 없어서 기본값 사용");
+            // 기본 데이터 생성
+            const defaultScores = {
+                expression: 75,
+                concentration: 70,
+                gaze: 80,
+                blinking: 85,
+                posture: 75,
+                initiative: 70
+            };
+            this.updateExpressionPopupData(defaultScores);
+        }
+    }
+    
+    /**
+     * 시선 팝업이 열릴 때 호출되는 메서드
+     */
+    updateGazePopupOnOpen() {
+        if (this.currentMediaPipeScores && Object.keys(this.currentMediaPipeScores).length > 0) {
+            this.updateGazePopupData(this.currentMediaPipeScores);
+        } else {
+            console.log("⚠️ [팝업] 시선 데이터가 없어서 기본값 사용");
+            const defaultScores = {
+                expression: 75,
+                concentration: 70,
+                gaze: 80,
+                blinking: 85,
+                posture: 75,
+                initiative: 70
+            };
+            this.updateGazePopupData(defaultScores);
+        }
+    }
+    
+    // 헬퍼 메서드들
+    getMainExpression(scores) {
+        return 'neutral'; // 기본값
+    }
+    
+    getAveragedExpressions(scores) {
+        return {
+            happy: Math.max(0, scores.expression - 20),
+            sad: Math.max(0, 100 - scores.expression - 20),
+            angry: Math.max(0, 50 - Math.abs(scores.expression - 50)),
+            surprised: Math.max(0, 30 - Math.abs(scores.expression - 70)),
+            fearful: Math.max(0, 20 - Math.abs(scores.expression - 30)),
+            disgusted: Math.max(0, 15 - Math.abs(scores.expression - 40)),
+            neutral: Math.max(0, 100 - Math.abs(scores.expression - 50)),
+            contempt: Math.max(0, 10 - Math.abs(scores.expression - 20))
+        };
+    }
+    
+    getScoreLabel(score) {
+        if (score >= 85) return '매우 좋음';
+        if (score >= 70) return '좋음';
+        if (score >= 50) return '보통';
+        if (score >= 30) return '나쁨';
+        return '매우 나쁨';
+    }
+    
+    getGazeDirection(scores) {
+        return {
+            x: 0.5,
+            y: 0.5,
+            distance: 0.184,
+            status: '중앙'
+        };
+    }
+    
+    getEyeCenterData(scores) {
+        return {
+            left: { x: 0.4, y: 0.5 },
+            right: { x: 0.6, y: 0.5 }
+        };
+    }
+    
+    getConcentrationFactors(scores) {
+        return {
+            eyeOpenness: scores.concentration * 0.8,
+            headStability: scores.concentration * 0.9,
+            blinkRate: scores.concentration * 0.7
+        };
+    }
+    
+    calculateBlinkRate(scores) {
+        return scores.blinking * 0.01; // 분당 깜빡임 횟수
+    }
+    
+    generateBlinkingExplanation(score) {
+        if (score >= 80) return "적절한 깜빡임으로 눈이 건강합니다.";
+        if (score >= 60) return "깜빡임이 다소 적습니다.";
+        return "깜빡임이 너무 적어 눈이 건조할 수 있습니다.";
+    }
+    
+    getHeadTiltData(scores) {
+        return {
+            angle: 0.5,
+            direction: '중앙',
+            stability: scores.posture / 100
+        };
+    }
+    
+    getHeadStabilityScore(scores) {
+        return scores.posture;
+    }
+    
+    getInitiativeFactors(scores) {
+        return {
+            expression: scores.expression * 0.8,
+            gaze: scores.gaze * 0.9,
+            concentration: scores.concentration * 0.7
+        };
+    }
+    
+    // UI 업데이트 메서드들 (팝업이 열려있을 때만 호출)
+    updateExpressionPopupUI(data) {
+        if (typeof window.updateExpressionPopupContent === 'function') {
+            window.updateExpressionPopupContent();
+        }
+    }
+    
+    updateGazePopupUI(data) {
+        if (typeof window.updateGazePopupContent === 'function') {
+            window.updateGazePopupContent();
+        }
+    }
+    
+    updateConcentrationPopupUI(data) {
+        if (typeof window.updateConcentrationPopupContent === 'function') {
+            window.updateConcentrationPopupContent();
+        }
+    }
+    
+    updateBlinkingPopupUI(data) {
+        if (typeof window.updateBlinkingPopupContent === 'function') {
+            window.updateBlinkingPopupContent();
+        }
+    }
+    
+    updatePosturePopupUI(data) {
+        if (typeof window.updatePosturePopupContent === 'function') {
+            window.updatePosturePopupContent();
+        }
+    }
+    
+    updateInitiativePopupUI(data) {
+        if (typeof window.updateInitiativePopupContent === 'function') {
+            window.updateInitiativePopupContent();
+        }
     }
 }
 
