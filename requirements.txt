@@ -57,6 +57,9 @@ Pillow>=10.0.0  # 이미지 처리
 pydantic==2.5.0
 dataclasses-json==0.6.1
 
+# Database - Supabase
+supabase>=2.0.0
+
 # System & Process Management
 psutil==5.9.6
 
