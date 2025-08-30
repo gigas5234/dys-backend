@@ -450,7 +450,7 @@ class MediaPipeAnalyzer {
         
         // 서버 분석 관련 변수들
         this.lastServerAnalysis = 0;
-        this.serverAnalysisInterval = 2000; // 2초마다
+        this.serverAnalysisInterval = 3000; // 3초마다 (고화질 대응)
         this.currentMediaPipeScores = {};
         this.serverAnalysisResults = {};
         this.isServerAnalysisRunning = false;
@@ -547,12 +547,15 @@ class MediaPipeAnalyzer {
         try {
             console.log("📹 [MediaPipe] 백그라운드 카메라 분석 시작...");
             
-            // 실제 카메라 스트림 가져오기 (화면에 표시하지 않음)
+            // 실제 카메라 스트림 가져오기 (화면에 표시하지 않음) - 고화질 설정
             const stream = await navigator.mediaDevices.getUserMedia({ 
                 video: { 
-                    width: { ideal: 640 },
-                    height: { ideal: 480 },
-                    facingMode: 'user'
+                    width: { ideal: 1280, min: 1280 },
+                    height: { ideal: 720, min: 720 },
+                    frameRate: { ideal: 30, min: 15 },
+                    facingMode: 'user',
+                    aspectRatio: { ideal: 16/9 },
+                    resizeMode: 'none'
                 },
                 audio: false 
             });
@@ -713,13 +716,22 @@ class MediaPipeAnalyzer {
      * MediaPipe 실시간 점수 계산
      */
     calculateRealtimeScores(landmarks) {
+        // 8가지 표정 확률 계산
+        const expressionProbabilities = this.analyzeEightExpressions(landmarks);
+        
+        // 시선 데이터 계산
+        const gazeData = this.calculateGazeData(landmarks);
+        
         const scores = {
             expression: this.calculateExpressionScore(landmarks),
             concentration: this.calculateConcentrationScore(landmarks),
             gaze: this.calculateGazeScore(landmarks),
             blinking: this.calculateBlinkingScore(landmarks).score,
             posture: this.calculatePostureScore(landmarks),
-            initiative: this.calculateInitiativeScore(landmarks)
+            initiative: this.calculateInitiativeScore(landmarks),
+            expressionProbabilities: expressionProbabilities,  // 8가지 표정 확률
+            gazeDirection: gazeData.gazeDirection,  // 시선 방향 데이터
+            eyeCenter: gazeData.eyeCenter  // 눈동자 중심 데이터
         };
         
         this.currentMediaPipeScores = scores;
@@ -830,12 +842,11 @@ class MediaPipeAnalyzer {
     }
     
     /**
-     * 서버 분석 스케줄링 (임시 비활성화)
+     * 서버 분석 스케줄링 (3초 주기로 활성화)
      */
     async scheduleServerAnalysis(video, mediapipeScores) {
-        // 임시로 서버 분석 비활성화 (405 오류 해결 전까지)
-        console.log("🚫 서버 분석 임시 비활성화 (MediaPipe만 사용)");
-        return;
+        // 서버 분석 활성화 (3초 주기)
+        console.log("🔄 서버 분석 스케줄링 (3초 주기)");
         
         const now = Date.now();
         
@@ -860,6 +871,8 @@ class MediaPipeAnalyzer {
      * 서버로 프레임 및 MediaPipe 점수 전송
      */
     async sendFrameToServer(video, mediapipeScores) {
+        const startTime = performance.now();
+        
         // 캔버스에 현재 프레임 캡처
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
@@ -867,8 +880,8 @@ class MediaPipeAnalyzer {
         canvas.height = video.videoHeight;
         ctx.drawImage(video, 0, 0);
         
-        // 이미지를 base64로 변환
-        const imageData = canvas.toDataURL('image/jpeg', 0.8);
+        // 이미지를 base64로 변환 - 고품질 설정
+        const imageData = canvas.toDataURL('image/jpeg', 0.95);
         
         try {
             console.log("🧠 서버 표정 분석 요청...");
@@ -911,6 +924,19 @@ class MediaPipeAnalyzer {
                 is_anomaly: false,
                 feedback: { confidence: 0.8 }
             });
+        } finally {
+            // 성능 모니터링
+            const processingTime = performance.now() - startTime;
+            console.log(`⏱️ [성능] 서버 분석 처리 시간: ${processingTime.toFixed(0)}ms`);
+            
+            // 동적 주기 조정
+            if (processingTime > 2500) { // 2.5초 초과
+                this.serverAnalysisInterval = Math.min(5000, this.serverAnalysisInterval * 1.2);
+                console.log(`🔄 [성능] 주기 조정: ${this.serverAnalysisInterval}ms로 증가`);
+            } else if (processingTime < 1500) { // 1.5초 미만
+                this.serverAnalysisInterval = Math.max(2000, this.serverAnalysisInterval * 0.9);
+                console.log(`🔄 [성능] 주기 조정: ${this.serverAnalysisInterval}ms로 감소`);
+            }
         }
     }
     
@@ -1117,7 +1143,7 @@ class MediaPipeAnalyzer {
     // === MediaPipe 점수 계산 함수들 (실제 구현) ===
     
     /**
-     * 표정 점수 계산
+     * 표정 점수 계산 (데이팅 친화적 점수 시스템)
      */
     calculateExpressionScore(landmarks) {
         try {
@@ -1128,7 +1154,32 @@ class MediaPipeAnalyzer {
             // 8가지 표정 분류를 위한 랜드마크 분석
             const expressions = this.analyzeEightExpressions(landmarks);
             
-            // 가장 높은 확률의 표정 찾기
+            // 데이팅에서 상대방이 좋아할 만한 표정에 높은 점수 부여
+            const datingScoreWeights = {
+                happy: 1.0,      // 웃음 - 가장 높은 점수
+                neutral: 0.8,    // 중립 - 좋은 점수
+                surprised: 0.6,  // 놀람 - 중간 점수
+                contempt: 0.4,   // 경멸 - 낮은 점수
+                fearful: 0.3,    // 두려움 - 낮은 점수
+                sad: 0.2,        // 슬픔 - 낮은 점수
+                disgusted: 0.1,  // 혐오 - 매우 낮은 점수
+                angry: 0.0       // 분노 - 최저 점수
+            };
+            
+            // 가중 평균 점수 계산 (데이팅 친화적)
+            let weightedScore = 0;
+            let totalWeight = 0;
+            
+            Object.entries(expressions).forEach(([expression, probability]) => {
+                const weight = datingScoreWeights[expression] || 0.5;
+                weightedScore += probability * weight;
+                totalWeight += weight;
+            });
+            
+            // 최종 점수 계산 (0-100)
+            const finalScore = totalWeight > 0 ? Math.round((weightedScore / totalWeight) * 100) : 50;
+            
+            // 가장 높은 확률의 표정 찾기 (신뢰도용)
             let maxExpression = 'neutral';
             let maxProbability = 0;
             
@@ -1139,9 +1190,6 @@ class MediaPipeAnalyzer {
                 }
             });
             
-            // 종합 표정 점수 계산 (0-100)
-            const expressionScore = Math.round(maxProbability * 100);
-            
             // 전역 변수에 8가지 표정 데이터 저장
             if (!window.currentExpressionData) {
                 window.currentExpressionData = {};
@@ -1149,16 +1197,20 @@ class MediaPipeAnalyzer {
             window.currentExpressionData.probabilities = expressions;
             window.currentExpressionData.expression = maxExpression;
             window.currentExpressionData.confidence = maxProbability;
+            window.currentExpressionData.datingScore = finalScore;
             window.currentExpressionData.isRealTime = true;
             
-            console.log(`📊 [MediaPipe] 8가지 표정 분석:`, {
+            console.log(`📊 [MediaPipe] 데이팅 친화적 표정 분석:`, {
                 expressions: expressions,
                 dominantExpression: maxExpression,
                 confidence: maxProbability.toFixed(3),
-                finalScore: expressionScore
+                datingScore: finalScore,
+                scoreBreakdown: Object.entries(expressions).map(([exp, prob]) => 
+                    `${exp}: ${(prob * 100).toFixed(1)}% (가중치: ${datingScoreWeights[exp]})`
+                )
             });
             
-            return expressionScore;
+            return finalScore;
             
         } catch (error) {
             console.error("❌ 표정 점수 계산 실패:", error);
@@ -1269,12 +1321,16 @@ class MediaPipeAnalyzer {
     }
     
     /**
-     * 시선 점수 계산 (정교한 안정성 분석)
+     * 시선 데이터 계산 (점수 + 상세 데이터)
      */
-    calculateGazeScore(landmarks) {
+    calculateGazeData(landmarks) {
         try {
             if (!landmarks || landmarks.length < 468) {
-                return 0;
+                return {
+                    score: 0,
+                    gazeDirection: { x: 0.5, y: 0.53, distance: 0.5, status: '외곽' },
+                    eyeCenter: { left: { x: 0.4, y: 0.5 }, right: { x: 0.6, y: 0.5 } }
+                };
             }
             
             // 눈동자 중심점 계산
@@ -1311,23 +1367,48 @@ class MediaPipeAnalyzer {
             }
             
             // 시선 방향 및 집중 상태 판단
-            let gazeDirection = 'center';
+            let gazeStatus = '중앙';
             if (avgDistance > bandMidHalf) {
-                gazeDirection = 'outer';
+                gazeStatus = '외곽';
             } else if (avgDistance > bandCenterHalf) {
-                gazeDirection = 'mid';
+                gazeStatus = '중간';
             }
             
-            const isFocused = avgDistance <= bandCenterHalf;
-            const jumpDistance = avgDistance;
+            const gazeDirection = {
+                x: screenCenter.x,
+                y: screenCenter.y,
+                distance: avgDistance,
+                status: gazeStatus
+            };
             
-            console.log(`📊 [MediaPipe] 시선 점수: ${stabilityScore.toFixed(1)} (거리: ${avgDistance.toFixed(3)}, 방향: ${gazeDirection}, 집중: ${isFocused})`);
-            return Math.round(stabilityScore);
+            const eyeCenter = {
+                left: leftEyeCenter,
+                right: rightEyeCenter
+            };
+            
+            console.log(`📊 [MediaPipe] 시선 데이터: 점수=${stabilityScore.toFixed(1)}, 거리=${avgDistance.toFixed(3)}, 상태=${gazeStatus}`);
+            
+            return {
+                score: Math.round(stabilityScore),
+                gazeDirection: gazeDirection,
+                eyeCenter: eyeCenter
+            };
             
         } catch (error) {
-            console.error("❌ 시선 점수 계산 실패:", error);
-            return 0;
+            console.error("❌ 시선 데이터 계산 실패:", error);
+            return {
+                score: 0,
+                gazeDirection: { x: 0.5, y: 0.53, distance: 0.5, status: '외곽' },
+                eyeCenter: { left: { x: 0.4, y: 0.5 }, right: { x: 0.6, y: 0.5 } }
+            };
         }
+    }
+    
+    /**
+     * 시선 점수 계산 (정교한 안정성 분석)
+     */
+    calculateGazeScore(landmarks) {
+        return this.calculateGazeData(landmarks).score;
     }
     
     /**
@@ -2055,8 +2136,10 @@ class MediaPipeAnalyzer {
                 score: scores.expression,
                 label: this.getScoreLabel(scores.expression)
             },
-            probabilities: this.getAveragedExpressions(scores),
-            lastUpdate: new Date().toISOString()
+            probabilities: scores.expressionProbabilities || this.getAveragedExpressions(scores),
+            datingScore: scores.expression, // 데이팅 친화적 점수
+            lastUpdate: new Date().toISOString(),
+            isRealTime: true
         };
         
         // 전역 변수에 저장
@@ -2076,9 +2159,10 @@ class MediaPipeAnalyzer {
         const gazeData = {
             score: scores.gaze,
             label: this.getScoreLabel(scores.gaze),
-            gazeDirection: this.getGazeDirection(scores),
-            eyeCenter: this.getEyeCenterData(scores),
-            lastUpdate: new Date().toISOString()
+            gazeDirection: scores.gazeDirection || this.getGazeDirection(scores),
+            eyeCenter: scores.eyeCenter || this.getEyeCenterData(scores),
+            lastUpdate: new Date().toISOString(),
+            isRealTime: true
         };
         
         window.currentGazeData = gazeData;
@@ -2097,7 +2181,8 @@ class MediaPipeAnalyzer {
             score: scores.concentration,
             label: this.getScoreLabel(scores.concentration),
             factors: this.getConcentrationFactors(scores),
-            lastUpdate: new Date().toISOString()
+            lastUpdate: new Date().toISOString(),
+            isRealTime: true
         };
         
         window.currentConcentrationData = concentrationData;
@@ -2117,7 +2202,8 @@ class MediaPipeAnalyzer {
             label: this.getScoreLabel(scores.blinking),
             blinkRate: this.calculateBlinkRate(scores),
             explanation: this.generateBlinkingExplanation(scores.blinking),
-            lastUpdate: new Date().toISOString()
+            lastUpdate: new Date().toISOString(),
+            isRealTime: true
         };
         
         window.currentBlinkingData = blinkingData;
@@ -2137,7 +2223,8 @@ class MediaPipeAnalyzer {
             label: this.getScoreLabel(scores.posture),
             headTilt: this.getHeadTiltData(scores),
             stability: this.getHeadStabilityScore(scores),
-            lastUpdate: new Date().toISOString()
+            lastUpdate: new Date().toISOString(),
+            isRealTime: true
         };
         
         window.currentPostureData = postureData;
@@ -2156,7 +2243,8 @@ class MediaPipeAnalyzer {
             score: scores.initiative,
             label: this.getScoreLabel(scores.initiative),
             factors: this.getInitiativeFactors(scores),
-            lastUpdate: new Date().toISOString()
+            lastUpdate: new Date().toISOString(),
+            isRealTime: true
         };
         
         window.currentInitiativeData = initiativeData;
