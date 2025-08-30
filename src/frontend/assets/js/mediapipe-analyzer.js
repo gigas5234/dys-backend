@@ -45,7 +45,8 @@ class MediaPipeAnalyzer {
         this.lastBlinkTime = 0;
         this.blinkCount = 0;
         
-        // 카메라 스트림 모니터링
+        // 카메라 권한 체크 및 스트림 모니터링
+        this.checkCameraPermission();
         this.setupCameraMonitoring();
         
         // 점수별 업데이트 타이머
@@ -155,6 +156,98 @@ class MediaPipeAnalyzer {
         } catch (error) {
             console.error("❌ MediaPipe 웹소켓 연결 실패:", error);
         }
+    }
+    
+    /**
+     * 카메라 권한 체크
+     */
+    async checkCameraPermission() {
+        try {
+            // 카메라 권한 상태 확인
+            const permission = await navigator.permissions.query({ name: 'camera' });
+            
+            console.log("📹 [카메라] 권한 상태:", permission.state);
+            
+            if (permission.state === 'denied') {
+                console.warn("⚠️ [카메라] 권한이 거부됨 - 사용자가 수동으로 허용해야 함");
+                this.showCameraPermissionAlert();
+            } else if (permission.state === 'prompt') {
+                console.log("📹 [카메라] 권한 요청 대기 중");
+            } else if (permission.state === 'granted') {
+                console.log("✅ [카메라] 권한이 이미 허용됨");
+            }
+            
+            // 권한 상태 변경 감지
+            permission.onchange = () => {
+                console.log("📹 [카메라] 권한 상태 변경:", permission.state);
+                if (permission.state === 'granted') {
+                    console.log("✅ [카메라] 권한이 허용됨 - 카메라 초기화 가능");
+                } else if (permission.state === 'denied') {
+                    console.warn("⚠️ [카메라] 권한이 거부됨");
+                    this.showCameraPermissionAlert();
+                }
+            };
+            
+        } catch (error) {
+            console.warn("⚠️ [카메라] 권한 상태 확인 실패:", error);
+        }
+    }
+    
+    /**
+     * 카메라 권한 알림 표시
+     */
+    showCameraPermissionAlert() {
+        // 기존 알림이 있으면 제거
+        const existingAlert = document.getElementById('camera-permission-alert');
+        if (existingAlert) {
+            existingAlert.remove();
+        }
+        
+        const alert = document.createElement('div');
+        alert.id = 'camera-permission-alert';
+        alert.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #ef4444;
+            color: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 10000;
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+            max-width: 300px;
+        `;
+        
+        alert.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="font-size: 18px;">📹</span>
+                <div>
+                    <strong>카메라 권한 필요</strong><br>
+                    실시간 분석을 위해 카메라 접근을 허용해주세요.
+                </div>
+            </div>
+            <button onclick="this.parentElement.remove()" style="
+                position: absolute;
+                top: 5px;
+                right: 5px;
+                background: none;
+                border: none;
+                color: white;
+                font-size: 18px;
+                cursor: pointer;
+            ">×</button>
+        `;
+        
+        document.body.appendChild(alert);
+        
+        // 10초 후 자동 제거
+        setTimeout(() => {
+            if (alert.parentElement) {
+                alert.remove();
+            }
+        }, 10000);
     }
     
     /**
@@ -547,11 +640,11 @@ class MediaPipeAnalyzer {
         try {
             console.log("📹 [MediaPipe] 백그라운드 카메라 분석 시작...");
             
-            // 실제 카메라 스트림 가져오기 (화면에 표시하지 않음) - 고화질 설정
+            // 실제 카메라 스트림 가져오기 (화면에 표시하지 않음) - 유연한 고화질 설정
             const stream = await navigator.mediaDevices.getUserMedia({ 
                 video: { 
-                    width: { ideal: 1280, min: 1280 },
-                    height: { ideal: 720, min: 720 },
+                    width: { ideal: 1280, min: 640 },
+                    height: { ideal: 720, min: 480 },
                     frameRate: { ideal: 30, min: 15 },
                     facingMode: 'user',
                     aspectRatio: { ideal: 16/9 },
@@ -612,7 +705,80 @@ class MediaPipeAnalyzer {
             
         } catch (error) {
             console.error("❌ [MediaPipe] 카메라 분석 시작 실패:", error);
-            console.log("💡 [MediaPipe] 카메라 권한이 필요합니다. 브라우저에서 카메라 접근을 허용해주세요.");
+            
+            if (error.name === 'OverconstrainedError') {
+                console.log("💡 [MediaPipe] 카메라 해상도 제약 오류. 더 낮은 해상도로 재시도합니다.");
+                // 더 낮은 해상도로 재시도
+                try {
+                    const fallbackStream = await navigator.mediaDevices.getUserMedia({ 
+                        video: { 
+                            width: { ideal: 640, min: 320 },
+                            height: { ideal: 480, min: 240 },
+                            frameRate: { ideal: 15, min: 10 },
+                            facingMode: 'user'
+                        },
+                        audio: false 
+                    });
+                    
+                    console.log("✅ [MediaPipe] 낮은 해상도 카메라 스트림 획득 완료");
+                    
+                    // 숨겨진 비디오 요소 생성
+                    const hiddenVideo = document.createElement('video');
+                    hiddenVideo.style.display = 'none';
+                    hiddenVideo.style.position = 'absolute';
+                    hiddenVideo.style.left = '-9999px';
+                    hiddenVideo.style.width = '1px';
+                    hiddenVideo.style.height = '1px';
+                    hiddenVideo.autoplay = true;
+                    hiddenVideo.muted = true;
+                    hiddenVideo.playsInline = true;
+                    
+                    hiddenVideo.srcObject = fallbackStream;
+                    document.body.appendChild(hiddenVideo);
+                    
+                    await new Promise((resolve) => {
+                        hiddenVideo.addEventListener('loadeddata', resolve, { once: true });
+                    });
+                    
+                    try {
+                        await hiddenVideo.play();
+                        console.log("✅ [MediaPipe] 낮은 해상도 백그라운드 카메라 재생 시작");
+                    } catch (playError) {
+                        console.warn("⚠️ [MediaPipe] 낮은 해상도 카메라 자동 재생 실패, 사용자 상호작용 대기");
+                        
+                        const startPlayback = async () => {
+                            try {
+                                await hiddenVideo.play();
+                                console.log("✅ [MediaPipe] 사용자 상호작용 후 낮은 해상도 카메라 재생 시작");
+                                document.removeEventListener('click', startPlayback);
+                                document.removeEventListener('keydown', startPlayback);
+                            } catch (err) {
+                                console.error("❌ [MediaPipe] 낮은 해상도 카메라 재생 실패:", err);
+                            }
+                        };
+                        
+                        document.addEventListener('click', startPlayback, { once: true });
+                        document.addEventListener('keydown', startPlayback, { once: true });
+                    }
+                    
+                    console.log("✅ [MediaPipe] 낮은 해상도 백그라운드 카메라 준비 완료, 분석 시작");
+                    this.analysisLoop(hiddenVideo);
+                    return;
+                    
+                } catch (fallbackError) {
+                    console.error("❌ [MediaPipe] 낮은 해상도 카메라도 실패:", fallbackError);
+                }
+            }
+            
+            if (error.name === 'NotAllowedError') {
+                console.log("💡 [MediaPipe] 카메라 권한이 거부되었습니다. 브라우저에서 카메라 접근을 허용해주세요.");
+            } else if (error.name === 'NotFoundError') {
+                console.log("💡 [MediaPipe] 카메라를 찾을 수 없습니다. 카메라가 연결되어 있는지 확인해주세요.");
+            } else if (error.name === 'NotReadableError') {
+                console.log("💡 [MediaPipe] 카메라가 다른 애플리케이션에서 사용 중입니다. 다른 앱을 종료해주세요.");
+            } else {
+                console.log("💡 [MediaPipe] 카메라 접근에 실패했습니다. 브라우저 설정을 확인해주세요.");
+            }
         }
     }
     
