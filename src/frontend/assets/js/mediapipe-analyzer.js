@@ -536,56 +536,78 @@ class MediaPipeAnalyzer {
     }
     
     /**
-     * 비디오 분석 시작
+     * 카메라 분석 시작 (화면에 표시되지 않는 백그라운드 카메라)
      */
     async startVideoAnalysis() {
         try {
-            console.log("🎥 [MediaPipe] 비디오 분석 시작...");
+            console.log("📹 [MediaPipe] 백그라운드 카메라 분석 시작...");
             
-            // 비디오 요소 찾기
-            const video = document.querySelector('video');
-            if (!video) {
-                console.error("❌ [MediaPipe] 비디오 요소를 찾을 수 없습니다");
-                return;
-            }
+            // 실제 카메라 스트림 가져오기 (화면에 표시하지 않음)
+            const stream = await navigator.mediaDevices.getUserMedia({ 
+                video: { 
+                    width: { ideal: 640 },
+                    height: { ideal: 480 },
+                    facingMode: 'user'
+                },
+                audio: false 
+            });
+            
+            console.log("✅ [MediaPipe] 카메라 스트림 획득 완료");
+            
+            // 숨겨진 비디오 요소 생성 (화면에 표시하지 않음)
+            const hiddenVideo = document.createElement('video');
+            hiddenVideo.style.display = 'none';
+            hiddenVideo.style.position = 'absolute';
+            hiddenVideo.style.left = '-9999px';
+            hiddenVideo.style.width = '1px';
+            hiddenVideo.style.height = '1px';
+            hiddenVideo.autoplay = true;
+            hiddenVideo.muted = true;
+            hiddenVideo.playsInline = true;
+            
+            // 카메라 스트림을 숨겨진 비디오에 연결
+            hiddenVideo.srcObject = stream;
+            document.body.appendChild(hiddenVideo);
             
             // 비디오가 로드될 때까지 대기
-            if (video.readyState < 2) {
-                console.log("⏳ [MediaPipe] 비디오 로딩 대기 중...");
-                await new Promise((resolve) => {
-                    video.addEventListener('loadeddata', resolve, { once: true });
-                });
-            }
+            await new Promise((resolve) => {
+                hiddenVideo.addEventListener('loadeddata', resolve, { once: true });
+            });
             
-            console.log("✅ [MediaPipe] 비디오 준비 완료, 분석 시작");
+            console.log("✅ [MediaPipe] 백그라운드 카메라 준비 완료, 분석 시작");
             
-            // 실시간 분석 루프 시작
-            this.analysisLoop(video);
+            // 실시간 분석 루프 시작 (숨겨진 카메라 비디오 사용)
+            this.analysisLoop(hiddenVideo);
             
         } catch (error) {
-            console.error("❌ [MediaPipe] 비디오 분석 시작 실패:", error);
+            console.error("❌ [MediaPipe] 카메라 분석 시작 실패:", error);
+            console.log("💡 [MediaPipe] 카메라 권한이 필요합니다. 브라우저에서 카메라 접근을 허용해주세요.");
         }
     }
     
     /**
-     * 실시간 분석 루프
+     * 실시간 분석 루프 (백그라운드 카메라용)
      */
     async analysisLoop(video) {
-        // 카메라 상태 상세 로깅 (주기적으로만)
-        if (Math.random() < 0.1) { // 10% 확률로만 로그 출력
-            this.logCameraStatus(video);
-        }
-        
+        // MediaPipe 준비 상태 확인
         if (!this.isMediaPipeReady || !this.faceLandmarker) {
             console.warn("⚠️ [MediaPipe] 아직 준비되지 않음");
-            setTimeout(() => this.analysisLoop(video), 1000); // 1초 후 재시도
+            setTimeout(() => this.analysisLoop(video), 1000);
             return;
         }
         
-        // 비디오 상태 확인 (강화된 로그)
+        // 백그라운드 카메라 상태 확인
         if (!video || video.readyState !== 4 || video.paused || video.ended) {
-            console.warn("⚠️ [MediaPipe] 비디오가 준비되지 않음, 1초 후 재시도");
-            this.logDetailedCameraStatus(video);
+            console.warn("⚠️ [MediaPipe] 백그라운드 카메라가 준비되지 않음, 1초 후 재시도");
+            console.log("📹 [카메라] 상태:", {
+                exists: !!video,
+                readyState: video ? video.readyState : 'N/A',
+                readyStateText: video ? this.getReadyStateText(video.readyState) : 'N/A',
+                paused: video ? video.paused : 'N/A',
+                ended: video ? video.ended : 'N/A',
+                srcObject: video ? !!video.srcObject : 'N/A',
+                streamActive: video?.srcObject?.active || false
+            });
             setTimeout(() => this.analysisLoop(video), 1000);
             return;
         }
@@ -1589,10 +1611,10 @@ class MediaPipeAnalyzer {
     }
     
     /**
-     * 비디오 요소 모니터링
+     * 백그라운드 카메라 모니터링
      */
     monitorVideoElement(video) {
-        console.log("🔍 [카메라] 비디오 요소 모니터링 시작");
+        console.log("📹 [카메라] 백그라운드 카메라 모니터링 시작");
         
         // 비디오 이벤트 리스너
         const events = [
@@ -1616,17 +1638,17 @@ class MediaPipeAnalyzer {
                     error: video.error
                 };
                 
-                console.log(`🔍 [카메라] 이벤트: ${event}`, status);
+                console.log(`📹 [카메라] 이벤트: ${event}`, status);
                 
                 // 중요 이벤트 강조
                 if (event === 'ended') {
-                    console.error("🚨 [카메라] 비디오 종료됨 - 카메라가 꺼졌을 가능성");
+                    console.error("🚨 [카메라] 백그라운드 카메라 종료됨");
                 }
                 if (event === 'pause') {
-                    console.warn("⚠️ [카메라] 비디오 일시정지됨 - 자동 재생 정책 또는 사용자 액션");
+                    console.warn("⚠️ [카메라] 백그라운드 카메라 일시정지됨");
                 }
                 if (event === 'error') {
-                    console.error("🚨 [카메라] 비디오 오류 발생:", video.error);
+                    console.error("🚨 [카메라] 백그라운드 카메라 오류 발생:", video.error);
                 }
             });
         });
@@ -1642,7 +1664,7 @@ class MediaPipeAnalyzer {
             const self = this;
             Object.defineProperty(video, 'srcObject', {
                 set: function(stream) {
-                    console.log("🔍 [카메라] srcObject 변경:", {
+                    console.log("📹 [카메라] 카메라 스트림 변경:", {
                         hasStream: !!stream,
                         streamActive: stream?.active || false,
                         streamId: stream?.id || 'none',
@@ -1652,7 +1674,7 @@ class MediaPipeAnalyzer {
                     if (stream) {
                         self.monitorStream(stream);
                     } else {
-                        console.warn("⚠️ [카메라] 스트림이 제거됨 - 카메라가 꺼졌을 가능성");
+                        console.warn("⚠️ [카메라] 카메라 스트림이 제거됨");
                     }
                     
                     originalSrcObject.set.call(this, stream);
@@ -2139,7 +2161,7 @@ class MediaPipeAnalyzer {
      */
     logDetailedCameraStatus(video) {
         if (!video) {
-            console.warn("⚠️ [카메라] 비디오 요소가 없음");
+            console.warn("⚠️ [카메라] 백그라운드 카메라 요소가 없음");
             return;
         }
         
@@ -2176,26 +2198,26 @@ class MediaPipeAnalyzer {
             })) : []
         };
         
-        console.log("📊 [카메라] 상세 상태 로그:", status);
+        console.log("📊 [카메라] 백그라운드 카메라 상세 상태:", status);
         
         // 문제 상황 감지
         if (video.ended) {
-            console.error("🚨 [카메라] 비디오가 종료됨 - 카메라가 꺼졌을 가능성");
+            console.error("🚨 [카메라] 백그라운드 카메라가 종료됨");
         }
         if (video.paused) {
-            console.warn("⚠️ [카메라] 비디오가 일시정지됨");
+            console.warn("⚠️ [카메라] 백그라운드 카메라가 일시정지됨");
         }
         if (video.readyState !== 4) {
-            console.warn("⚠️ [카메라] 비디오가 완전히 로드되지 않음");
+            console.warn("⚠️ [카메라] 백그라운드 카메라가 완전히 로드되지 않음");
         }
         if (video.error) {
-            console.error("🚨 [카메라] 비디오 오류:", video.error);
+            console.error("🚨 [카메라] 백그라운드 카메라 오류:", video.error);
         }
         if (!video.srcObject) {
-            console.warn("⚠️ [카메라] 스트림이 없음");
+            console.warn("⚠️ [카메라] 카메라 스트림이 없음");
         }
         if (video.srcObject && !video.srcObject.active) {
-            console.error("🚨 [카메라] 스트림이 비활성화됨");
+            console.error("🚨 [카메라] 카메라 스트림이 비활성화됨");
         }
         
         // 트랙 상태 확인
