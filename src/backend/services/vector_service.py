@@ -12,6 +12,7 @@ import asyncio
 from typing import List, Dict, Any, Optional, Tuple
 from datetime import datetime
 from openai import OpenAI
+import math
 
 # 로컬 모듈 import
 from ..database.pinecone_client import pinecone_client
@@ -101,6 +102,16 @@ class VectorService:
             )
             
             embedding = response.data[0].embedding
+            
+            # 벡터 데이터 검증
+            if len(embedding) != 1536:  # text-embedding-3-small 모델 차원
+                logger.error(f"❌ 임베딩 차원 불일치: {len(embedding)} != 1536")
+                return None
+            
+            if not all(math.isfinite(x) for x in embedding):
+                logger.error("❌ 임베딩에 무한값이 포함되어 있습니다")
+                return None
+            
             logger.info(f"✅ 임베딩 생성 완료 (차원: {len(embedding)})")
             return embedding
             

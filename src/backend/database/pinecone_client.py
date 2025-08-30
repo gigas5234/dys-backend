@@ -11,6 +11,7 @@ import asyncio
 from typing import List, Dict, Any, Optional, Tuple
 import pinecone
 from datetime import datetime
+import math
 
 # 로깅 설정
 logging.basicConfig(level=logging.INFO)
@@ -116,6 +117,15 @@ class PineconeClient:
                 
                 if not vector_id or not vector_values:
                     logger.warning(f"⚠️ 잘못된 벡터 데이터: {vector_data}")
+                    continue
+                
+                # 벡터 데이터 검증 추가
+                if len(vector_values) != self.dimension:
+                    logger.error(f"❌ 벡터 차원 불일치: {len(vector_values)} != {self.dimension}")
+                    continue
+                
+                if not all(math.isfinite(x) for x in vector_values):
+                    logger.error("❌ 벡터에 무한값이 포함되어 있습니다")
                     continue
                 
                 upsert_data.append({
