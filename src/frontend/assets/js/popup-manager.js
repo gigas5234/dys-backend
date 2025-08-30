@@ -169,12 +169,12 @@ function updateExpressionPopupContent() {
     }
     
     // 주요 정보 업데이트
-    const expression = expressionData.expression;
+        const expression = expressionData.expression;
     const confidence = expressionData.confidence;
-    const datingScore = expressionData.datingScore || expressionData.score?.score || 0;
-    
-    // 메인 값: 데이팅 친화적 점수 표시
-    document.getElementById('expression-main-value').textContent = `${datingScore}점`;
+    const weightedScore = expressionData.weightedScore || expressionData.datingScore || expressionData.score?.score || 0;
+
+    // 메인 값: 가중 평균 점수 표시 (서버 80% + MediaPipe 20%)
+    document.getElementById('expression-main-value').textContent = `${weightedScore}점`;
     
     // 신뢰도: 0.xxx (xx.x%) 형식으로 표시 (0-1 범위로 정규화)
     let normalizedConfidence = confidence;
@@ -206,20 +206,23 @@ function updateExpressionPopupContent() {
 function updateExpressionProbabilities() {
     const probabilitiesDiv = document.getElementById('expression-probabilities');
     
-    // MediaPipe 분석기에서 실시간 데이터 가져오기
+    // 가중 평균 점수 우선 사용 (서버 80% + MediaPipe 20%)
     let expressionData = window.currentExpressionData;
     
     if (!expressionData && window.mediaPipeAnalyzer && window.mediaPipeAnalyzer.currentMediaPipeScores) {
         const currentScores = window.mediaPipeAnalyzer.currentMediaPipeScores;
-        const expressionScore = currentScores.expression || 0;
+        
+        // 가중 평균 점수 우선 사용
+        const weightedScore = expressionData?.weightedScore || currentScores.expression || 0;
         
         // 실제 MediaPipe 8가지 표정 확률 사용
         if (currentScores.expressionProbabilities) {
             expressionData = {
                 expression: 'neutral',
                 confidence: 0.8,
-                score: { score: expressionScore, label: getScoreLabel(expressionScore) },
+                score: { score: weightedScore, label: getScoreLabel(weightedScore) },
                 probabilities: currentScores.expressionProbabilities,
+                weightedScore: weightedScore,
                 isRealTime: true
             };
         } else {
@@ -227,23 +230,24 @@ function updateExpressionProbabilities() {
             expressionData = {
                 expression: 'neutral',
                 confidence: 0.8,
-                score: { score: expressionScore, label: getScoreLabel(expressionScore) },
+                score: { score: weightedScore, label: getScoreLabel(weightedScore) },
                 probabilities: {
-                    happy: Math.max(0, (expressionScore - 50) / 50),
-                    sad: Math.max(0, (100 - expressionScore - 20) / 80),
-                    angry: Math.max(0, (50 - Math.abs(expressionScore - 50)) / 50),
-                    surprised: Math.max(0, (70 - Math.abs(expressionScore - 70)) / 70),
-                    fearful: Math.max(0, (30 - Math.abs(expressionScore - 30)) / 30),
-                    disgusted: Math.max(0, (40 - Math.abs(expressionScore - 40)) / 40),
-                    neutral: Math.max(0, (60 - Math.abs(expressionScore - 60)) / 60),
-                    contempt: Math.max(0, (45 - Math.abs(expressionScore - 45)) / 45)
+                    happy: Math.max(0, (weightedScore - 50) / 50),
+                    sad: Math.max(0, (100 - weightedScore - 20) / 80),
+                    angry: Math.max(0, (50 - Math.abs(weightedScore - 50)) / 50),
+                    surprised: Math.max(0, (70 - Math.abs(weightedScore - 70)) / 70),
+                    fearful: Math.max(0, (30 - Math.abs(weightedScore - 30)) / 30),
+                    disgusted: Math.max(0, (40 - Math.abs(weightedScore - 40)) / 40),
+                    neutral: Math.max(0, (60 - Math.abs(weightedScore - 60)) / 60),
+                    contempt: Math.max(0, (45 - Math.abs(weightedScore - 45)) / 45)
                 },
+                weightedScore: weightedScore,
                 isRealTime: true
             };
         }
         
         window.currentExpressionData = expressionData;
-        console.log("📊 [팝업] 실시간 표정 데이터 업데이트:", expressionData);
+        console.log("📊 [팝업] 가중 평균 표정 데이터 업데이트:", expressionData);
     }
     
     if (!expressionData?.probabilities) {
@@ -344,7 +348,7 @@ function generateExpressionExplanation() {
     explanation += `<li><strong>평가</strong>: ${getScoreLabel(finalScore)}</li>`;
     explanation += `</ul>`;
     
-    // 데이팅 친화적 점수 해석
+    // 가중 평균 점수 해석 (서버 80% + MediaPipe 20%)
     if (finalScore >= 85) {
         explanation += `<p>💖 <strong>매우 매력적인 표정</strong>: 상대방이 매우 좋아할 만한 표정입니다. 웃음과 긍정적인 에너지가 넘칩니다!</p>`;
     } else if (finalScore >= 70) {
@@ -356,6 +360,9 @@ function generateExpressionExplanation() {
     } else {
         explanation += `<p>😞 <strong>매우 부정적인 표정</strong>: 상대방이 기피할 수 있는 표정입니다. 즉시 표정을 개선하는 것이 좋겠습니다.</p>`;
     }
+    
+    // 가중 평균 시스템 설명 추가
+    explanation += `<p><small>💡 <strong>분석 방식</strong>: 서버 AI 모델(80%) + MediaPipe 실시간 분석(20%)의 가중 평균으로 계산됩니다.</small></p>`;
     
     // 8가지 표정별 조언
     explanation += `<h4>🎭 표정별 데이팅 조언</h4>`;
