@@ -1542,10 +1542,23 @@ class MediaPipeAnalyzer {
                 });
             });
             
-            observer.observe(document.body, {
-                childList: true,
-                subtree: true
-            });
+            // document.body가 존재하는지 확인 후 observe
+            if (document.body) {
+                observer.observe(document.body, {
+                    childList: true,
+                    subtree: true
+                });
+            } else {
+                // DOM이 아직 로드되지 않은 경우, DOMContentLoaded 이벤트 대기
+                document.addEventListener('DOMContentLoaded', () => {
+                    if (document.body) {
+                        observer.observe(document.body, {
+                            childList: true,
+                            subtree: true
+                        });
+                    }
+                });
+            }
         }
     }
     

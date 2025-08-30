@@ -30,12 +30,35 @@
             // User data (from global scope)
             this.userId = window.userId;
             this.email = window.email;
+            
+            // Persona 정보 초기화
             this.personaName = window.personaName;
             this.personaAge = window.personaAge;
             this.personaMbti = window.personaMbti;
             this.personaJob = window.personaJob;
             this.personaPersonality = window.personaPersonality;
             this.personaImage = window.personaImage;
+            
+            // persona 정보가 없으면 기본값 설정
+            if (!this.personaName) {
+                console.log('⚠️ [PERSONA] persona 정보가 없어서 기본값 설정');
+                this.personaName = '이서아';
+                this.personaAge = '28';
+                this.personaMbti = 'ENFP';
+                this.personaJob = '마케터';
+                this.personaPersonality = '활발함,긍정적';
+                this.personaImage = 'woman1_insta.webp';
+                
+                // 전역 변수에도 설정
+                window.personaName = this.personaName;
+                window.personaAge = this.personaAge;
+                window.personaMbti = this.personaMbti;
+                window.personaJob = this.personaJob;
+                window.personaPersonality = this.personaPersonality;
+                window.personaImage = this.personaImage;
+                
+                console.log('✅ [PERSONA] 기본 persona 정보 설정 완료:', this.personaName);
+            }
             
             this.bindEvents();
             console.log('✅ [CHAT] ChatManager 초기화 완료');
@@ -82,6 +105,38 @@
                     this.currentSessionId = result.session_id;
                     console.log('✅ [CHAT] 세션 생성 성공:', this.currentSessionId);
                     console.log('📋 [CHAT] 세션 생성 응답:', result);
+                    
+                    // 서버에서 받은 personaData가 있으면 전역 변수에 설정
+                    if (result.personaData) {
+                        console.log('🎭 [PERSONA] 서버에서 personaData 받음:', result.personaData);
+                        
+                        // 전역 변수에 설정
+                        window.personaName = result.personaData.name;
+                        window.personaAge = result.personaData.age;
+                        window.personaMbti = result.personaData.mbti;
+                        window.personaJob = result.personaData.job;
+                        window.personaPersonality = result.personaData.personality;
+                        window.personaImage = result.personaData.image;
+                        
+                        // ChatManager 인스턴스에도 업데이트
+                        this.personaName = result.personaData.name;
+                        this.personaAge = result.personaData.age;
+                        this.personaMbti = result.personaData.mbti;
+                        this.personaJob = result.personaData.job;
+                        this.personaPersonality = result.personaData.personality;
+                        this.personaImage = result.personaData.image;
+                        
+                        console.log('✅ [PERSONA] 전역 변수 업데이트 완료:', {
+                            name: window.personaName,
+                            age: window.personaAge,
+                            job: window.personaJob,
+                            mbti: window.personaMbti
+                        });
+                        
+                        // 페르소나 카드 추가
+                        this.addPersonaCard();
+                    }
+                    
                     return true;
                 } else {
                     const errorText = await response.text();

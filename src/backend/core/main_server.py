@@ -600,7 +600,24 @@ async def create_session(
         if session_id:
             print(f"✅ [CREATE_SESSION] 세션 생성 성공: {session_id}")
             print(f"👤 [CREATE_SESSION] 사용자 ID: {final_user_id}")
-            return {"ok": True, "session_id": session_id}
+            
+            # personaData를 응답에 포함
+            personaData = {
+                "id": 1,  # 기본 ID
+                "name": persona_name,
+                "age": session.persona_age or "28",
+                "mbti": session.persona_mbti or "ENFP",
+                "job": session.persona_job or "마케팅 담당자",
+                "personality": session.persona_personality or "밝고 친근한",
+                "image": session.persona_image or "woman1.webp",
+                "gender": "female" if "woman" in (session.persona_image or "woman1.webp") else "male"
+            }
+            
+            return {
+                "ok": True, 
+                "session_id": session_id,
+                "personaData": personaData
+            }
         else:
             print("❌ [CREATE_SESSION] 세션 생성 실패")
             raise HTTPException(status_code=500, detail="Failed to create session")
