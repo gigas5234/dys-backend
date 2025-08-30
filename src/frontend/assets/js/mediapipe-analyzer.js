@@ -1243,6 +1243,246 @@ class MediaPipeAnalyzer {
         }
         return null;
     }
+    
+    /**
+     * 분석 상태 업데이트 (실제 동작 내용 표시)
+     */
+    updateAnalysisStatus(scores) {
+        try {
+            // 표정 상태 업데이트
+            const expressionStatus = document.getElementById('expression-status');
+            if (expressionStatus) {
+                if (scores.expression >= 85) {
+                    expressionStatus.textContent = '매우 긍정적';
+                    expressionStatus.style.color = '#10b981';
+                } else if (scores.expression >= 70) {
+                    expressionStatus.textContent = '긍정적';
+                    expressionStatus.style.color = '#3b82f6';
+                } else if (scores.expression >= 50) {
+                    expressionStatus.textContent = '보통';
+                    expressionStatus.style.color = '#f59e0b';
+                } else {
+                    expressionStatus.textContent = '개선 필요';
+                    expressionStatus.style.color = '#ef4444';
+                }
+            }
+            
+            // 시선 상태 업데이트
+            const gazeStatus = document.getElementById('gaze-status');
+            if (gazeStatus) {
+                if (scores.gaze >= 85) {
+                    gazeStatus.textContent = '안정적';
+                    gazeStatus.style.color = '#10b981';
+                } else if (scores.gaze >= 70) {
+                    gazeStatus.textContent = '양호';
+                    gazeStatus.style.color = '#3b82f6';
+                } else if (scores.gaze >= 50) {
+                    gazeStatus.textContent = '보통';
+                    gazeStatus.style.color = '#f59e0b';
+                } else {
+                    gazeStatus.textContent = '불안정';
+                    gazeStatus.style.color = '#ef4444';
+                }
+            }
+            
+            // 집중도 상태 업데이트
+            const concentrationStatus = document.getElementById('concentration-status');
+            if (concentrationStatus) {
+                if (scores.concentration >= 85) {
+                    concentrationStatus.textContent = '매우 집중';
+                    concentrationStatus.style.color = '#10b981';
+                } else if (scores.concentration >= 70) {
+                    concentrationStatus.textContent = '집중';
+                    concentrationStatus.style.color = '#3b82f6';
+                } else if (scores.concentration >= 50) {
+                    concentrationStatus.textContent = '보통';
+                    concentrationStatus.style.color = '#f59e0b';
+                } else {
+                    concentrationStatus.textContent = '산만';
+                    concentrationStatus.style.color = '#ef4444';
+                }
+            }
+            
+            // 자세 상태 업데이트
+            const postureStatus = document.getElementById('posture-status');
+            if (postureStatus) {
+                if (scores.posture >= 85) {
+                    postureStatus.textContent = '매우 우수';
+                    postureStatus.style.color = '#10b981';
+                } else if (scores.posture >= 70) {
+                    postureStatus.textContent = '우수';
+                    postureStatus.style.color = '#3b82f6';
+                } else if (scores.posture >= 50) {
+                    postureStatus.textContent = '보통';
+                    postureStatus.style.color = '#f59e0b';
+                } else {
+                    postureStatus.textContent = '개선 필요';
+                    postureStatus.style.color = '#ef4444';
+                }
+            }
+            
+            // 깜빡임 상태 업데이트
+            const blinkingStatus = document.getElementById('blinking-status');
+            if (blinkingStatus) {
+                if (scores.blinking >= 85) {
+                    blinkingStatus.textContent = '정상';
+                    blinkingStatus.style.color = '#10b981';
+                } else if (scores.blinking >= 70) {
+                    blinkingStatus.textContent = '양호';
+                    blinkingStatus.style.color = '#3b82f6';
+                } else if (scores.blinking >= 50) {
+                    blinkingStatus.textContent = '보통';
+                    blinkingStatus.style.color = '#f59e0b';
+                } else {
+                    blinkingStatus.textContent = '과도함';
+                    blinkingStatus.style.color = '#ef4444';
+                }
+            }
+            
+        } catch (error) {
+            console.warn("⚠️ 분석 상태 업데이트 실패:", error);
+        }
+    }
+    
+    /**
+     * 주요 표정 판별
+     */
+    getMainExpression(expressions) {
+        const entries = Object.entries(expressions);
+        const maxEntry = entries.reduce((max, current) => 
+            current[1] > max[1] ? current : max
+        );
+        
+        return {
+            name: maxEntry[0],
+            confidence: maxEntry[1] / 100
+        };
+    }
+    
+    /**
+     * 평균 표정 분류 결과 반환
+     */
+    getAveragedExpressions() {
+        if (this.expressionHistory.length === 0) {
+            return this.expressionClassifications;
+        }
+        
+        const averaged = {};
+        const emotions = Object.keys(this.expressionClassifications);
+        
+        emotions.forEach(emotion => {
+            const values = this.expressionHistory.map(h => h[emotion]).filter(v => v !== undefined);
+            averaged[emotion] = values.length > 0 ? values.reduce((a, b) => a + b, 0) / values.length : 0;
+        });
+        
+        return averaged;
+    }
+    
+    /**
+     * 점수 라벨 반환
+     */
+    getScoreLabel(score) {
+        if (score >= 85) return '매우 좋음';
+        if (score >= 70) return '좋음';
+        if (score >= 50) return '보통';
+        if (score >= 30) return '나쁨';
+        return '매우 나쁨';
+    }
+    
+    /**
+     * 눈 개방도 데이터
+     */
+    getEyeOpennessData() {
+        // 실제 랜드마크 데이터가 있을 때 계산
+        return {
+            leftEye: 0.0141, // 예시 값
+            rightEye: 0.0141,
+            average: 0.0141
+        };
+    }
+    
+    /**
+     * 깜빡임 빈도 계산
+     */
+    calculateBlinkRate() {
+        // 실제 구현에서는 시간 기반 계산
+        return {
+            perMinute: 15,
+            status: '정상'
+        };
+    }
+    
+    /**
+     * 시선 방향 데이터
+     */
+    getGazeDirection() {
+        return {
+            x: 0.5,
+            y: 0.5,
+            distance: 0.184,
+            status: '중앙'
+        };
+    }
+    
+    /**
+     * 눈 중심점 데이터
+     */
+    getEyeCenterData() {
+        return {
+            left: { x: 0.4, y: 0.5 },
+            right: { x: 0.6, y: 0.5 }
+        };
+    }
+    
+    /**
+     * 머리 기울기 데이터
+     */
+    getHeadTiltData() {
+        return {
+            angle: 0.0028,
+            status: '거의 수직'
+        };
+    }
+    
+    /**
+     * 얼굴 수직성 데이터
+     */
+    getFaceVerticalData() {
+        return {
+            verticality: 0.0041,
+            status: '수직'
+        };
+    }
+    
+    /**
+     * 머리 안정성 점수
+     */
+    getHeadStabilityScore() {
+        return 99.2; // 예시 값
+    }
+    
+    /**
+     * 집중도 UI 조정
+     */
+    adjustConcentrationUI(score) {
+        // 집중도 점수 미세 조정
+        const currentScore = this.currentMediaPipeScores.concentration || 0;
+        const diff = Math.abs(score - currentScore);
+        
+        if (diff > 0.15) { // 15% 이상 차이시 조정
+            const adjustedScore = (currentScore + score) / 2;
+            console.log(`🔧 집중도 점수 조정: ${currentScore.toFixed(2)} → ${adjustedScore.toFixed(2)} (모델: ${score.toFixed(2)})`);
+            this.updateConcentrationScore(adjustedScore);
+        }
+    }
+    
+    /**
+     * 이상 감지 알림 표시
+     */
+    showAnomalyNotification(result) {
+        console.warn("🚨 이상 감지:", result);
+        // 실제 구현에서는 더 정교한 알림 UI 사용
+    }
 }
 
 // 전역 인스턴스 생성

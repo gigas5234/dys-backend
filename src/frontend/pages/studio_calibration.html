@@ -1842,8 +1842,18 @@ async function checkPermissionStatus() {
      console.log('[ANALYZER] (noop) 카메라 분석기 비활성화됨 - UI-only mode');
      
      // Persona 정보 카드 추가 (ChatManager 사용)
+     console.log('🔍 [PERSONA] ChatManager 상태 확인:', {
+         chatManager: !!window.chatManager,
+         personaName: window.personaName,
+         personaAge: window.personaAge,
+         personaJob: window.personaJob
+     });
+     
      if (window.chatManager) {
+         console.log('✅ [PERSONA] ChatManager 발견 - 페르소나 카드 추가 시도');
          window.chatManager.addPersonaCard();
+     } else {
+         console.warn('⚠️ [PERSONA] ChatManager를 찾을 수 없음');
      }
      
           // 초기 안내 팝업 표시
@@ -2206,23 +2216,16 @@ document.addEventListener('DOMContentLoaded', async function() {
         console.warn('⚠️ CalibrationModule을 찾을 수 없음');
     }
     
-    // 캘리브레이션 팝업 로드
-    if (window.loadCalibrationPopup) {
+    // 캘리브레이션 팝업은 이미 loadAllPopups()에서 로드됨
+    console.log('✅ 캘리브레이션 팝업은 이미 로드됨 (loadAllPopups에서 처리)');
+    
+    // 팝업 로드 후 DOM 요소 초기화
+    if (window.CalibrationModule && window.CalibrationModule.initializeCalibrationModule) {
         try {
-            await window.loadCalibrationPopup();
-            console.log('✅ 캘리브레이션 팝업 로드 완료');
-            
-            // 팝업 로드 후 DOM 요소 초기화
-            if (window.CalibrationModule && window.CalibrationModule.initializeCalibrationModule) {
-                try {
-                    window.CalibrationModule.initializeCalibrationModule();
-                    console.log('✅ 캘리브레이션 DOM 요소 초기화 완료');
-                } catch (error) {
-                    console.error('❌ 캘리브레이션 DOM 요소 초기화 실패:', error);
-                }
-            }
+            window.CalibrationModule.initializeCalibrationModule();
+            console.log('✅ 캘리브레이션 DOM 요소 초기화 완료');
         } catch (error) {
-            console.error('❌ 캘리브레이션 팝업 로드 실패:', error);
+            console.error('❌ 캘리브레이션 DOM 요소 초기화 실패:', error);
         }
     }
     

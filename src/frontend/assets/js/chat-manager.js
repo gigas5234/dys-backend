@@ -119,7 +119,17 @@
 
         // UI Management
         addPersonaCard() {
-            if (!this.personaName) return;
+            console.log('🎭 [PERSONA] addPersonaCard 호출됨:', {
+                personaName: this.personaName,
+                personaAge: this.personaAge,
+                personaJob: this.personaJob,
+                personaImage: this.personaImage
+            });
+            
+            if (!this.personaName) {
+                console.warn('⚠️ [PERSONA] personaName이 없어서 카드 생성 중단');
+                return;
+            }
             
             // 기존 persona 카드가 있으면 제거
             const existingCard = document.querySelector('.persona-card');
@@ -163,9 +173,11 @@
             const personaSection = document.getElementById('personaInfoSection');
             if (personaSection) {
                 personaSection.appendChild(personaCard);
+                console.log('✅ [PERSONA] 페르소나 카드가 personaInfoSection에 추가됨');
             } else {
                 // fallback: chat-log에 추가
                 this.chatLog.appendChild(personaCard);
+                console.log('⚠️ [PERSONA] personaInfoSection을 찾을 수 없어 chatLog에 추가됨');
             }
         }
 
