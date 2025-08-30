@@ -32,6 +32,27 @@ class MediaPipeAnalyzer {
             initiative: null
         };
         
+        // 카메라 모니터링 관련
+        this.lastCameraStatus = null;
+        this.isMediaPipeReady = false;
+        this.faceLandmarker = null;
+        this.currentMediaPipeScores = {};
+        this.lastServerRequest = 0;
+        this.consecutiveFailures = 0;
+        
+        // 카메라 스트림 모니터링
+        this.setupCameraMonitoring();
+        
+        // 점수별 업데이트 타이머
+        this.updateTimers = {
+            expression: 0,
+            concentration: 0,
+            gaze: 0,
+            blinking: 0,
+            posture: 0,
+            initiative: 0
+        };
+        
         console.log("🎭 MediaPipe 분석기 초기화됨");
     }
     
@@ -532,6 +553,9 @@ class MediaPipeAnalyzer {
      * 실시간 분석 루프
      */
     async analysisLoop(video) {
+        // 카메라 상태 상세 로깅
+        this.logCameraStatus(video);
+        
         if (!this.isMediaPipeReady || !this.faceLandmarker) {
             console.warn("⚠️ [MediaPipe] 아직 준비되지 않음");
             setTimeout(() => this.analysisLoop(video), 1000); // 1초 후 재시도
@@ -541,6 +565,16 @@ class MediaPipeAnalyzer {
         // 비디오 상태 확인
         if (!video || video.readyState !== 4 || video.paused || video.ended) {
             console.warn("⚠️ [MediaPipe] 비디오가 준비되지 않음, 1초 후 재시도");
+            console.log("🔍 [카메라] 비디오 상태:", {
+                exists: !!video,
+                readyState: video?.readyState,
+                paused: video?.paused,
+                ended: video?.ended,
+                currentTime: video?.currentTime,
+                duration: video?.duration,
+                src: video?.src,
+                srcObject: !!video?.srcObject
+            });
             setTimeout(() => this.analysisLoop(video), 1000);
             return;
         }
@@ -1482,6 +1516,199 @@ class MediaPipeAnalyzer {
     showAnomalyNotification(result) {
         console.warn("🚨 이상 감지:", result);
         // 실제 구현에서는 더 정교한 알림 UI 사용
+    }
+
+    /**
+     * 카메라 스트림 모니터링 설정
+     */
+    setupCameraMonitoring() {
+        // 비디오 요소 모니터링
+        const video = document.querySelector('video');
+        if (video) {
+            this.monitorVideoElement(video);
+        } else {
+            // 비디오 요소가 아직 없는 경우, DOM 변경 감지
+            const observer = new MutationObserver((mutations) => {
+                mutations.forEach((mutation) => {
+                    mutation.addedNodes.forEach((node) => {
+                        if (node.nodeType === Node.ELEMENT_NODE) {
+                            const video = node.querySelector('video') || (node.tagName === 'VIDEO' ? node : null);
+                            if (video) {
+                                this.monitorVideoElement(video);
+                                observer.disconnect();
+                            }
+                        }
+                    });
+                });
+            });
+            
+            observer.observe(document.body, {
+                childList: true,
+                subtree: true
+            });
+        }
+    }
+    
+    /**
+     * 비디오 요소 모니터링
+     */
+    monitorVideoElement(video) {
+        console.log("🔍 [카메라] 비디오 요소 모니터링 시작");
+        
+        // 비디오 이벤트 리스너
+        const events = [
+            'loadstart', 'loadedmetadata', 'loadeddata', 'canplay', 'canplaythrough',
+            'play', 'playing', 'pause', 'ended', 'error', 'abort', 'emptied',
+            'stalled', 'suspend', 'waiting'
+        ];
+        
+        events.forEach(event => {
+            video.addEventListener(event, (e) => {
+                console.log(`🔍 [카메라] 이벤트: ${event}`, {
+                    readyState: video.readyState,
+                    paused: video.paused,
+                    ended: video.ended,
+                    currentTime: video.currentTime,
+                    srcObject: !!video.srcObject,
+                    streamActive: video.srcObject?.active || false
+                });
+            });
+        });
+        
+        // 스트림 상태 모니터링
+        if (video.srcObject) {
+            this.monitorStream(video.srcObject);
+        }
+        
+        // srcObject 변경 감지
+        const originalSrcObject = Object.getOwnPropertyDescriptor(HTMLVideoElement.prototype, 'srcObject');
+        if (originalSrcObject && originalSrcObject.set) {
+            const self = this;
+            Object.defineProperty(video, 'srcObject', {
+                set: function(stream) {
+                    console.log("🔍 [카메라] srcObject 변경:", {
+                        hasStream: !!stream,
+                        streamActive: stream?.active || false,
+                        streamId: stream?.id || 'none'
+                    });
+                    
+                    if (stream) {
+                        self.monitorStream(stream);
+                    }
+                    
+                    originalSrcObject.set.call(this, stream);
+                },
+                get: originalSrcObject.get
+            });
+        }
+    }
+    
+    /**
+     * 스트림 모니터링
+     */
+    monitorStream(stream) {
+        console.log("🔍 [카메라] 스트림 모니터링 시작:", {
+            id: stream.id,
+            active: stream.active,
+            tracks: stream.getTracks().map(track => ({
+                kind: track.kind,
+                enabled: track.enabled,
+                readyState: track.readyState,
+                muted: track.muted
+            }))
+        });
+        
+        // 스트림 이벤트 모니터링
+        stream.addEventListener('addtrack', (e) => {
+            console.log("🔍 [카메라] 트랙 추가:", e.track);
+        });
+        
+        stream.addEventListener('removetrack', (e) => {
+            console.log("🔍 [카메라] 트랙 제거:", e.track);
+        });
+        
+        // 트랙 상태 모니터링
+        stream.getTracks().forEach(track => {
+            this.monitorTrack(track);
+        });
+    }
+    
+    /**
+     * 트랙 모니터링
+     */
+    monitorTrack(track) {
+        const events = ['ended', 'mute', 'unmute'];
+        
+        events.forEach(event => {
+            track.addEventListener(event, (e) => {
+                console.log(`🔍 [카메라] 트랙 이벤트: ${event}`, {
+                    kind: track.kind,
+                    enabled: track.enabled,
+                    readyState: track.readyState,
+                    muted: track.muted
+                });
+            });
+        });
+        
+        // 트랙 상태 주기적 체크
+        const checkTrackStatus = () => {
+            if (track.readyState === 'ended') {
+                console.log("🔍 [카메라] 트랙 종료됨:", {
+                    kind: track.kind,
+                    readyState: track.readyState
+                });
+            }
+        };
+        
+        setInterval(checkTrackStatus, 5000); // 5초마다 체크
+    }
+    
+    /**
+     * 카메라 상태 상세 로깅
+     */
+    logCameraStatus(video) {
+        if (!video) {
+            console.log("🔍 [카메라] 비디오 요소가 없음");
+            return;
+        }
+        
+        const status = {
+            readyState: video.readyState,
+            readyStateText: this.getReadyStateText(video.readyState),
+            paused: video.paused,
+            ended: video.ended,
+            currentTime: video.currentTime,
+            duration: video.duration,
+            src: video.src,
+            hasSrcObject: !!video.srcObject,
+            streamActive: video.srcObject?.active || false,
+            streamId: video.srcObject?.id || 'none',
+            videoWidth: video.videoWidth,
+            videoHeight: video.videoHeight,
+            naturalWidth: video.naturalWidth,
+            naturalHeight: video.naturalHeight
+        };
+        
+        // 상태가 변경된 경우에만 로그 출력
+        const statusKey = JSON.stringify(status);
+        if (this.lastCameraStatus !== statusKey) {
+            console.log("🔍 [카메라] 상태 변경:", status);
+            this.lastCameraStatus = statusKey;
+        }
+    }
+    
+    /**
+     * 비디오 readyState 텍스트 변환
+     */
+    getReadyStateText(readyState) {
+        const states = {
+            0: 'HAVE_NOTHING',
+            1: 'HAVE_METADATA',
+            2: 'HAVE_CURRENT_DATA',
+            3: 'HAVE_FUTURE_DATA',
+            4: 'HAVE_ENOUGH_DATA'
+        };
+        return states[readyState] || 'UNKNOWN';
     }
 }
 

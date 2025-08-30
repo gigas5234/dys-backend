@@ -30,8 +30,38 @@ function closeExpressionDetails() {
 }
 
 function updateExpressionPopupContent() {
-    // 전역 변수에서 표정 데이터 가져오기
-    const expressionData = window.currentExpressionData || currentExpressionData;
+    // MediaPipe 데이터가 있으면 사용, 없으면 기본 데이터 생성
+    let expressionData = window.currentExpressionData || currentExpressionData;
+    
+    // MediaPipe 데이터가 없으면 현재 점수로 생성
+    if (!expressionData && window.mediaPipeAnalyzer) {
+        const currentScores = window.mediaPipeAnalyzer.currentMediaPipeScores || {};
+        const expressionScore = currentScores.expression || 0;
+        
+        // 기본 표정 데이터 생성
+        expressionData = {
+            expression: 'neutral',
+            confidence: expressionScore / 100,
+            score: {
+                score: expressionScore,
+                label: getScoreLabel(expressionScore)
+            },
+            probabilities: {
+                happy: Math.max(0, expressionScore - 20),
+                sad: Math.max(0, 100 - expressionScore - 20),
+                angry: Math.max(0, 50 - Math.abs(expressionScore - 50)),
+                surprised: Math.max(0, 30 - Math.abs(expressionScore - 70)),
+                fearful: Math.max(0, 20 - Math.abs(expressionScore - 30)),
+                disgusted: Math.max(0, 15 - Math.abs(expressionScore - 40)),
+                neutral: Math.max(0, 100 - Math.abs(expressionScore - 50)),
+                contempt: Math.max(0, 10 - Math.abs(expressionScore - 20))
+            },
+            lastUpdate: new Date().toISOString()
+        };
+        
+        // 전역 변수에 저장
+        window.currentExpressionData = expressionData;
+    }
     
     if (!expressionData) {
         document.getElementById('expression-main-value').textContent = '데이터 없음';
@@ -116,6 +146,14 @@ function getExpressionKoreanName(expression) {
     return koreanNames[expression] || expression;
 }
 
+function getScoreLabel(score) {
+    if (score >= 85) return '매우 좋음';
+    if (score >= 70) return '좋음';
+    if (score >= 50) return '보통';
+    if (score >= 30) return '나쁨';
+    return '매우 나쁨';
+}
+
 function generateExpressionExplanation() {
     // 전역 변수에서 표정 데이터 가져오기
     const expressionData = window.currentExpressionData || currentExpressionData;
@@ -177,22 +215,51 @@ function closeGazeDetails() {
 }
 
 function updateGazePopupContent() {
-    // UI-only mode: 기본 데이터 표시
-    document.getElementById('gaze-main-value').textContent = 'UI 모드';
-    document.getElementById('gaze-stability-value').textContent = '0%';
-    document.getElementById('gaze-landmarks').innerHTML = '<div class="no-data">시선 분석 기능이 비활성화되어 있습니다.</div>';
-    document.getElementById('gaze-criteria-text').innerHTML = '시선 분석 기능이 비활성화되어 있습니다.';
-    document.getElementById('gaze-explanation-text').innerHTML = '시선 분석 기능이 비활성화되어 있습니다.';
+    // MediaPipe 데이터가 있으면 사용, 없으면 기본 데이터 생성
+    let gazeData = window.currentGazeData;
     
-    // HTML 팝업 파일의 함수들 사용
-    if (typeof window.updateGazeLandmarksInfo === 'function') {
-        window.updateGazeLandmarksInfo();
+    // MediaPipe 데이터가 없으면 현재 점수로 생성
+    if (!gazeData && window.mediaPipeAnalyzer) {
+        const currentScores = window.mediaPipeAnalyzer.currentMediaPipeScores || {};
+        const gazeScore = currentScores.gaze || 0;
+        
+        // 기본 시선 데이터 생성
+        gazeData = {
+            score: gazeScore,
+            label: getScoreLabel(gazeScore),
+            gazeDirection: {
+                x: 0.5,
+                y: 0.5,
+                distance: 0.184,
+                status: '중앙'
+            },
+            eyeCenter: {
+                left: { x: 0.4, y: 0.5 },
+                right: { x: 0.6, y: 0.5 }
+            },
+            lastUpdate: new Date().toISOString()
+        };
+        
+        // 전역 변수에 저장
+        window.currentGazeData = gazeData;
     }
-    if (typeof window.updateGazeCriteriaInfo === 'function') {
-        window.updateGazeCriteriaInfo();
+    
+    if (!gazeData) {
+        document.getElementById('gaze-main-value').textContent = '데이터 없음';
+        document.getElementById('gaze-direction-value').textContent = '측정 불가';
+        return;
     }
-    if (typeof window.updateGazeExplanationInfo === 'function') {
-        window.updateGazeExplanationInfo();
+    
+    // 시선 상태 업데이트
+    const mainValueEl = document.getElementById('gaze-main-value');
+    if (mainValueEl) {
+        mainValueEl.textContent = gazeData.label;
+    }
+    
+    // 시선 방향 업데이트
+    const directionEl = document.getElementById('gaze-direction-value');
+    if (directionEl) {
+        directionEl.textContent = gazeData.gazeDirection.status;
     }
 }
 
