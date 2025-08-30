@@ -604,6 +604,70 @@ class MediaPipeAnalyzer {
     }
     
     /**
+     * 표정 점수 UI 업데이트
+     */
+    updateExpressionScore(score) {
+        const element = document.getElementById('expression-score');
+        if (element) {
+            element.textContent = Math.round(score);
+            element.style.color = this.getScoreColor(score);
+        }
+    }
+    
+    /**
+     * 집중도 점수 UI 업데이트
+     */
+    updateConcentrationScore(score) {
+        const element = document.getElementById('concentration-score');
+        if (element) {
+            element.textContent = Math.round(score);
+            element.style.color = this.getScoreColor(score);
+        }
+    }
+    
+    /**
+     * 시선 점수 UI 업데이트
+     */
+    updateGazeScore(score) {
+        const element = document.getElementById('gaze-score');
+        if (element) {
+            element.textContent = Math.round(score);
+            element.style.color = this.getScoreColor(score);
+        }
+    }
+    
+    /**
+     * 깜빡임 점수 UI 업데이트
+     */
+    updateBlinkingScore(score) {
+        const element = document.getElementById('blinking-score');
+        if (element) {
+            element.textContent = Math.round(score);
+            element.style.color = this.getScoreColor(score);
+        }
+    }
+    
+    /**
+     * 자세 점수 UI 업데이트
+     */
+    updatePostureScore(score) {
+        const element = document.getElementById('posture-score');
+        if (element) {
+            element.textContent = Math.round(score);
+            element.style.color = this.getScoreColor(score);
+        }
+    }
+    
+    /**
+     * 점수에 따른 색상 반환
+     */
+    getScoreColor(score) {
+        if (score >= 80) return '#4CAF50'; // 녹색 (좋음)
+        if (score >= 60) return '#FF9800'; // 주황색 (보통)
+        return '#F44336'; // 빨간색 (나쁨)
+    }
+    
+    /**
      * 서버 분석 스케줄링 (2초마다)
      */
     async scheduleServerAnalysis(video, mediapipeScores) {
