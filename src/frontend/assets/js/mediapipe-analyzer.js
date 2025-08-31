@@ -896,7 +896,7 @@ class MediaPipeAnalyzer {
         const gazeData = this.calculateGazeData(landmarks);
         
         const scores = {
-            expression: this.calculateExpressionScore(landmarks),
+            expression: 0,  // MediaPipe 표정 점수 비활성화 (서버 MLflow 모델만 사용)
             concentration: this.calculateConcentrationScore(landmarks),
             gaze: this.calculateGazeScore(landmarks),
             blinking: this.calculateBlinkingScore(landmarks).score,
@@ -916,9 +916,9 @@ class MediaPipeAnalyzer {
      */
     updateRealtimeUI(scores) {
         try {
-                    // 안전한 점수 표시 (0이 아닌 유효한 값만 사용)
+                    // 표정은 서버 결과만 사용, 나머지는 MediaPipe + 서버 결합
         const displayScores = {
-            expression: (window.currentExpressionData?.weightedScore > 0) ? window.currentExpressionData.weightedScore : scores.expression,
+            expression: window.currentExpressionData?.weightedScore || 0,  // 서버 MLflow 모델 결과만 사용
             concentration: (window.currentConcentrationData?.weightedScore > 0) ? window.currentConcentrationData.weightedScore : scores.concentration,
             gaze: (window.currentGazeData?.weightedScore > 0) ? window.currentGazeData.weightedScore : scores.gaze,
             blinking: (window.currentBlinkingData?.weightedScore > 0) ? window.currentBlinkingData.weightedScore : scores.blinking,
@@ -1538,17 +1538,17 @@ class MediaPipeAnalyzer {
             }
             
             // 더 정교한 랜드마크 분석 (올바른 MediaPipe 인덱스 사용)
-            // 입술 분석 (미소, 슬픔, 분노, 놀람)
+        // 입술 분석 (미소, 슬픔, 분노, 놀람)
             const mouthLeft = landmarks[61];      // 입술 왼쪽
             const mouthRight = landmarks[291];    // 입술 오른쪽
             const mouthTop = landmarks[13];       // 입술 위
             const mouthBottom = landmarks[14];    // 입술 아래
             const mouthCenter = landmarks[0];     // 코 끝 (중앙 기준점)
             
-            const mouthWidth = Math.abs(mouthRight.x - mouthLeft.x);
-            const mouthHeight = Math.abs(mouthTop.y - mouthBottom.y);
-            const smileRatio = mouthWidth / (mouthHeight + 0.001);
-            
+        const mouthWidth = Math.abs(mouthRight.x - mouthLeft.x);
+        const mouthHeight = Math.abs(mouthTop.y - mouthBottom.y);
+        const smileRatio = mouthWidth / (mouthHeight + 0.001);
+        
             // 입술 모서리 분석 (미소 강도) - 올바른 인덱스
             const leftCorner = landmarks[78];     // 왼쪽 입술 모서리
             const rightCorner = landmarks[308];   // 오른쪽 입술 모서리
@@ -1586,10 +1586,10 @@ class MediaPipeAnalyzer {
             const rightEyebrow = landmarks[300];  // 오른쪽 눈썹
             const leftEye = landmarks[159];       // 왼쪽 눈
             const rightEye = landmarks[386];      // 오른쪽 눈
-            const eyebrowDistance = (
-                Math.abs(leftEyebrow.y - leftEye.y) + 
-                Math.abs(rightEyebrow.y - rightEye.y)
-            ) / 2;
+        const eyebrowDistance = (
+            Math.abs(leftEyebrow.y - leftEye.y) + 
+            Math.abs(rightEyebrow.y - rightEye.y)
+        ) / 2;
             
             // 눈 분석 (깜빡임, 집중도) - 올바른 인덱스
             const leftEyeTop = landmarks[159];    // 왼쪽 눈 위
@@ -1599,12 +1599,12 @@ class MediaPipeAnalyzer {
             const leftEyeOpen = Math.abs(leftEyeTop.y - leftEyeBottom.y);
             const rightEyeOpen = Math.abs(rightEyeTop.y - rightEyeBottom.y);
             const eyeOpenness = (leftEyeOpen + rightEyeOpen) / 2;
-            
-            // 코 분석 (혐오, 경멸)
-            const nose = landmarks[1];
-            const noseWrinkle = landmarks[168];
-            const noseWrinkleIntensity = Math.abs(nose.y - noseWrinkle.y);
-            
+        
+        // 코 분석 (혐오, 경멸)
+        const nose = landmarks[1];
+        const noseWrinkle = landmarks[168];
+        const noseWrinkleIntensity = Math.abs(nose.y - noseWrinkle.y);
+        
             // 이마 분석 (놀람, 두려움)
             const forehead = landmarks[10];
             const eyebrowHeight = (leftEyebrow.y + rightEyebrow.y) / 2;
@@ -1659,7 +1659,7 @@ class MediaPipeAnalyzer {
             this.previousLandmarks = landmarks.map(lm => ({ x: lm.x, y: lm.y, z: lm.z }));
             
             // 8가지 표정 확률 계산 (실제 랜드마크 값에 기반한 동적 계산)
-            const expressions = {
+        const expressions = {
                 // 행복 (미소, 눈꺼풀 올라감, 볼 올라감)
                 happy: Math.max(0.05, Math.min(1, 
                     Math.max(0, smileRatio - 1.2) * 2.0 + 
@@ -1727,11 +1727,11 @@ class MediaPipeAnalyzer {
             };
             
             // 확률 정규화 (합이 1이 되도록, 최소값 보장)
-            const total = Object.values(expressions).reduce((sum, val) => sum + val, 0);
-            if (total > 0) {
-                Object.keys(expressions).forEach(key => {
-                    expressions[key] = expressions[key] / total;
-                });
+        const total = Object.values(expressions).reduce((sum, val) => sum + val, 0);
+        if (total > 0) {
+            Object.keys(expressions).forEach(key => {
+                expressions[key] = expressions[key] / total;
+            });
             } else {
                 // 모든 값이 0인 경우 기본값 설정
                 Object.keys(expressions).forEach(key => {
@@ -1771,9 +1771,9 @@ class MediaPipeAnalyzer {
                 });
                 
                 this.lastDebugTime = Date.now();
-            }
-            
-            return expressions;
+        }
+        
+        return expressions;
             
         } catch (error) {
             console.error("❌ [MediaPipe] 표정 분석 실패:", error);

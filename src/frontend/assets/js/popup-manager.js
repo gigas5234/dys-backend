@@ -172,20 +172,19 @@ function updateExpressionPopupContent() {
     // 메인 값: 가중 평균 점수 표시 (서버 80% + MediaPipe 20%)
     document.getElementById('expression-main-value').textContent = `${weightedScore}점`;
     
-    // 신뢰도: 0.xxx (xx.x%) 형식으로 표시 (0-1 범위로 정규화)
-    let normalizedConfidence = confidence;
-    if (typeof confidence === 'number') {
+    // 신뢰도: 실제 모델 값 표시 (소수점 5자리)
+    let confidenceValue = confidence || 0;
+    if (typeof confidenceValue === 'number') {
         // 0-100 범위인 경우 0-1로 정규화
-        if (confidence > 1) {
-            normalizedConfidence = confidence / 100;
+        if (confidenceValue > 1) {
+            confidenceValue = confidenceValue / 100;
         }
     } else {
-        normalizedConfidence = 0;
+        confidenceValue = 0;
     }
     
-    const decimalText = normalizedConfidence.toFixed(3);
-    const percentText = (normalizedConfidence * 100).toFixed(1) + '%';
-    document.getElementById('expression-confidence-value').textContent = `${decimalText} (${percentText})`;
+    const actualConfidence = confidenceValue.toFixed(5);  // 실제 모델 값
+    document.getElementById('expression-confidence-value').textContent = actualConfidence;
     
     // 확률 정보 업데이트
     updateExpressionProbabilities();
@@ -260,7 +259,7 @@ function updateExpressionProbabilities() {
     
     Object.entries(probabilities).forEach(([expression, probability]) => {
         const koreanName = getExpressionKoreanName(expression);
-        const percentage = (probability * 100).toFixed(1);
+        const actualValue = probability.toFixed(5);  // 실제 모델 값 (소수점 5자리)
         const isHighest = probability === Math.max(...Object.values(probabilities));
         const weight = datingWeights[expression] || 0.5;
         const weightText = weight === 1.0 ? '최고' : weight >= 0.8 ? '높음' : weight >= 0.6 ? '중간' : weight >= 0.4 ? '낮음' : '최저';
@@ -273,7 +272,7 @@ function updateExpressionProbabilities() {
                         (${weightText})
                     </span>
                 </div>
-                <div class="probability-value">${percentage}%</div>
+                <div class="probability-value" style="font-family: monospace; font-size: 12px;">${actualValue}</div>
             </div>
         `;
     });
