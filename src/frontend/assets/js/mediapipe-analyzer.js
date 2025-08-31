@@ -1095,7 +1095,9 @@ class MediaPipeAnalyzer {
             
             console.log("🔍 [디버그] window.serverUrl:", window.serverUrl);
             console.log("🔍 [디버그] window.location.origin:", window.location.origin);
+            console.log("🔍 [디버그] 최종 apiUrl:", apiUrl);
             console.log("🔍 [디버그] 실제 API URL:", `${apiUrl}/api/expression/analyze`);
+            console.log("🔍 [디버그] 브라우저 캐시 확인용 - 버전:", "v2024-12-26-2");
             console.log("🔍 [디버그] 요청 데이터 크기:", JSON.stringify({
                 image: imageData.substring(0, 100) + "...",
                 mediapipe_scores: mediapipeScores,
