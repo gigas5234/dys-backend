@@ -33,137 +33,18 @@
 </div>
 
 <script>
-// 표정 상세 정보 팝업 관련 함수들
-function updateExpressionProbabilities() {
-    const probabilitiesDiv = document.getElementById('expression-probabilities');
+// 중복된 함수 정의 제거됨 - popup-manager.js에서 관리
+// HTML 팝업 로딩 확인용 로그만 남김
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('📄 [HTML] expression-details-popup.html 로드됨');
     
-    // MediaPipe 분석기에서 실시간 데이터 가져오기
-    let expressionData = window.currentExpressionData;
-    
-    if (!expressionData && window.mediaPipeAnalyzer && window.mediaPipeAnalyzer.currentMediaPipeScores) {
-        const currentScores = window.mediaPipeAnalyzer.currentMediaPipeScores;
-        const expressionScore = currentScores.expression || 0;
-        
-        // 실시간 표정 데이터 생성
-        expressionData = {
-            expression: 'neutral',
-            confidence: 0.8,
-            score: { score: expressionScore, label: getScoreLabel(expressionScore) },
-            probabilities: {
-                happy: Math.max(0, (expressionScore - 50) / 50),
-                sad: Math.max(0, (100 - expressionScore - 20) / 80),
-                angry: Math.max(0, (50 - Math.abs(expressionScore - 50)) / 50),
-                surprised: Math.max(0, (70 - Math.abs(expressionScore - 70)) / 70),
-                fearful: Math.max(0, (30 - Math.abs(expressionScore - 30)) / 30),
-                disgusted: Math.max(0, (40 - Math.abs(expressionScore - 40)) / 40),
-                neutral: Math.max(0, (60 - Math.abs(expressionScore - 60)) / 60),
-                contempt: Math.max(0, (45 - Math.abs(expressionScore - 45)) / 45)
-            },
-            isRealTime: true
-        };
-        
-        window.currentExpressionData = expressionData;
-        console.log("📊 [팝업] 실시간 표정 데이터 업데이트:", expressionData);
-    }
-    
-    if (!expressionData?.probabilities) {
-        probabilitiesDiv.innerHTML = '<div class="no-data">분석 대기 중...</div>';
-        return;
-    }
-    
-    const probabilities = expressionData.probabilities;
-    let html = '';
-    
-    Object.entries(probabilities).forEach(([expression, probability]) => {
-        const koreanName = getExpressionKoreanName(expression);
-        const percentage = (probability * 100).toFixed(1);
-        const isHighest = probability === Math.max(...Object.values(probabilities));
-        
-        html += `
-            <div class="probability-item ${isHighest ? 'highest' : ''}">
-                <div class="probability-label">${koreanName}</div>
-                <div class="probability-value">${percentage}%</div>
-            </div>
-        `;
-    });
-    
-    probabilitiesDiv.innerHTML = html;
-    
-    if (expressionData.isRealTime) {
-        console.log("✅ [팝업] 실시간 표정 확률 표시 완료");
-    }
-}
-
-function getExpressionKoreanName(expression) {
-    const koreanNames = {
-        'happy': '웃음',
-        'sad': '슬픔',
-        'angry': '화남',
-        'surprised': '놀람',
-        'fearful': '두려움',
-        'disgusted': '혐오',
-        'neutral': '중립',
-        'contempt': '경멸'
-    };
-    return koreanNames[expression] || expression;
-}
-
-function generateExpressionExplanation() {
-    // MediaPipe 분석기에서 실시간 데이터 가져오기
-    let expressionData = window.currentExpressionData;
-    
-    if (!expressionData && window.mediaPipeAnalyzer && window.mediaPipeAnalyzer.currentMediaPipeScores) {
-        const currentScores = window.mediaPipeAnalyzer.currentMediaPipeScores;
-        const expressionScore = currentScores.expression || 0;
-        
-        expressionData = {
-            expression: 'neutral',
-            confidence: 0.8,
-            score: { score: expressionScore, label: getScoreLabel(expressionScore) },
-            isRealTime: true
-        };
-    }
-    
-    if (!expressionData) {
-        return '분석 대기 중...';
-    }
-    
-    const { expression, confidence, score } = expressionData;
-    const koreanExpression = getExpressionKoreanName(expression);
-    
-    let explanation = `<div class="explanation-section">`;
-    explanation += `<h4>📈 현재 분석 결과</h4>`;
-    explanation += `<ul>`;
-    explanation += `<li><strong>감지된 표정</strong>: ${koreanExpression}</li>`;
-    explanation += `<li><strong>신뢰도</strong>: ${(confidence * 100).toFixed(1)}%</li>`;
-    explanation += `<li><strong>최종 점수</strong>: ${score.score}점</li>`;
-    explanation += `<li><strong>평가</strong>: ${score.label}</li>`;
-    explanation += `</ul>`;
-    
-    // 점수 해석
-    if (score.score >= 85) {
-        explanation += `<p>🎯 <strong>매우 긍정적인 표정</strong>: 대화에 매우 좋은 영향을 주는 표정입니다.</p>`;
-    } else if (score.score >= 70) {
-        explanation += `<p>🎯 <strong>긍정적인 표정</strong>: 대화에 좋은 영향을 주는 표정입니다.</p>`;
-    } else if (score.score >= 50) {
-        explanation += `<p>🎯 <strong>중립적인 표정</strong>: 대화에 중립적인 영향을 주는 표정입니다.</p>`;
-    } else if (score.score >= 30) {
-        explanation += `<p>🎯 <strong>부정적인 표정</strong>: 대화에 부정적인 영향을 줄 수 있는 표정입니다.</p>`;
-    } else {
-        explanation += `<p>🎯 <strong>매우 부정적인 표정</strong>: 대화에 매우 부정적인 영향을 줄 수 있는 표정입니다.</p>`;
-    }
-    
-    if (expressionData.isRealTime) {
-        explanation += `<p>🔄 <strong>실시간 분석</strong>: MediaPipe 기반 실시간 표정 분석이 진행 중입니다.</p>`;
-    }
-    
-    explanation += `</div>`;
-    
-    return explanation;
-}
-
-// 전역 스코프에 함수들 노출
-window.updateExpressionProbabilities = updateExpressionProbabilities;
-window.getExpressionKoreanName = getExpressionKoreanName;
-window.generateExpressionExplanation = generateExpressionExplanation;
+    // popup-manager.js의 함수들이 로드되었는지 확인
+    setTimeout(() => {
+        if (window.updateExpressionPopupContent) {
+            console.log('✅ [HTML] popup-manager.js 함수들 연결됨');
+        } else {
+            console.log('❌ [HTML] popup-manager.js 함수들 연결 실패');
+        }
+    }, 100);
+});
 </script>
