@@ -5,9 +5,16 @@
 
 import torch
 import torch.nn.functional as F
-from torchvision import transforms
 import numpy as np
 import cv2
+
+# torchvision이 없어도 작동하도록 처리
+try:
+    from torchvision import transforms
+    TORCHVISION_AVAILABLE = True
+except ImportError:
+    TORCHVISION_AVAILABLE = False
+    print("⚠️ torchvision이 없습니다. 수동 정규화를 사용합니다.")
 from PIL import Image
 import base64
 import io
@@ -370,11 +377,17 @@ class ExpressionAnalyzer:
             image_tensor = torch.from_numpy(image_array).permute(2, 0, 1)
             
             # 정규화 (ImageNet 기준)
-            normalize = transforms.Normalize(
-                mean=[0.485, 0.456, 0.406],
-                std=[0.229, 0.224, 0.225]
-            )
-            image_tensor = normalize(image_tensor)
+            if TORCHVISION_AVAILABLE:
+                normalize = transforms.Normalize(
+                    mean=[0.485, 0.456, 0.406],
+                    std=[0.229, 0.224, 0.225]
+                )
+                image_tensor = normalize(image_tensor)
+            else:
+                # 수동 정규화 (torchvision 없는 경우)
+                mean = torch.tensor([0.485, 0.456, 0.406]).view(3, 1, 1)
+                std = torch.tensor([0.229, 0.224, 0.225]).view(3, 1, 1)
+                image_tensor = (image_tensor - mean) / std
             
             return image_tensor
             
@@ -409,6 +422,19 @@ class ExpressionAnalyzer:
             
             # PyTorch 텐서로 변환
             image_tensor = torch.from_numpy(image_array).permute(2, 0, 1)  # HWC -> CHW
+            
+            # 정규화 (ImageNet 기준)
+            if TORCHVISION_AVAILABLE:
+                normalize = transforms.Normalize(
+                    mean=[0.485, 0.456, 0.406],
+                    std=[0.229, 0.224, 0.225]
+                )
+                image_tensor = normalize(image_tensor)
+            else:
+                # 수동 정규화 (torchvision 없는 경우)
+                mean = torch.tensor([0.485, 0.456, 0.406]).view(3, 1, 1)
+                std = torch.tensor([0.229, 0.224, 0.225]).view(3, 1, 1)
+                image_tensor = (image_tensor - mean) / std
             
             # 배치 차원 추가
             image_tensor = image_tensor.unsqueeze(0)
