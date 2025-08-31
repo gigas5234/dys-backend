@@ -6,6 +6,7 @@
 // ===== 표정 상세 팝업 =====
 function showExpressionDetails() {
     console.log("🔍 [새팝업] 표정 세부 팝업 열기");
+    console.log("🔍 [새팝업] 함수 호출 스택:", new Error().stack);
     
     const popup = document.getElementById('expression-details-popup');
     if (!popup) {
@@ -13,11 +14,23 @@ function showExpressionDetails() {
         return;
     }
     
+    console.log("✅ [새팝업] 팝업 DOM 요소 발견:", popup);
+    
     // 팝업 표시
     popup.classList.add('active');
+    console.log("✅ [새팝업] 팝업 활성화됨");
+    
+    // 현재 전역 데이터 상태 확인
+    console.log("🔍 [새팝업] 전역 데이터 상태:", {
+        hasWindow: typeof window !== 'undefined',
+        hasCurrentExpressionData: !!window.currentExpressionData,
+        currentExpressionData: window.currentExpressionData
+    });
     
     // 즉시 데이터 업데이트
+    console.log("🔄 [새팝업] updateExpressionPopupNow 호출 시작");
     updateExpressionPopupNow();
+    console.log("✅ [새팝업] updateExpressionPopupNow 호출 완료");
 }
 
 function closeExpressionDetails() {

@@ -1394,7 +1394,7 @@ class MediaPipeAnalyzer {
         
         // 이상 감지 알림
         if (serverResult.is_anomaly) {
-            this.showAnomalyNotification(serverResult);
+            // this.showAnomalyNotification(serverResult); // 사용자 요청으로 비활성화
         }
         
         // 팝업 데이터 업데이트 (기존 팝업들과 연동)
