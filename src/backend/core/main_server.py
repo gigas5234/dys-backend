@@ -3507,6 +3507,7 @@ async def analyze_expression_hybrid(request: Request):
                     }
                     
                     print(f"✅ [EXPRESSION] 모델 분석 완료: {model_emotion} (신뢰도: {model_results.get('confidence', 0):.2f})")
+                    print(f"🔍 [EXPRESSION] 서버 응답 model_results:", model_results)
                 else:
                     print("⚠️ [EXPRESSION] 모델 분석 실패, 기본값 사용")
                     model_results = {"confidence": 0.0}
