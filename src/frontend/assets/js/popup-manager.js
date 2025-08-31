@@ -72,22 +72,30 @@ function checkAndRepairPopupDOM() {
     return true;
 }
 
-// ===== 표정 상세 정보 팝업 =====
-function showExpressionDetails() {
-    console.log("🔍 [팝업] 표정 세부 팝업 열기 시도");
+// ===== 표정 상세 정보 팝업 (구버전 - simple-popup-manager.js로 대체됨) =====
+function showExpressionDetails_OLD() {
+    console.log("⚠️ [구팝업] 구버전 팝업 함수 호출됨 - simple-popup-manager.js 사용 권장");
+    
+    // 새로운 팝업 관리자가 있으면 그것을 사용
+    if (window.showExpressionDetails && window.showExpressionDetails !== showExpressionDetails_OLD) {
+        console.log("🔄 [구팝업] 새로운 팝업 관리자로 리다이렉트");
+        window.showExpressionDetails();
+        return;
+    }
+    
     const popup = document.getElementById('expression-details-popup');
     if (popup) {
         popup.classList.add('active');
-        console.log("✅ [팝업] 표정 팝업 DOM 활성화");
+        console.log("✅ [구팝업] 구버전 팝업 DOM 활성화");
         
         // 현재 데이터 상태 확인
-        console.log("🔍 [팝업] 현재 window.currentExpressionData:", window.currentExpressionData);
+        console.log("🔍 [구팝업] 현재 window.currentExpressionData:", window.currentExpressionData);
         
         // 팝업 내용 업데이트
         updateExpressionPopupContent();
-        console.log("✅ [팝업] 표정 팝업 내용 업데이트 완료");
+        console.log("✅ [구팝업] 구버전 팝업 내용 업데이트 완료");
     } else {
-        console.error("❌ [팝업] expression-details-popup DOM 요소를 찾을 수 없음");
+        console.error("❌ [구팝업] expression-details-popup DOM 요소를 찾을 수 없음");
     }
 }
 
