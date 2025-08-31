@@ -2717,63 +2717,64 @@ async def initialize_expression_analyzer_api():
             "details": "Check server logs for detailed error information"
         }
 
-@app.post("/api/expression/analyze")
-async def analyze_expression_api(request: Request):
-    """이미지에서 표정을 분석합니다."""
-    global _expression_analyzer
-    
-    try:
-        if not EXPRESSION_ANALYZER_AVAILABLE:
-            return {
-                "success": False, 
-                "error": "Expression analyzer not available",
-                "details": "Module not loaded or dependencies missing"
-            }
-        
-        if not _expression_analyzer or not _expression_analyzer.is_initialized:
-            return {
-                "success": False, 
-                "error": "Expression analyzer not initialized",
-                "details": "Call /api/expression/initialize first"
-            }
-        
-        data = await request.json()
-        image_data = data.get('image_data')
-        
-        if not image_data:
-            return {
-                "success": False, 
-                "error": "No image data provided",
-                "details": "image_data field is required"
-            }
-        
-        print(f"🎭 [EXPRESSION] 표정 분석 요청 받음 - 이미지 데이터 크기: {len(image_data)}")
-        
-        # 표정 분석 실행
-        result = _expression_analyzer.analyze_expression(image_data)
-        
-        # 점수 변환
-        if result.get('success', False):
-            score_result = _expression_analyzer.get_expression_score(result)
-            result['score'] = score_result
-            # probabilities 필드가 있으면 유지
-            if 'probabilities' not in result:
-                result['probabilities'] = {}
-            print(f"✅ [EXPRESSION] 분석 완료: {result.get('expression', 'Unknown')} (신뢰도: {result.get('confidence', 0):.3f})")
-        else:
-            print(f"❌ [EXPRESSION] 분석 실패: {result.get('error', 'Unknown error')}")
-        
-        return result
-        
-    except Exception as e:
-        print(f"❌ [EXPRESSION] 표정 분석 API 오류: {e}")
-        import traceback
-        traceback.print_exc()
-        return {
-            "success": False, 
-            "error": str(e),
-            "details": "Check server logs for detailed error information"
-        }
+# 구식 엔드포인트 - analyze_expression_hybrid로 대체됨
+# @app.post("/api/expression/analyze")
+# async def analyze_expression_api(request: Request):
+#     """이미지에서 표정을 분석합니다."""
+#     global _expression_analyzer
+#     
+#     try:
+#         if not EXPRESSION_ANALYZER_AVAILABLE:
+#             return {
+#                 "success": False, 
+#                 "error": "Expression analyzer not available",
+#                 "details": "Module not loaded or dependencies missing"
+#             }
+#         
+#         if not _expression_analyzer or not _expression_analyzer.is_initialized:
+#             return {
+#                 "success": False, 
+#                 "error": "Expression analyzer not initialized",
+#                 "details": "Call /api/expression/initialize first"
+#             }
+#         
+#         data = await request.json()
+#         image_data = data.get('image_data')
+#         
+#         if not image_data:
+#             return {
+#                 "success": False, 
+#                 "error": "No image data provided",
+#                 "details": "image_data field is required"
+#             }
+#         
+#         print(f"🎭 [EXPRESSION] 표정 분석 요청 받음 - 이미지 데이터 크기: {len(image_data)}")
+#         
+#         # 표정 분석 실행
+#         result = _expression_analyzer.analyze_expression(image_data)
+#         
+#         # 점수 변환
+#         if result.get('success', False):
+#             score_result = _expression_analyzer.get_expression_score(result)
+#             result['score'] = score_result
+#             # probabilities 필드가 있으면 유지
+#             if 'probabilities' not in result:
+#                 result['probabilities'] = {}
+#             print(f"✅ [EXPRESSION] 분석 완료: {result.get('expression', 'Unknown')} (신뢰도: {result.get('confidence', 0):.3f})")
+#         else:
+#             print(f"❌ [EXPRESSION] 분석 실패: {result.get('error', 'Unknown error')}")
+#         
+#         return result
+#         
+#     except Exception as e:
+#         print(f"❌ [EXPRESSION] 표정 분석 API 오류: {e}")
+#         import traceback
+#         traceback.print_exc()
+#         return {
+#             "success": False, 
+#             "error": str(e),
+#             "details": "Check server logs for detailed error information"
+#         }
 
 # 이미지 파일 서빙 개선
 @app.get("/frontend/img/{filename:path}")
@@ -2899,47 +2900,48 @@ async def receive_alert(request: Request):
 
 # === 표정 분석 API 엔드포인트 ===
 
-@app.post("/api/expression/analyze")
-async def analyze_expression(request: Request):
-    """이미지에서 표정을 분석합니다."""
-    try:
-        if not EXPRESSION_ANALYSIS_AVAILABLE:
-            return {
-                "success": False,
-                "error": "Expression analysis module not available"
-            }
-        
-        # 요청 데이터 파싱
-        data = await request.json()
-        image_data = data.get('image_data')
-        
-        if not image_data:
-            return {
-                "success": False,
-                "error": "Image data is required"
-            }
-        
-        # 표정 분석기 초기화 확인
-        if not expression_analyzer.is_initialized:
-            if not expression_analyzer.initialize():
-                return {
-                    "success": False,
-                    "error": "Failed to initialize expression analyzer"
-                }
-        
-        # 표정 분석 실행
-        result = expression_analyzer.analyze_expression(image_data)
-        
-        return result
-        
-    except Exception as e:
-        print(f"❌ [EXPRESSION] 분석 실패: {e}")
-        import traceback
-        traceback.print_exc()
-        return {
-            "success": False,
-            "error": str(e)
-        }
+# 구식 엔드포인트 2 - analyze_expression_hybrid로 대체됨
+# @app.post("/api/expression/analyze")
+# async def analyze_expression(request: Request):
+#     """이미지에서 표정을 분석합니다."""
+#     try:
+#         if not EXPRESSION_ANALYSIS_AVAILABLE:
+#             return {
+#                 "success": False,
+#                 "error": "Expression analysis module not available"
+#             }
+#         
+#         # 요청 데이터 파싱
+#         data = await request.json()
+#         image_data = data.get('image_data')
+#         
+#         if not image_data:
+#             return {
+#                 "success": False,
+#                 "error": "Image data is required"
+#             }
+#         
+#         # 표정 분석기 초기화 확인
+#         if not expression_analyzer.is_initialized:
+#             if not expression_analyzer.initialize():
+#                 return {
+#                     "success": False,
+#                     "error": "Failed to initialize expression analyzer"
+#                 }
+#         
+#         # 표정 분석 실행
+#         result = expression_analyzer.analyze_expression(image_data)
+#         
+#         return result
+#         
+#     except Exception as e:
+#         print(f"❌ [EXPRESSION] 분석 실패: {e}")
+#         import traceback
+#         traceback.print_exc()
+#         return {
+#             "success": False,
+#             "error": str(e)
+#         }
 
 @app.post("/api/expression/analyze-batch")
 async def analyze_expression_batch(request: Request):
