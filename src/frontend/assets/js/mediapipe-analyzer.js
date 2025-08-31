@@ -541,11 +541,12 @@ class MediaPipeAnalyzer {
     initializeHybridMode() {
         console.log("🔄 [MediaPipe] 하이브리드 모드 초기화 시작");
         
-        // 서버 분석 관련 변수들
-        this.lastServerAnalysis = 0;
-                    this.serverAnalysisInterval = 5000; // 5초마다 (고화질 대응)
-        this.currentMediaPipeScores = {};
-        this.serverAnalysisResults = {};
+                    // 서버 분석 관련 변수들
+            this.lastServerAnalysis = 0;
+            this.serverAnalysisInterval = 5000; // 5초마다 (고화질 대응)
+            this.currentMediaPipeScores = {};
+            this.serverAnalysisResults = {};
+            this.lastExpressionScore = 0;  // 마지막 서버 표정 점수 저장
         this.isServerAnalysisRunning = false;
         
         // 실시간 UI 업데이트 콜백들
@@ -916,15 +917,20 @@ class MediaPipeAnalyzer {
      */
     updateRealtimeUI(scores) {
         try {
-                    // 표정은 서버 결과만 사용, 나머지는 MediaPipe + 서버 결합
+                    // 표정은 서버 결과가 있을 때만 업데이트, 없으면 이전 값 유지
         const displayScores = {
-            expression: window.currentExpressionData?.weightedScore || 0,  // 서버 MLflow 모델 결과만 사용
+            expression: window.currentExpressionData?.weightedScore > 0 ? window.currentExpressionData.weightedScore : (this.lastExpressionScore || 0),
             concentration: (window.currentConcentrationData?.weightedScore > 0) ? window.currentConcentrationData.weightedScore : scores.concentration,
             gaze: (window.currentGazeData?.weightedScore > 0) ? window.currentGazeData.weightedScore : scores.gaze,
             blinking: (window.currentBlinkingData?.weightedScore > 0) ? window.currentBlinkingData.weightedScore : scores.blinking,
             posture: (window.currentPostureData?.weightedScore > 0) ? window.currentPostureData.weightedScore : scores.posture,
             initiative: (window.currentInitiativeData?.weightedScore > 0) ? window.currentInitiativeData.weightedScore : scores.initiative
         };
+        
+        // 서버 결과가 있으면 마지막 표정 점수 저장
+        if (window.currentExpressionData?.weightedScore > 0) {
+            this.lastExpressionScore = window.currentExpressionData.weightedScore;
+        }
             
             // 표정 점수 업데이트
             this.updateExpressionScore(displayScores.expression);
@@ -952,10 +958,15 @@ class MediaPipeAnalyzer {
         const element = this.findElementByIds(possibleIds);
         
         if (element) {
-            element.textContent = Math.round(score);
-            element.style.color = this.getScoreColor(score);
+            if (score > 0) {
+                element.textContent = Math.round(score);
+                element.style.color = this.getScoreColor(score);
+            } else {
+                element.textContent = "분석중";
+                element.style.color = "#6b7280";  // 회색
+            }
         } else {
-            console.log("📊 [UI] 표정 점수:", Math.round(score));
+            console.log("📊 [UI] 표정 점수:", score > 0 ? Math.round(score) : "분석 대기 중");
         }
     }
     

@@ -156,11 +156,13 @@ function updateExpressionPopupContent() {
         console.log("📊 [팝업] 표정 데이터 업데이트:", expressionData);
     }
     
-    if (!expressionData) {
+    // 서버 MLflow 모델 결과가 없으면 대기 상태 표시
+    if (!expressionData || !expressionData.weightedScore || expressionData.weightedScore <= 0) {
         document.getElementById('expression-main-value').textContent = '분석 대기 중...';
-        document.getElementById('expression-confidence-value').textContent = '0%';
+        document.getElementById('expression-confidence-value').textContent = '0.00000';
         document.getElementById('expression-probabilities').innerHTML = '<div class="no-data">서버 MLflow 모델 분석 대기 중...</div>';
         document.getElementById('expression-explanation-text').innerHTML = '서버 MLflow 모델 분석 대기 중...';
+        console.log("⏳ [팝업] 서버 분석 결과 대기 중...");
         return;
     }
     
