@@ -1083,9 +1083,16 @@ class MediaPipeAnalyzer {
         
         try {
             console.log("🧠 서버 표정 분석 요청...");
-            // GKE 서버에서 실행되므로 window.location.origin 사용
-            const baseUrl = window.location.origin;
-            console.log("🔍 [디버그] 요청 URL:", `${baseUrl}/api/expression/analyze`);
+            // 서버 URL 설정 - GKE는 LoadBalancer를 통해 80/443 → 8000 매핑
+            let apiUrl = window.serverUrl || window.location.origin;
+            
+            // 개발 환경에서만 포트 8000 추가 (localhost인 경우)
+            if (apiUrl.includes('localhost') && !apiUrl.includes(':8000')) {
+                const url = new URL(apiUrl);
+                url.port = '8000';
+                apiUrl = url.toString().replace(/\/$/, '');
+            }
+            console.log("🔍 [디버그] 실제 API URL:", `${apiUrl}/api/expression/analyze`);
             console.log("🔍 [디버그] 요청 데이터 크기:", JSON.stringify({
                 image: imageData.substring(0, 100) + "...",
                 mediapipe_scores: mediapipeScores,
@@ -1093,7 +1100,7 @@ class MediaPipeAnalyzer {
                 user_id: window.userId || 'anonymous'
             }).length, "bytes");
             
-            const response = await fetch(`${baseUrl}/api/expression/analyze`, {
+            const response = await fetch(`${apiUrl}/api/expression/analyze`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
