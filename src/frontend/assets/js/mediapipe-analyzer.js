@@ -1153,24 +1153,24 @@ class MediaPipeAnalyzer {
                 console.warn("⚠️ 서버 분석 응답 오류:", response.status, response.statusText);
                 console.log("🔍 [디버그] 응답 헤더:", Object.fromEntries(response.headers.entries()));
                 console.log("🔍 [디버그] 응답 URL:", response.url);
-                // 서버 오류시 MediaPipe 점수만 사용
-                this.handleServerAnalysisResult({
-                    model_scores: mediapipeScores,
-                    mediapipe_scores: mediapipeScores,
-                    is_anomaly: false,
-                    feedback: { confidence: 0.8 }
-                });
+                
+                // 서버 오류 응답 내용 확인
+                try {
+                    const errorText = await response.text();
+                    console.log("🔍 [디버그] 서버 오류 응답:", errorText);
+                } catch (e) {
+                    console.log("🔍 [디버그] 서버 오류 응답 읽기 실패:", e);
+                }
+                
+                console.log("📊 [서버 오류] MediaPipe 점수만 사용하여 UI 업데이트 계속");
+                // UI 깜빡임 방지를 위해 서버 분석 결과 처리는 생략
             }
             
         } catch (error) {
             console.warn("⚠️ 서버 분석 요청 실패:", error);
-            // 네트워크 오류시 MediaPipe 점수만 사용
-            this.handleServerAnalysisResult({
-                model_scores: mediapipeScores,
-                mediapipe_scores: mediapipeScores,
-                is_anomaly: false,
-                feedback: { confidence: 0.8 }
-            });
+            // 네트워크 오류시에도 UI 업데이트는 계속 (MediaPipe 점수 사용)
+            console.log("📊 [서버 실패] MediaPipe 점수만 사용하여 UI 업데이트 계속");
+            // UI 깜빡임 방지를 위해 서버 분석 결과 처리는 생략
         } finally {
             // 성능 모니터링
             const processingTime = performance.now() - startTime;
