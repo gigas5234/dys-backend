@@ -108,29 +108,30 @@ function closeExpressionDetails() {
 }
 
 function updateExpressionPopupContent() {
-    // MediaPipe 분석기에서 실시간 데이터 가져오기
+    // 서버 MLflow 모델 분석 결과 우선 사용
     let expressionData = window.currentExpressionData;
     
     if (!expressionData && window.mediaPipeAnalyzer && window.mediaPipeAnalyzer.currentMediaPipeScores) {
         const currentScores = window.mediaPipeAnalyzer.currentMediaPipeScores;
         const expressionScore = currentScores.expression || 0;
         
-        // 실시간 표정 데이터 생성 (8가지 분류) - 실제 MediaPipe 데이터 사용
-        if (window.mediaPipeAnalyzer.currentMediaPipeScores && window.mediaPipeAnalyzer.currentMediaPipeScores.expressionProbabilities) {
+        // 서버 MLflow 모델의 8가지 감정 분석 결과 우선 사용
+        if (expressionData?.serverAnalysis?.model_scores?.all_scores) {
             expressionData = {
-                expression: 'neutral',
-                confidence: 0.8,
+                expression: expressionData.serverAnalysis.model_scores.emotion || 'neutral',
+                confidence: expressionData.serverAnalysis.model_scores.confidence || 0.8,
                 score: {
-                    score: expressionScore,
-                    label: getScoreLabel(expressionScore)
+                    score: expressionData.weightedScore || expressionScore,
+                    label: getScoreLabel(expressionData.weightedScore || expressionScore)
                 },
-                probabilities: window.mediaPipeAnalyzer.currentMediaPipeScores.expressionProbabilities,
-                datingScore: expressionScore,
+                probabilities: expressionData.serverAnalysis.model_scores.all_scores,
+                weightedScore: expressionData.weightedScore || expressionScore,
                 lastUpdate: new Date().toISOString(),
-                isRealTime: true
+                isRealTime: true,
+                source: 'MLflow 모델'
             };
         } else {
-            // 폴백 데이터
+            // 서버 분석 결과가 없으면 기본값 사용
             expressionData = {
                 expression: 'neutral',
                 confidence: 0.8,
@@ -139,32 +140,27 @@ function updateExpressionPopupContent() {
                     label: getScoreLabel(expressionScore)
                 },
                 probabilities: {
-                    happy: Math.max(0, (expressionScore - 50) / 50),
-                    sad: Math.max(0, (100 - expressionScore - 20) / 80),
-                    angry: Math.max(0, (50 - Math.abs(expressionScore - 50)) / 50),
-                    surprised: Math.max(0, (70 - Math.abs(expressionScore - 70)) / 70),
-                    fearful: Math.max(0, (30 - Math.abs(expressionScore - 30)) / 30),
-                    disgusted: Math.max(0, (40 - Math.abs(expressionScore - 40)) / 40),
-                    neutral: Math.max(0, (60 - Math.abs(expressionScore - 60)) / 60),
-                    contempt: Math.max(0, (45 - Math.abs(expressionScore - 45)) / 45)
+                    happy: 0.125, sad: 0.125, angry: 0.125, surprised: 0.125,
+                    fearful: 0.125, disgusted: 0.125, neutral: 0.125, contempt: 0.125
                 },
-                datingScore: expressionScore,
+                weightedScore: expressionScore,
                 lastUpdate: new Date().toISOString(),
-                isRealTime: true
+                isRealTime: true,
+                source: '기본값'
             };
         }
         
         // 전역 변수에 저장
         window.currentExpressionData = expressionData;
         
-        console.log("📊 [팝업] 실시간 표정 데이터 업데이트:", expressionData);
+        console.log("📊 [팝업] 표정 데이터 업데이트:", expressionData);
     }
     
     if (!expressionData) {
         document.getElementById('expression-main-value').textContent = '분석 대기 중...';
         document.getElementById('expression-confidence-value').textContent = '0%';
-        document.getElementById('expression-probabilities').innerHTML = '<div class="no-data">분석 대기 중...</div>';
-        document.getElementById('expression-explanation-text').innerHTML = '분석 대기 중...';
+        document.getElementById('expression-probabilities').innerHTML = '<div class="no-data">서버 MLflow 모델 분석 대기 중...</div>';
+        document.getElementById('expression-explanation-text').innerHTML = '서버 MLflow 모델 분석 대기 중...';
         return;
     }
     
@@ -206,52 +202,45 @@ function updateExpressionPopupContent() {
 function updateExpressionProbabilities() {
     const probabilitiesDiv = document.getElementById('expression-probabilities');
     
-    // 가중 평균 점수 우선 사용 (서버 80% + MediaPipe 20%)
+    // 서버 MLflow 모델 분석 결과 우선 사용
     let expressionData = window.currentExpressionData;
     
     if (!expressionData && window.mediaPipeAnalyzer && window.mediaPipeAnalyzer.currentMediaPipeScores) {
         const currentScores = window.mediaPipeAnalyzer.currentMediaPipeScores;
         
-        // 가중 평균 점수 우선 사용
-        const weightedScore = expressionData?.weightedScore || currentScores.expression || 0;
-        
-        // 실제 MediaPipe 8가지 표정 확률 사용
-        if (currentScores.expressionProbabilities) {
+        // 서버 MLflow 모델의 8가지 감정 분석 결과 우선 사용
+        if (expressionData?.serverAnalysis?.model_scores?.all_scores) {
             expressionData = {
-                expression: 'neutral',
-                confidence: 0.8,
-                score: { score: weightedScore, label: getScoreLabel(weightedScore) },
-                probabilities: currentScores.expressionProbabilities,
-                weightedScore: weightedScore,
-                isRealTime: true
+                expression: expressionData.serverAnalysis.model_scores.emotion || 'neutral',
+                confidence: expressionData.serverAnalysis.model_scores.confidence || 0.8,
+                score: { score: expressionData.weightedScore || currentScores.expression || 0, label: getScoreLabel(expressionData.weightedScore || currentScores.expression || 0) },
+                probabilities: expressionData.serverAnalysis.model_scores.all_scores,
+                weightedScore: expressionData.weightedScore || currentScores.expression || 0,
+                isRealTime: true,
+                source: 'MLflow 모델'
             };
         } else {
-            // 폴백 데이터
+            // 서버 분석 결과가 없으면 기본값 사용
             expressionData = {
                 expression: 'neutral',
                 confidence: 0.8,
-                score: { score: weightedScore, label: getScoreLabel(weightedScore) },
+                score: { score: currentScores.expression || 0, label: getScoreLabel(currentScores.expression || 0) },
                 probabilities: {
-                    happy: Math.max(0, (weightedScore - 50) / 50),
-                    sad: Math.max(0, (100 - weightedScore - 20) / 80),
-                    angry: Math.max(0, (50 - Math.abs(weightedScore - 50)) / 50),
-                    surprised: Math.max(0, (70 - Math.abs(weightedScore - 70)) / 70),
-                    fearful: Math.max(0, (30 - Math.abs(weightedScore - 30)) / 30),
-                    disgusted: Math.max(0, (40 - Math.abs(weightedScore - 40)) / 40),
-                    neutral: Math.max(0, (60 - Math.abs(weightedScore - 60)) / 60),
-                    contempt: Math.max(0, (45 - Math.abs(weightedScore - 45)) / 45)
+                    happy: 0.125, sad: 0.125, angry: 0.125, surprised: 0.125,
+                    fearful: 0.125, disgusted: 0.125, neutral: 0.125, contempt: 0.125
                 },
-                weightedScore: weightedScore,
-                isRealTime: true
+                weightedScore: currentScores.expression || 0,
+                isRealTime: true,
+                source: '기본값'
             };
         }
         
         window.currentExpressionData = expressionData;
-        console.log("📊 [팝업] 가중 평균 표정 데이터 업데이트:", expressionData);
+        console.log("📊 [팝업] 표정 확률 데이터 업데이트:", expressionData);
     }
     
     if (!expressionData?.probabilities) {
-        probabilitiesDiv.innerHTML = '<div class="no-data">분석 대기 중...</div>';
+        probabilitiesDiv.innerHTML = '<div class="no-data">서버 MLflow 모델 분석 대기 중...</div>';
         return;
     }
     
@@ -361,8 +350,9 @@ function generateExpressionExplanation() {
         explanation += `<p>😞 <strong>매우 부정적인 표정</strong>: 상대방이 기피할 수 있는 표정입니다. 즉시 표정을 개선하는 것이 좋겠습니다.</p>`;
     }
     
-    // 가중 평균 시스템 설명 추가
-    explanation += `<p><small>💡 <strong>분석 방식</strong>: 서버 AI 모델(80%) + MediaPipe 실시간 분석(20%)의 가중 평균으로 계산됩니다.</small></p>`;
+    // 분석 방식 설명 추가
+    const source = expressionData.source || 'MLflow 모델';
+    explanation += `<p><small>💡 <strong>분석 방식</strong>: ${source}을 사용한 정확한 감정 분석 결과입니다.</small></p>`;
     
     // 8가지 표정별 조언
     explanation += `<h4>🎭 표정별 데이팅 조언</h4>`;
