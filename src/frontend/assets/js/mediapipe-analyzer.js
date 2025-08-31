@@ -1274,10 +1274,15 @@ class MediaPipeAnalyzer {
         this.updateFeedbackUI(result);
         
         // 서버 분석 결과를 전역 변수에 저장 (팝업에서 사용)
-        if (window.currentExpressionData) {
-            window.currentExpressionData.serverAnalysis = result;
-            window.currentExpressionData.weightedScore = weightedScores.expression;
-            window.currentExpressionData.lastUpdate = new Date().toISOString();
+        if (!window.currentExpressionData) {
+            window.currentExpressionData = {};
+        }
+        
+        // 서버 분석 결과 저장
+        window.currentExpressionData.serverAnalysis = result;
+        window.currentExpressionData.weightedScore = weightedScores.expression;
+        window.currentExpressionData.lastUpdate = new Date().toISOString();
+        window.currentExpressionData.isRealTime = true;
             
             // 서버 MLflow 모델의 8가지 감정 분석 결과 저장
             if (result.model_scores) {
@@ -1301,6 +1306,14 @@ class MediaPipeAnalyzer {
                 window.currentExpressionData.expressionProbabilities = expressionProbabilities;
                 window.currentExpressionData.confidence = result.model_scores.confidence || 0.8;
                 window.currentExpressionData.emotion = result.model_scores.emotion || result.model_emotion || 'neutral';
+                window.currentExpressionData.expression = result.model_emotion || 'neutral';
+                
+                console.log("✅ [MLflow] 전역 변수 업데이트 완료:", {
+                    weightedScore: window.currentExpressionData.weightedScore,
+                    confidence: window.currentExpressionData.confidence,
+                    emotion: window.currentExpressionData.emotion,
+                    hasExpressionProbabilities: !!window.currentExpressionData.expressionProbabilities
+                });
                 
                 console.log("🎭 [서버] MLflow 8-감정 분석 결과:", {
                     all_scores: expressionProbabilities,

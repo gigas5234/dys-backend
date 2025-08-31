@@ -45,8 +45,18 @@ function updateExpressionPopupNow() {
         return;
     }
     
-    // 서버 MLflow 모델 데이터가 있는지 확인
-    if (expressionData && expressionData.weightedScore > 0) {
+                // 서버 MLflow 모델 데이터가 있는지 확인
+    console.log("🔍 [새팝업] 데이터 상세 분석:", {
+        hasExpressionData: !!expressionData,
+        weightedScore: expressionData?.weightedScore,
+        confidence: expressionData?.confidence,
+        hasExpressionProbabilities: !!expressionData?.expressionProbabilities,
+        hasServerAnalysis: !!expressionData?.serverAnalysis,
+        hasModelScores: !!expressionData?.serverAnalysis?.model_scores,
+        hasAllScores: !!expressionData?.serverAnalysis?.model_scores?.all_scores
+    });
+    
+    if (expressionData && (expressionData.weightedScore > 0 || expressionData.confidence > 0)) {
         console.log("✅ [새팝업] 서버 MLflow 데이터 사용");
         
         // 메인 점수 표시
