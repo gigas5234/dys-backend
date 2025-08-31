@@ -40,6 +40,14 @@
                 this.userName = this.tryAlternativeNameSources();
             }
             
+            // 사용자 ID에서 이름 추출 시도
+            if (!this.userName) {
+                this.userName = this.extractNameFromUserId();
+                if (this.userName) {
+                    console.log('✅ [NAME] 사용자 ID에서 이름 추출:', this.userName);
+                }
+            }
+            
             // 모든 방법으로도 이름을 찾을 수 없으면 사용자에게 물어보기
             if (!this.userName) {
                 this.shouldAskForName = true;
@@ -75,6 +83,14 @@
             }
             
             this.bindEvents();
+            
+            // 사용자 정보 디버깅
+            console.log('🔍 [CHAT] 사용자 정보 확인:', {
+                userId: this.userId,
+                email: this.email,
+                extractedName: this.userName,
+                shouldAskForName: this.shouldAskForName
+            });
             
             if (this.userName) {
                 console.log('✅ [CHAT] ChatManager 초기화 완료 - 사용자 이름:', this.userName);
@@ -223,7 +239,10 @@
                 /([가-힣]{2,4})\s*예요/,
                 /([가-힣]{2,4})\s*이에요/,
                 /제가\s*([가-힣]{2,4})/,
-                /저\s*([가-힣]{2,4})/
+                /저\s*([가-힣]{2,4})/,
+                /내\s*이름은\s*([가-힣]{2,4})/,
+                /([가-힣]{2,4})\s*라고\s*불러/,
+                /([가-힣]{2,4})\s*이라고\s*해/
             ];
             
             for (const pattern of namePatterns) {
@@ -238,6 +257,37 @@
             }
             
             return null;
+        }
+        
+        /**
+         * 사용자 ID에서 의미있는 이름 추출 시도
+         */
+        extractNameFromUserId() {
+            try {
+                const userId = this.userId || window.userId;
+                if (!userId) return null;
+                
+                // 이메일 형식인 경우 @ 앞부분 사용
+                if (userId.includes('@')) {
+                    const emailPrefix = userId.split('@')[0];
+                    // 숫자만 있는 경우 제외
+                    if (!/^\d+$/.test(emailPrefix) && emailPrefix.length >= 2) {
+                        return emailPrefix;
+                    }
+                }
+                
+                // UUID가 아닌 의미있는 문자열인 경우
+                if (!userId.includes('-') && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId)) {
+                    if (userId.length >= 2 && userId.length <= 20) {
+                        return userId;
+                    }
+                }
+                
+                return null;
+            } catch (error) {
+                console.error('❌ [NAME] 사용자 ID에서 이름 추출 실패:', error);
+                return null;
+            }
         }
 
         // Session Management
@@ -474,7 +524,7 @@
                         localStorage.setItem('userName', this.userName);
                     }
                 }
-
+                
                 // UI echo
                 this.addBubble(text, 'me');
                 this.chatHistory.push({ role: 'user', content: text });
