@@ -3467,6 +3467,17 @@ async def analyze_expression_hybrid(request: Request):
         try:
             print(f"🔍 [EXPRESSION] 모델 상태 확인 - AVAILABLE: {EXPRESSION_ANALYSIS_AVAILABLE}, INITIALIZED: {expression_analyzer.is_initialized if 'expression_analyzer' in globals() else 'NOT_FOUND'}")
             
+            # 모델이 사용 가능하지만 초기화되지 않은 경우 초기화 시도
+            if EXPRESSION_ANALYSIS_AVAILABLE and not expression_analyzer.is_initialized:
+                print("🔄 [EXPRESSION] 모델 초기화 시도...")
+                try:
+                    if expression_analyzer.initialize():
+                        print("✅ [EXPRESSION] 모델 초기화 성공")
+                    else:
+                        print("❌ [EXPRESSION] 모델 초기화 실패")
+                except Exception as init_error:
+                    print(f"❌ [EXPRESSION] 모델 초기화 오류: {init_error}")
+            
             if EXPRESSION_ANALYSIS_AVAILABLE and expression_analyzer.is_initialized:
                 # 기존 표정 분석기 사용
                 analysis_result = expression_analyzer.analyze_expression_sync(image_cv)

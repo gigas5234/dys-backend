@@ -916,15 +916,15 @@ class MediaPipeAnalyzer {
      */
     updateRealtimeUI(scores) {
         try {
-                    // 서버 분석 결과가 있으면 100% 서버 결과 사용, 없으면 MediaPipe 점수 사용
-        const displayScores = this.serverAnalysisResults ? {
-            expression: window.currentExpressionData?.weightedScore || scores.expression,
-            concentration: window.currentConcentrationData?.weightedScore || scores.concentration,
-            gaze: window.currentGazeData?.weightedScore || scores.gaze,
-            blinking: window.currentBlinkingData?.weightedScore || scores.blinking,
-            posture: window.currentPostureData?.weightedScore || scores.posture,
-            initiative: window.currentInitiativeData?.weightedScore || scores.initiative
-        } : scores;
+                    // 안전한 점수 표시 (0이 아닌 유효한 값만 사용)
+        const displayScores = {
+            expression: (window.currentExpressionData?.weightedScore > 0) ? window.currentExpressionData.weightedScore : scores.expression,
+            concentration: (window.currentConcentrationData?.weightedScore > 0) ? window.currentConcentrationData.weightedScore : scores.concentration,
+            gaze: (window.currentGazeData?.weightedScore > 0) ? window.currentGazeData.weightedScore : scores.gaze,
+            blinking: (window.currentBlinkingData?.weightedScore > 0) ? window.currentBlinkingData.weightedScore : scores.blinking,
+            posture: (window.currentPostureData?.weightedScore > 0) ? window.currentPostureData.weightedScore : scores.posture,
+            initiative: (window.currentInitiativeData?.weightedScore > 0) ? window.currentInitiativeData.weightedScore : scores.initiative
+        };
             
             // 표정 점수 업데이트
             this.updateExpressionScore(displayScores.expression);
@@ -1254,8 +1254,9 @@ class MediaPipeAnalyzer {
                 difference: result.score_differences
             });
             
-            // 이상 감지시 UI에 알림
-            this.showAnomalyAlert(result);
+            // 이상 감지 알림 비활성화 (사용자 요청)
+            // this.showAnomalyAlert(result);
+            console.log("🔕 [UI] 이상 감지 팝업 비활성화됨");
         }
         
         // 피드백 UI 업데이트
