@@ -364,8 +364,8 @@ class ExpressionAnalyzer:
             # PIL Image로 변환
             image = Image.fromarray(image_rgb)
             
-            # 리사이즈 (384x384) - 고화질 대응
-            image = image.resize((384, 384), Image.Resampling.LANCZOS)
+            # 리사이즈 (224x224) - ViT 모델 표준 크기
+            image = image.resize((224, 224), Image.Resampling.LANCZOS)
             
             # numpy 배열로 변환
             image_array = np.array(image)
@@ -411,8 +411,8 @@ class ExpressionAnalyzer:
             if image.mode != 'RGB':
                 image = image.convert('RGB')
             
-            # 리사이즈 (384x384) - 고화질 대응
-            image = image.resize((384, 384), Image.Resampling.LANCZOS)
+            # 리사이즈 (224x224) - ViT 모델 표준 크기
+            image = image.resize((224, 224), Image.Resampling.LANCZOS)
             
             # numpy 배열로 변환
             image_array = np.array(image)
