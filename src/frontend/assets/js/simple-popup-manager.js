@@ -47,6 +47,10 @@ function updateExpressionPopupNow() {
     const expressionData = window.currentExpressionData;
     console.log("🔍 [새팝업] 현재 expressionData:", expressionData);
     
+    // 서버 분석 결과 직접 확인
+    const serverResults = window.mediaPipeAnalyzer?.serverAnalysisResults;
+    console.log("🔍 [새팝업] 서버 분석 결과:", serverResults);
+    
     // DOM 요소들 확인
     const mainValue = document.getElementById('expression-main-value');
     const confidenceValue = document.getElementById('expression-confidence-value');
@@ -69,8 +73,37 @@ function updateExpressionPopupNow() {
         hasAllScores: !!expressionData?.serverAnalysis?.model_scores?.all_scores
     });
     
-    if (expressionData && (expressionData.weightedScore > 0 || expressionData.confidence > 0)) {
-        console.log("✅ [새팝업] 서버 MLflow 데이터 사용");
+    // 서버 분석 결과 직접 사용 (가중치 계산 우회)
+    if (serverResults && serverResults.success && serverResults.model_scores) {
+        console.log("✅ [새팝업] 서버 분석 결과 직접 사용");
+        
+        const modelScores = serverResults.model_scores;
+        const confidence = modelScores.confidence || 0;
+        const expression = modelScores.expression || (confidence * 100);
+        
+        // 메인 점수 표시 (서버 결과 직접 사용)
+        mainValue.textContent = `${Math.round(expression)}점`;
+        
+        // 신뢰도 표시 (실제 값)
+        confidenceValue.textContent = confidence.toFixed(5);
+        
+        // 8가지 감정 확률 표시 (서버 결과 직접 사용)
+        if (modelScores.all_scores) {
+            displayEmotionProbabilities(modelScores.all_scores, probabilities);
+        } else {
+            probabilities.innerHTML = '<div class="no-data">감정 확률 데이터 없음</div>';
+        }
+        
+        // 설명 텍스트 (서버 결과 기반)
+        const mockExpressionData = {
+            weightedScore: Math.round(expression),
+            confidence: confidence,
+            emotion: serverResults.model_emotion || 'neutral'
+        };
+        explanation.innerHTML = generateSimpleExplanation(mockExpressionData);
+        
+    } else if (expressionData && (expressionData.weightedScore > 0 || expressionData.confidence > 0)) {
+        console.log("✅ [새팝업] 전역 변수 데이터 사용");
         
         // 메인 점수 표시
         mainValue.textContent = `${expressionData.weightedScore}점`;
