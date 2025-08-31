@@ -1507,6 +1507,12 @@ class MediaPipeAnalyzer {
             const mouthHeight = Math.abs(mouthTop.y - mouthBottom.y);
             const smileRatio = mouthWidth / (mouthHeight + 0.001);
             
+            // 입술 모서리 분석 (미소 강도) - 올바른 인덱스
+            const leftCorner = landmarks[78];     // 왼쪽 입술 모서리
+            const rightCorner = landmarks[308];   // 오른쪽 입술 모서리
+            const cornerHeight = (leftCorner.y + rightCorner.y) / 2;
+            const smileIntensity = Math.max(0, (cornerHeight - mouthCenter.y) * 10);
+            
             // 랜드마크 값 디버깅 (3초마다)
             if (!this.lastLandmarkDebugTime || Date.now() - this.lastLandmarkDebugTime > 3000) {
                 console.log("🔍 [MediaPipe] 랜드마크 값 디버깅:", {
@@ -1524,12 +1530,6 @@ class MediaPipeAnalyzer {
                 });
                 this.lastLandmarkDebugTime = Date.now();
             }
-            
-            // 입술 모서리 분석 (미소 강도) - 올바른 인덱스
-            const leftCorner = landmarks[78];     // 왼쪽 입술 모서리
-            const rightCorner = landmarks[308];   // 오른쪽 입술 모서리
-            const cornerHeight = (leftCorner.y + rightCorner.y) / 2;
-            const smileIntensity = Math.max(0, (cornerHeight - mouthCenter.y) * 10);
             
             // 눈썹 분석 (분노, 슬픔, 놀람) - 올바른 인덱스
             const leftEyebrow = landmarks[70];    // 왼쪽 눈썹
