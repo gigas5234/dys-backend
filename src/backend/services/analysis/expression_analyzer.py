@@ -115,7 +115,28 @@ class ExpressionAnalyzer:
                             self.logger.info("🔄 MLflow 모델 로딩 중...")
                             
                             # MLflow 모델 로드 (CPU 매핑으로 CUDA 호환성 문제 해결)
-                            self.model = mlflow.pytorch.load_model(model_path, map_location='cpu')
+                            # PyTorch 버전 불일치 경고 무시
+                            import warnings
+                            with warnings.catch_warnings():
+                                warnings.filterwarnings("ignore", category=UserWarning)
+                                
+                                try:
+                                    # 먼저 MLflow로 시도
+                                    self.model = mlflow.pytorch.load_model(
+                                        model_path, 
+                                        map_location='cpu'
+                                    )
+                                except Exception as mlflow_error:
+                                    self.logger.warning(f"⚠️ MLflow 로딩 실패, 직접 PyTorch 로딩 시도: {mlflow_error}")
+                                    
+                                    # MLflow 실패시 직접 PyTorch로 로드
+                                    import torch
+                                    model_file = os.path.join(model_path, "data", "model.pth")
+                                    if os.path.exists(model_file):
+                                        self.model = torch.load(model_file, map_location='cpu', weights_only=False)
+                                        self.logger.info(f"✅ 직접 PyTorch 로딩 성공: {model_file}")
+                                    else:
+                                        raise FileNotFoundError(f"모델 파일을 찾을 수 없음: {model_file}")
                             
                             # ViT 모델 호환성 패치 적용
                             self._ensure_vit_runtime_compat()
