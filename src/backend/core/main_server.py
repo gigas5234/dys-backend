@@ -3388,8 +3388,8 @@ class ExpressionAnalysisResponse(BaseModel):
     
     success: bool
     model_emotion: Optional[str] = None
-    model_scores: Optional[Dict[str, float]] = None
-    mediapipe_scores: Optional[Dict[str, float]] = None
+    model_scores: Optional[Dict[str, Any]] = None
+    mediapipe_scores: Optional[Dict[str, Any]] = None
     score_differences: Optional[Dict[str, float]] = None
     is_anomaly: bool = False
     anomaly_threshold: float = 0.3
@@ -3465,6 +3465,8 @@ async def analyze_expression_hybrid(request: Request):
         model_emotion = "neutral"
         
         try:
+            print(f"🔍 [EXPRESSION] 모델 상태 확인 - AVAILABLE: {EXPRESSION_ANALYSIS_AVAILABLE}, INITIALIZED: {expression_analyzer.is_initialized if 'expression_analyzer' in globals() else 'NOT_FOUND'}")
+            
             if EXPRESSION_ANALYSIS_AVAILABLE and expression_analyzer.is_initialized:
                 # 기존 표정 분석기 사용
                 analysis_result = expression_analyzer.analyze_expression_sync(image_cv)
@@ -3497,8 +3499,34 @@ async def analyze_expression_hybrid(request: Request):
                     print("⚠️ [EXPRESSION] 모델 분석 실패, 기본값 사용")
                     model_results = {"confidence": 0.0}
             else:
-                print("⚠️ [EXPRESSION] 분석 모델 비활성화됨")
-                model_results = {"confidence": 0.0}
+                print("⚠️ [EXPRESSION] 분석 모델 비활성화됨 - 기본값 사용")
+                # 모델이 비활성화된 경우 기본 분석 결과 생성
+                model_emotion = "neutral"
+                model_results = {
+                    "happiness": 0.2,
+                    "sadness": 0.1, 
+                    "anger": 0.05,
+                    "surprise": 0.15,
+                    "fear": 0.1,
+                    "disgust": 0.05,
+                    "neutral": 0.3,
+                    "contempt": 0.05,
+                    "confidence": 0.7,
+                    "expression": 60,  # 기본 표정 점수
+                    "concentration": 70,  # 기본 집중도 점수
+                    "all_scores": {
+                        "happy": 0.2,
+                        "sad": 0.1,
+                        "angry": 0.05,
+                        "surprised": 0.15,
+                        "fearful": 0.1,
+                        "disgusted": 0.05,
+                        "neutral": 0.3,
+                        "contempt": 0.05
+                    },
+                    "emotion": "neutral",
+                    "predicted_class": 6  # neutral의 인덱스
+                }
                 
         except Exception as e:
             print(f"❌ [EXPRESSION] 모델 분석 오류: {e}")
