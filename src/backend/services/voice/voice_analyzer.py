@@ -64,7 +64,7 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
         logging.StreamHandler(),
-        logging.FileHandler('voice_analysis.log', encoding='utf-8')
+        logging.FileHandler('/tmp/voice_analysis.log', encoding='utf-8')
     ]
 )
 logger = logging.getLogger(__name__)
