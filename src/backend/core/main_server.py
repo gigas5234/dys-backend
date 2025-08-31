@@ -32,7 +32,7 @@ from fastapi import FastAPI, Request, HTTPException, WebSocket, WebSocketDisconn
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse, FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 import base64
 from datetime import datetime
 import uvicorn
@@ -3398,7 +3398,7 @@ class ExpressionAnalysisResponse(BaseModel):
     error: Optional[str] = None
 
 @app.post("/api/expression/analyze", response_model=ExpressionAnalysisResponse)
-async def analyze_expression_hybrid(request: ExpressionAnalysisRequest):
+async def analyze_expression_hybrid(request: Request):
     """
     하이브리드 표정 분석 (구글 스토리지 모델 + MediaPipe 점수 비교)
     
@@ -3410,15 +3410,39 @@ async def analyze_expression_hybrid(request: ExpressionAnalysisRequest):
     start_time = time.time()
     
     try:
-        print(f"🧠 [EXPRESSION] 하이브리드 분석 시작 - 사용자: {request.user_id}")
+        # 요청 데이터 파싱 및 검증
+        try:
+            raw_data = await request.json()
+            print(f"🔍 [EXPRESSION] 받은 요청 데이터 키:", list(raw_data.keys()))
+            print(f"🔍 [EXPRESSION] 이미지 데이터 타입:", type(raw_data.get('image', 'None')))
+            print(f"🔍 [EXPRESSION] MediaPipe 점수 타입:", type(raw_data.get('mediapipe_scores', 'None')))
+            print(f"🔍 [EXPRESSION] 타임스탬프 타입:", type(raw_data.get('timestamp', 'None')))
+            print(f"🔍 [EXPRESSION] 사용자 ID 타입:", type(raw_data.get('user_id', 'None')))
+            
+            # ExpressionAnalysisRequest 모델로 변환
+            request_data = ExpressionAnalysisRequest(**raw_data)
+            print(f"🧠 [EXPRESSION] 하이브리드 분석 시작 - 사용자: {request_data.user_id}")
+            
+        except ValidationError as e:
+            print(f"❌ [EXPRESSION] 요청 데이터 검증 실패: {e}")
+            return ExpressionAnalysisResponse(
+                success=False,
+                error=f"요청 데이터 검증 실패: {str(e)}"
+            )
+        except Exception as e:
+            print(f"❌ [EXPRESSION] 요청 파싱 실패: {e}")
+            return ExpressionAnalysisResponse(
+                success=False,
+                error=f"요청 파싱 실패: {str(e)}"
+            )
         
         # 1. 이미지 디코딩
         try:
             # base64 데이터 URL에서 실제 데이터 부분 추출
-            if request.image.startswith('data:image'):
-                image_data = request.image.split(',')[1]
+            if request_data.image.startswith('data:image'):
+                image_data = request_data.image.split(',')[1]
             else:
-                image_data = request.image
+                image_data = request_data.image
                 
             # base64 디코딩
             image_bytes = base64.b64decode(image_data)
@@ -3481,7 +3505,7 @@ async def analyze_expression_hybrid(request: ExpressionAnalysisRequest):
             model_results = {"confidence": 0.0}
         
         # 3. MediaPipe vs 모델 점수 비교
-        mediapipe_scores = request.mediapipe_scores
+        mediapipe_scores = request_data.mediapipe_scores
         score_differences = {}
         max_diff = 0.0
         

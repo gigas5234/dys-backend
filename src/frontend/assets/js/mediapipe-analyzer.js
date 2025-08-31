@@ -1084,7 +1084,7 @@ class MediaPipeAnalyzer {
         try {
             console.log("🧠 서버 표정 분석 요청...");
             // 서버 URL 설정 - GKE는 LoadBalancer를 통해 80/443 → 8000 매핑
-            let apiUrl = window.serverUrl || window.location.origin;
+            let apiUrl = window.location.origin;
             
             // 개발 환경에서만 포트 8000 추가 (localhost인 경우)
             if (apiUrl.includes('localhost') && !apiUrl.includes(':8000')) {
@@ -1092,6 +1092,9 @@ class MediaPipeAnalyzer {
                 url.port = '8000';
                 apiUrl = url.toString().replace(/\/$/, '');
             }
+            
+            console.log("🔍 [디버그] window.serverUrl:", window.serverUrl);
+            console.log("🔍 [디버그] window.location.origin:", window.location.origin);
             console.log("🔍 [디버그] 실제 API URL:", `${apiUrl}/api/expression/analyze`);
             console.log("🔍 [디버그] 요청 데이터 크기:", JSON.stringify({
                 image: imageData.substring(0, 100) + "...",
