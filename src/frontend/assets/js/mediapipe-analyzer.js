@@ -1865,17 +1865,26 @@ class MediaPipeAnalyzer {
             
             const avgDistance = (leftDistance + rightDistance) / 2;
             
-            // 정교한 시선 안정성 점수 계산
+            // 정교한 시선 안정성 점수 계산 (더 관대한 기준)
             let stabilityScore = 100;
-            if (avgDistance > bandMidHalf) {
-                stabilityScore = 30; // 최소 30점 보장
-            } else if (avgDistance > bandCenterHalf) {
-                stabilityScore = 70;
-            } else if (avgDistance > bandCenterHalf * 0.5) {
-                stabilityScore = 90;
-            } else {
-                stabilityScore = 100;
+            if (avgDistance > bandMidHalf) {        // > 0.18
+                stabilityScore = 50; // 최소 50점으로 상향 (기존 30점)
+            } else if (avgDistance > bandCenterHalf) { // > 0.08  
+                stabilityScore = 75; // 75점으로 상향 (기존 70점)
+            } else if (avgDistance > bandCenterHalf * 0.5) { // > 0.04
+                stabilityScore = 90; // 유지
+            } else {                                // <= 0.04
+                stabilityScore = 100; // 유지
             }
+            
+            // 시선 안정성 보너스 (움직임이 적으면 추가 점수)
+            if (this.previousGazeDistance !== undefined) {
+                const gazeMovement = Math.abs(avgDistance - this.previousGazeDistance);
+                if (gazeMovement < 0.02) { // 매우 안정적
+                    stabilityScore = Math.min(100, stabilityScore + 5);
+                }
+            }
+            this.previousGazeDistance = avgDistance;
             
             // 시선 방향 및 집중 상태 판단
             let gazeStatus = '중앙';
@@ -1931,9 +1940,15 @@ class MediaPipeAnalyzer {
                 return 0;
             }
             
-            // EAR (Eye Aspect Ratio) 계산
-            const leftEye = [landmarks[33], landmarks[7], landmarks[163], landmarks[144], landmarks[145], landmarks[153]];
-            const rightEye = [landmarks[362], landmarks[382], landmarks[381], landmarks[380], landmarks[374], landmarks[373]];
+            // EAR (Eye Aspect Ratio) 계산 - 더 많은 랜드마크 사용
+            const leftEye = [
+                landmarks[33], landmarks[7], landmarks[163], landmarks[144], landmarks[145], landmarks[153],  // 기존 6개
+                landmarks[160], landmarks[158], landmarks[157], landmarks[173], landmarks[133], landmarks[155]  // 추가 6개
+            ];
+            const rightEye = [
+                landmarks[362], landmarks[382], landmarks[381], landmarks[380], landmarks[374], landmarks[373], // 기존 6개  
+                landmarks[387], landmarks[385], landmarks[384], landmarks[398], landmarks[359], landmarks[384]  // 추가 6개
+            ];
             
             function eyeAspectRatio(eye) {
                 const A = Math.sqrt(Math.pow(eye[1].x - eye[5].x, 2) + Math.pow(eye[1].y - eye[5].y, 2));
@@ -1989,8 +2004,18 @@ class MediaPipeAnalyzer {
                 ? recentBlinks.reduce((sum, blink) => sum + blink.duration, 0) / recentBlinks.length 
                 : 0;
             
-            // 깜빡임 점수 계산 (EAR 기반)
-            const blinkingScore = Math.min(100, avgEAR * 500); // EAR를 0-100으로 스케일링
+            // 깜빡임 점수 계산 (EAR 기반, 더 관대한 기준)
+            let blinkingScore = Math.min(100, avgEAR * 400); // 더 관대한 스케일링
+            
+            // 적절한 깜빡임 빈도 보너스 (분당 15-25회가 이상적)
+            if (blinkRatePerMinute >= 15 && blinkRatePerMinute <= 25) {
+                blinkingScore = Math.min(100, blinkingScore + 10); // 보너스 10점
+            } else if (blinkRatePerMinute >= 10 && blinkRatePerMinute <= 30) {
+                blinkingScore = Math.min(100, blinkingScore + 5);  // 보너스 5점
+            }
+            
+            // 최소 점수 보장 (너무 낮지 않게)
+            blinkingScore = Math.max(40, blinkingScore);
             
             console.log(`📊 [MediaPipe] 깜빡임 점수: ${blinkingScore.toFixed(1)} (EAR: ${avgEAR.toFixed(4)}, 분당: ${blinkRatePerMinute}회, 평균지속: ${avgBlinkDuration.toFixed(0)}ms)`);
             
@@ -2134,8 +2159,12 @@ class MediaPipeAnalyzer {
     getEyeCenter(landmarks, eye) {
         try {
             if (eye === 'left') {
-                // 왼쪽 눈 랜드마크들의 중심
-                const eyeLandmarks = [33, 7, 163, 144, 145, 153];
+                // 왼쪽 눈 랜드마크들의 중심 (더 많은 포인트 사용)
+                const eyeLandmarks = [
+                    33, 7, 163, 144, 145, 153,        // 기존 6개
+                    160, 158, 157, 173, 133, 155,     // 눈꺼풀 추가 6개
+                    46, 53, 52, 51, 48, 115           // 눈동자 영역 6개
+                ];
                 let x = 0, y = 0;
                 for (const idx of eyeLandmarks) {
                     x += landmarks[idx].x;
@@ -2143,8 +2172,12 @@ class MediaPipeAnalyzer {
                 }
                 return { x: x / eyeLandmarks.length, y: y / eyeLandmarks.length };
             } else {
-                // 오른쪽 눈 랜드마크들의 중심
-                const eyeLandmarks = [362, 382, 381, 380, 374, 373];
+                // 오른쪽 눈 랜드마크들의 중심 (더 많은 포인트 사용)
+                const eyeLandmarks = [
+                    362, 382, 381, 380, 374, 373,    // 기존 6개
+                    387, 385, 384, 398, 359, 384,     // 눈꺼풀 추가 6개 
+                    276, 283, 282, 281, 278, 344      // 눈동자 영역 6개
+                ];
                 let x = 0, y = 0;
                 for (const idx of eyeLandmarks) {
                     x += landmarks[idx].x;
