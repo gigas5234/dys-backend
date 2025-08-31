@@ -4,6 +4,8 @@
 """
 
 import torch
+import torch.nn.functional as F
+from torchvision import transforms
 import numpy as np
 import cv2
 from PIL import Image
@@ -346,6 +348,40 @@ class ExpressionAnalyzer:
             traceback.print_exc()
             return False
 
+    def _preprocess_opencv_image(self, image_cv) -> Optional[torch.Tensor]:
+        """OpenCV 이미지를 모델 입력 형식으로 전처리합니다."""
+        try:
+            # OpenCV BGR을 RGB로 변환
+            image_rgb = cv2.cvtColor(image_cv, cv2.COLOR_BGR2RGB)
+            
+            # PIL Image로 변환
+            image = Image.fromarray(image_rgb)
+            
+            # 리사이즈 (384x384) - 고화질 대응
+            image = image.resize((384, 384), Image.Resampling.LANCZOS)
+            
+            # numpy 배열로 변환
+            image_array = np.array(image)
+            
+            # 정규화 (0-1 범위)
+            image_array = image_array.astype(np.float32) / 255.0
+            
+            # PyTorch 텐서로 변환 (H, W, C) -> (C, H, W)
+            image_tensor = torch.from_numpy(image_array).permute(2, 0, 1)
+            
+            # 정규화 (ImageNet 기준)
+            normalize = transforms.Normalize(
+                mean=[0.485, 0.456, 0.406],
+                std=[0.229, 0.224, 0.225]
+            )
+            image_tensor = normalize(image_tensor)
+            
+            return image_tensor
+            
+        except Exception as e:
+            self.logger.error(f"❌ OpenCV 이미지 전처리 실패: {e}")
+            return None
+
     def preprocess_image(self, image_data: str) -> Optional[torch.Tensor]:
         """이미지를 모델 입력 형식으로 전처리합니다."""
         try:
@@ -550,8 +586,8 @@ class ExpressionAnalyzer:
                     "surprise": 0.0
                 }
             
-            # 이미지 전처리
-            processed_image = self._preprocess_image(image)
+            # 이미지 전처리 (OpenCV 이미지를 PyTorch 텐서로 변환)
+            processed_image = self._preprocess_opencv_image(image)
             if processed_image is None:
                 return {
                     "success": False,
