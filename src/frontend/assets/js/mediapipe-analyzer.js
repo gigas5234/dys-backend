@@ -1283,46 +1283,45 @@ class MediaPipeAnalyzer {
         window.currentExpressionData.weightedScore = weightedScores.expression;
         window.currentExpressionData.lastUpdate = new Date().toISOString();
         window.currentExpressionData.isRealTime = true;
+        
+        // 서버 MLflow 모델의 8가지 감정 분석 결과 저장
+        if (result.model_scores) {
+            // all_scores 우선, 없으면 개별 감정 점수로 구성
+            let expressionProbabilities = result.model_scores.all_scores;
             
-            // 서버 MLflow 모델의 8가지 감정 분석 결과 저장
-            if (result.model_scores) {
-                // all_scores 우선, 없으면 개별 감정 점수로 구성
-                let expressionProbabilities = result.model_scores.all_scores;
-                
-                if (!expressionProbabilities) {
-                    // all_scores가 없으면 개별 감정 점수로 구성
-                    expressionProbabilities = {
-                        happy: result.model_scores.happiness || 0,
-                        sad: result.model_scores.sadness || 0,
-                        angry: result.model_scores.anger || 0,
-                        surprised: result.model_scores.surprise || 0,
-                        fearful: result.model_scores.fear || 0,
-                        disgusted: result.model_scores.disgust || 0,
-                        neutral: result.model_scores.neutral || 0,
-                        contempt: result.model_scores.contempt || 0
-                    };
-                }
-                
-                window.currentExpressionData.expressionProbabilities = expressionProbabilities;
-                window.currentExpressionData.confidence = result.model_scores.confidence || 0.8;
-                window.currentExpressionData.emotion = result.model_scores.emotion || result.model_emotion || 'neutral';
-                window.currentExpressionData.expression = result.model_emotion || 'neutral';
-                
-                console.log("✅ [MLflow] 전역 변수 업데이트 완료:", {
-                    weightedScore: window.currentExpressionData.weightedScore,
-                    confidence: window.currentExpressionData.confidence,
-                    emotion: window.currentExpressionData.emotion,
-                    hasExpressionProbabilities: !!window.currentExpressionData.expressionProbabilities
-                });
-                
-                console.log("🎭 [서버] MLflow 8-감정 분석 결과:", {
-                    all_scores: expressionProbabilities,
-                    confidence: result.model_scores.confidence,
-                    emotion: window.currentExpressionData.emotion,
-                    expression_score: result.model_scores.expression,
-                    has_all_scores: !!result.model_scores.all_scores
-                });
+            if (!expressionProbabilities) {
+                // all_scores가 없으면 개별 감정 점수로 구성
+                expressionProbabilities = {
+                    happy: result.model_scores.happiness || 0,
+                    sad: result.model_scores.sadness || 0,
+                    angry: result.model_scores.anger || 0,
+                    surprised: result.model_scores.surprise || 0,
+                    fearful: result.model_scores.fear || 0,
+                    disgusted: result.model_scores.disgust || 0,
+                    neutral: result.model_scores.neutral || 0,
+                    contempt: result.model_scores.contempt || 0
+                };
             }
+            
+            window.currentExpressionData.expressionProbabilities = expressionProbabilities;
+            window.currentExpressionData.confidence = result.model_scores.confidence || 0.8;
+            window.currentExpressionData.emotion = result.model_scores.emotion || result.model_emotion || 'neutral';
+            window.currentExpressionData.expression = result.model_emotion || 'neutral';
+            
+            console.log("✅ [MLflow] 전역 변수 업데이트 완료:", {
+                weightedScore: window.currentExpressionData.weightedScore,
+                confidence: window.currentExpressionData.confidence,
+                emotion: window.currentExpressionData.emotion,
+                hasExpressionProbabilities: !!window.currentExpressionData.expressionProbabilities
+            });
+            
+            console.log("🎭 [서버] MLflow 8-감정 분석 결과:", {
+                all_scores: expressionProbabilities,
+                confidence: result.model_scores.confidence,
+                emotion: window.currentExpressionData.emotion,
+                expression_score: result.model_scores.expression,
+                has_all_scores: !!result.model_scores.all_scores
+            });
         }
         
         // 다른 분석 데이터도 업데이트
