@@ -208,35 +208,34 @@ function updateExpressionProbabilities() {
     if (!expressionData && window.mediaPipeAnalyzer && window.mediaPipeAnalyzer.currentMediaPipeScores) {
         const currentScores = window.mediaPipeAnalyzer.currentMediaPipeScores;
         
-        // 서버 MLflow 모델의 8가지 감정 분석 결과 우선 사용
-        if (expressionData?.serverAnalysis?.model_scores?.all_scores) {
-            expressionData = {
-                expression: expressionData.serverAnalysis.model_scores.emotion || 'neutral',
-                confidence: expressionData.serverAnalysis.model_scores.confidence || 0.8,
-                score: { score: expressionData.weightedScore || currentScores.expression || 0, label: getScoreLabel(expressionData.weightedScore || currentScores.expression || 0) },
-                probabilities: expressionData.serverAnalysis.model_scores.all_scores,
-                weightedScore: expressionData.weightedScore || currentScores.expression || 0,
-                isRealTime: true,
-                source: 'MLflow 모델'
-            };
-        } else {
-            // 서버 분석 결과가 없으면 기본값 사용
-            expressionData = {
-                expression: 'neutral',
-                confidence: 0.8,
-                score: { score: currentScores.expression || 0, label: getScoreLabel(currentScores.expression || 0) },
-                probabilities: {
-                    happy: 0.125, sad: 0.125, angry: 0.125, surprised: 0.125,
-                    fearful: 0.125, disgusted: 0.125, neutral: 0.125, contempt: 0.125
-                },
-                weightedScore: currentScores.expression || 0,
-                isRealTime: true,
-                source: '기본값'
-            };
-        }
+        // 기본값 사용 (서버 분석 결과가 없는 경우)
+        expressionData = {
+            expression: 'neutral',
+            confidence: 0.8,
+            score: { score: currentScores.expression || 0, label: getScoreLabel(currentScores.expression || 0) },
+            probabilities: {
+                happy: 0.125, sad: 0.125, angry: 0.125, surprised: 0.125,
+                fearful: 0.125, disgusted: 0.125, neutral: 0.125, contempt: 0.125
+            },
+            weightedScore: currentScores.expression || 0,
+            isRealTime: true,
+            source: '기본값'
+        };
         
         window.currentExpressionData = expressionData;
         console.log("📊 [팝업] 표정 확률 데이터 업데이트:", expressionData);
+    }
+    
+    // 서버 MLflow 모델의 8가지 감정 분석 결과가 있으면 우선 사용
+    if (expressionData?.serverAnalysis?.model_scores?.all_scores) {
+        expressionData.probabilities = expressionData.serverAnalysis.model_scores.all_scores;
+        expressionData.source = 'MLflow 모델';
+        expressionData.expression = expressionData.serverAnalysis.model_scores.emotion || expressionData.emotion || 'neutral';
+        expressionData.confidence = expressionData.serverAnalysis.model_scores.confidence || expressionData.confidence || 0.8;
+    } else if (expressionData?.expressionProbabilities) {
+        // 전역 변수에 저장된 8가지 감정 분석 결과 사용
+        expressionData.probabilities = expressionData.expressionProbabilities;
+        expressionData.source = 'MLflow 모델';
     }
     
     if (!expressionData?.probabilities) {
