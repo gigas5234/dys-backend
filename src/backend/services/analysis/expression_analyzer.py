@@ -689,11 +689,32 @@ class ExpressionAnalyzer:
                 
                 self.logger.info(f"✅ [EXPRESSION_SYNC] 분석 완료: {emotion} (신뢰도: {confidence:.3f})")
                 
+                # 데이팅 친화적 가중치 계산
+                dating_weights = {
+                    'happy': 1.0,      # 웃음 - 가장 높은 점수
+                    'neutral': 0.8,    # 중립 - 좋은 점수
+                    'surprised': 0.6,  # 놀람 - 중간 점수
+                    'contempt': 0.4,   # 경멸 - 낮은 점수
+                    'fearful': 0.3,    # 두려움 - 낮은 점수
+                    'sad': 0.2,        # 슬픔 - 낮은 점수
+                    'disgusted': 0.1,  # 혐오 - 매우 낮은 점수
+                    'angry': 0.0       # 분노 - 최저 점수
+                }
+                
+                # 데이팅 점수 계산 (감정별 확률 × 가중치)
+                dating_score = 0
+                for emotion_key, probability in emotion_scores.items():
+                    weight = dating_weights.get(emotion_key, 0.5)
+                    dating_score += probability * weight
+                
+                # 0-100 범위로 변환
+                dating_expression_score = min(100, max(0, dating_score * 100))
+                
                 return {
                     "success": True,
                     "emotion": emotion,
                     "confidence": confidence,
-                    "expression": confidence * 100,  # UI에서 사용하는 형식
+                    "expression": dating_expression_score,  # 데이팅 친화적 점수
                     "concentration": emotion_scores.get('neutral', 0.5) * 100,  # 중립일 때 집중도 높음
                     "happiness": emotion_scores.get('happy', 0.0) * 100,
                     "sadness": emotion_scores.get('sad', 0.0) * 100,
@@ -704,7 +725,8 @@ class ExpressionAnalyzer:
                     "neutral": emotion_scores.get('neutral', 0.0) * 100,
                     "all_scores": emotion_scores,
                     "predicted_class": predicted_class,
-                    "processing_device": str(self.device)
+                    "processing_device": str(self.device),
+                    "dating_score": dating_expression_score  # 데이팅 점수 추가
                 }
                 
         except Exception as e:

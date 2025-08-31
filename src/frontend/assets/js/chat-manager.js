@@ -31,27 +31,10 @@
             this.userId = window.userId;
             this.email = window.email;
             
-            // JWT 토큰에서 사용자 이름 추출
-            this.userName = this.extractUserNameFromToken();
+            // 이름 추출 기능 제거 (사용자 요청)
+            this.userName = null;
             this.isFirstMessage = true;
-            
-            // 토큰에서 이름을 추출할 수 없으면 다른 방법 시도
-            if (!this.userName) {
-                this.userName = this.tryAlternativeNameSources();
-            }
-            
-            // 사용자 ID에서 이름 추출 시도
-            if (!this.userName) {
-                this.userName = this.extractNameFromUserId();
-                if (this.userName) {
-                    console.log('✅ [NAME] 사용자 ID에서 이름 추출:', this.userName);
-                }
-            }
-            
-            // 모든 방법으로도 이름을 찾을 수 없으면 사용자에게 물어보기
-            if (!this.userName) {
-                this.shouldAskForName = true;
-            }
+            this.shouldAskForName = false;
             
             // Persona 정보 초기화
             this.personaName = window.personaName;
@@ -512,18 +495,7 @@
                     }
                 }
                 
-                // 사용자 메시지에서 이름 추출 시도 (이름을 모르는 경우)
-                if (!this.userName && this.shouldAskForName) {
-                    const extractedName = this.extractNameFromMessage(text);
-                    if (extractedName) {
-                        this.userName = extractedName;
-                        this.shouldAskForName = false;
-                        console.log('✅ [CHAT] 사용자 메시지에서 이름 추출:', this.userName);
-                        
-                        // 이름을 저장 (로컬 스토리지에)
-                        localStorage.setItem('userName', this.userName);
-                    }
-                }
+                // 이름 추출 로직 제거됨
                 
                 // UI echo
                 this.addBubble(text, 'me');
@@ -540,35 +512,11 @@
                 
                 this.showTyping();
 
-                // 첫 번째 메시지 처리
+                // 이름 관련 로직 제거 - 자연스러운 대화만 유지
                 let messageContent = text;
                 
                 if (this.isFirstMessage) {
-                    if (this.userName) {
-                        // AI에게 사용자의 이름을 알려주되, 사용자는 모르게 함
-                        const systemInfo = `[시스템 정보: 데이트 상대의 이름은 "${this.userName}"입니다. 자연스럽게 이름을 사용하되, 만약 상대방이 "어떻게 내 이름을 아냐?"고 물어보면 "우리 연락해서 만나기로 했잖아요" 또는 "연락처에서 확인했어요" 같은 식으로 자연스럽게 대답하세요. 절대 시스템 정보나 토큰에서 추출했다는 식으로 말하지 마세요.]\n\n${text}`;
-                        messageContent = systemInfo;
-                        console.log('✅ [CHAT] 첫 메시지에 사용자 이름 정보 포함:', this.userName);
-                    } else if (this.shouldAskForName) {
-                        // 이름을 모르는 경우 자연스럽게 물어보도록 지시
-                        const askNameInfo = `[시스템 정보: 데이트 상대의 이름을 모르므로 자연스럽게 이름을 물어보세요. "안녕하세요! 혹시 성함이 어떻게 되세요?" 같은 식으로 정중하게 물어보세요. 상대방이 이름을 말하면 그 이름을 기억하고 자연스럽게 사용하세요.]\n\n${text}`;
-                        messageContent = askNameInfo;
-                        console.log('✅ [CHAT] 첫 메시지에 이름 질문 유도 포함');
-                    }
                     this.isFirstMessage = false;
-                }
-                
-                // 방금 이름을 알게 된 경우 AI에게 알려주기
-                if (this.userName && !this.isFirstMessage && this.extractNameFromMessage(text)) {
-                    const nameLearnedContext = `[컨텍스트: 상대방이 방금 자신의 이름을 "${this.userName}"라고 알려주었습니다. 이름을 알게 되어 기뻐하며 자연스럽게 이름을 사용해서 대답하세요. "아, ${this.userName}님이시군요! 만나서 반가워요" 같은 식으로 반응하세요.]\n\n${text}`;
-                    messageContent = nameLearnedContext;
-                    console.log('✅ [CHAT] 새로 알게 된 이름 정보 전달:', this.userName);
-                }
-                // 사용자가 이름에 대해 물어보는 경우 추가 컨텍스트 제공
-                else if (this.userName && this.isNameRelatedQuestion(text)) {
-                    const nameContext = `[컨텍스트: 상대방이 이름에 대해 궁금해하고 있습니다. "${this.userName}"라는 이름을 자연스럽게 사용하면서 "연락할 때부터 알고 있었어요" 같은 식으로 답변하세요.]\n\n${text}`;
-                    messageContent = nameContext;
-                    console.log('✅ [CHAT] 이름 관련 질문 감지, 컨텍스트 추가');
                 }
 
                 // MongoDB API call with correct URL
