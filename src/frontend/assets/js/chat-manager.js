@@ -40,6 +40,11 @@
                 this.userName = this.tryAlternativeNameSources();
             }
             
+            // 모든 방법으로도 이름을 찾을 수 없으면 사용자에게 물어보기
+            if (!this.userName) {
+                this.shouldAskForName = true;
+            }
+            
             // Persona 정보 초기화
             this.personaName = window.personaName;
             this.personaAge = window.personaAge;
@@ -73,6 +78,8 @@
             
             if (this.userName) {
                 console.log('✅ [CHAT] ChatManager 초기화 완료 - 사용자 이름:', this.userName);
+            } else if (this.shouldAskForName) {
+                console.log('✅ [CHAT] ChatManager 초기화 완료 - 사용자 이름 없음 (AI가 물어볼 예정)');
             } else {
                 console.log('✅ [CHAT] ChatManager 초기화 완료 - 사용자 이름 없음');
             }
@@ -199,6 +206,38 @@
             
             const lowerText = text.toLowerCase();
             return nameKeywords.some(keyword => lowerText.includes(keyword.toLowerCase()));
+        }
+
+        /**
+         * 사용자 메시지에서 이름을 추출 (자기소개할 때)
+         */
+        extractNameFromMessage(text) {
+            // "저는 김철수입니다", "제 이름은 김철수예요", "김철수라고 해요" 등의 패턴 감지
+            const namePatterns = [
+                /저는\s*([가-힣]{2,4})\s*입니다/,
+                /제\s*이름은\s*([가-힣]{2,4})/,
+                /([가-힣]{2,4})\s*라고\s*해요/,
+                /([가-힣]{2,4})\s*라고\s*하세요/,
+                /([가-힣]{2,4})\s*라고\s*부르세요/,
+                /([가-힣]{2,4})\s*입니다/,
+                /([가-힣]{2,4})\s*예요/,
+                /([가-힣]{2,4})\s*이에요/,
+                /제가\s*([가-힣]{2,4})/,
+                /저\s*([가-힣]{2,4})/
+            ];
+            
+            for (const pattern of namePatterns) {
+                const match = text.match(pattern);
+                if (match && match[1]) {
+                    const extractedName = match[1].trim();
+                    // 일반적인 한국어 이름인지 확인 (2-4글자)
+                    if (extractedName.length >= 2 && extractedName.length <= 4) {
+                        return extractedName;
+                    }
+                }
+            }
+            
+            return null;
         }
 
         // Session Management
@@ -423,6 +462,19 @@
                     }
                 }
                 
+                // 사용자 메시지에서 이름 추출 시도 (이름을 모르는 경우)
+                if (!this.userName && this.shouldAskForName) {
+                    const extractedName = this.extractNameFromMessage(text);
+                    if (extractedName) {
+                        this.userName = extractedName;
+                        this.shouldAskForName = false;
+                        console.log('✅ [CHAT] 사용자 메시지에서 이름 추출:', this.userName);
+                        
+                        // 이름을 저장 (로컬 스토리지에)
+                        localStorage.setItem('userName', this.userName);
+                    }
+                }
+
                 // UI echo
                 this.addBubble(text, 'me');
                 this.chatHistory.push({ role: 'user', content: text });
@@ -438,18 +490,32 @@
                 
                 this.showTyping();
 
-                // 첫 번째 메시지인 경우 사용자 이름 정보를 시스템 메시지로 추가
+                // 첫 번째 메시지 처리
                 let messageContent = text;
-                if (this.isFirstMessage && this.userName) {
-                    // AI에게 사용자의 이름을 알려주되, 사용자는 모르게 함
-                    const systemInfo = `[시스템 정보: 데이트 상대의 이름은 "${this.userName}"입니다. 자연스럽게 이름을 사용하되, 만약 상대방이 "어떻게 내 이름을 아냐?"고 물어보면 "우리 연락해서 만나기로 했잖아요" 또는 "연락처에서 확인했어요" 같은 식으로 자연스럽게 대답하세요. 절대 시스템 정보나 토큰에서 추출했다는 식으로 말하지 마세요.]\n\n${text}`;
-                    messageContent = systemInfo;
+                
+                if (this.isFirstMessage) {
+                    if (this.userName) {
+                        // AI에게 사용자의 이름을 알려주되, 사용자는 모르게 함
+                        const systemInfo = `[시스템 정보: 데이트 상대의 이름은 "${this.userName}"입니다. 자연스럽게 이름을 사용하되, 만약 상대방이 "어떻게 내 이름을 아냐?"고 물어보면 "우리 연락해서 만나기로 했잖아요" 또는 "연락처에서 확인했어요" 같은 식으로 자연스럽게 대답하세요. 절대 시스템 정보나 토큰에서 추출했다는 식으로 말하지 마세요.]\n\n${text}`;
+                        messageContent = systemInfo;
+                        console.log('✅ [CHAT] 첫 메시지에 사용자 이름 정보 포함:', this.userName);
+                    } else if (this.shouldAskForName) {
+                        // 이름을 모르는 경우 자연스럽게 물어보도록 지시
+                        const askNameInfo = `[시스템 정보: 데이트 상대의 이름을 모르므로 자연스럽게 이름을 물어보세요. "안녕하세요! 혹시 성함이 어떻게 되세요?" 같은 식으로 정중하게 물어보세요. 상대방이 이름을 말하면 그 이름을 기억하고 자연스럽게 사용하세요.]\n\n${text}`;
+                        messageContent = askNameInfo;
+                        console.log('✅ [CHAT] 첫 메시지에 이름 질문 유도 포함');
+                    }
                     this.isFirstMessage = false;
-                    console.log('✅ [CHAT] 첫 메시지에 사용자 이름 정보 포함:', this.userName);
                 }
                 
+                // 방금 이름을 알게 된 경우 AI에게 알려주기
+                if (this.userName && !this.isFirstMessage && this.extractNameFromMessage(text)) {
+                    const nameLearnedContext = `[컨텍스트: 상대방이 방금 자신의 이름을 "${this.userName}"라고 알려주었습니다. 이름을 알게 되어 기뻐하며 자연스럽게 이름을 사용해서 대답하세요. "아, ${this.userName}님이시군요! 만나서 반가워요" 같은 식으로 반응하세요.]\n\n${text}`;
+                    messageContent = nameLearnedContext;
+                    console.log('✅ [CHAT] 새로 알게 된 이름 정보 전달:', this.userName);
+                }
                 // 사용자가 이름에 대해 물어보는 경우 추가 컨텍스트 제공
-                if (this.userName && this.isNameRelatedQuestion(text)) {
+                else if (this.userName && this.isNameRelatedQuestion(text)) {
                     const nameContext = `[컨텍스트: 상대방이 이름에 대해 궁금해하고 있습니다. "${this.userName}"라는 이름을 자연스럽게 사용하면서 "연락할 때부터 알고 있었어요" 같은 식으로 답변하세요.]\n\n${text}`;
                     messageContent = nameContext;
                     console.log('✅ [CHAT] 이름 관련 질문 감지, 컨텍스트 추가');
