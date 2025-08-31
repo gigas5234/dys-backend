@@ -3378,7 +3378,7 @@ async def diagnose_user(email: str):
 class ExpressionAnalysisRequest(BaseModel):
     """표정 분석 요청 모델"""
     image: str  # base64 encoded image
-    mediapipe_scores: Dict[str, float]
+    mediapipe_scores: Dict[str, Any]  # 복잡한 객체 포함 가능
     timestamp: float
     user_id: str
 
