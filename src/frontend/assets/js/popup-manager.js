@@ -1002,7 +1002,7 @@ function updateInitiativePopupContent() {
 }
 
 // 전역 함수로 노출 (HTML에서 직접 호출 가능하도록)
-window.showExpressionDetails = showExpressionDetails;
+// showExpressionDetails는 simple-popup-manager.js에서 정의됨
 window.closeExpressionDetails = closeExpressionDetails;
 window.showGazeDetails = showGazeDetails;
 window.closeGazeDetails = closeGazeDetails;
