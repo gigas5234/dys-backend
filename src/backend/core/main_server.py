@@ -3445,12 +3445,25 @@ async def analyze_expression_hybrid(request: ExpressionAnalysisRequest):
                 
                 if analysis_result and analysis_result.get("success"):
                     model_emotion = analysis_result.get("emotion", "neutral")
+                    
+                    # 8가지 감정 분류 결과 포함
+                    all_scores = analysis_result.get("all_scores", {})
+                    
                     model_results = {
                         "happiness": analysis_result.get("happiness", 0.0),
                         "sadness": analysis_result.get("sadness", 0.0), 
                         "anger": analysis_result.get("anger", 0.0),
                         "surprise": analysis_result.get("surprise", 0.0),
-                        "confidence": analysis_result.get("confidence", 0.0)
+                        "fear": analysis_result.get("fear", 0.0),
+                        "disgust": analysis_result.get("disgust", 0.0),
+                        "neutral": analysis_result.get("neutral", 0.0),
+                        "contempt": analysis_result.get("contempt", 0.0),
+                        "confidence": analysis_result.get("confidence", 0.0),
+                        "expression": analysis_result.get("expression", 0.0),
+                        "concentration": analysis_result.get("concentration", 0.0),
+                        "all_scores": all_scores,
+                        "emotion": model_emotion,
+                        "predicted_class": analysis_result.get("predicted_class", 0)
                     }
                     
                     print(f"✅ [EXPRESSION] 모델 분석 완료: {model_emotion} (신뢰도: {model_results.get('confidence', 0):.2f})")
