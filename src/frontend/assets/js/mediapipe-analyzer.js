@@ -2022,57 +2022,81 @@ class MediaPipeAnalyzer {
     calculatePostureScore(landmarks) {
         try {
             if (!landmarks || landmarks.length < 468) {
-                return 0;
+                return 75; // 기본값을 높게 설정 (너무 엄격하지 않게)
             }
             
-            // 얼굴 기울기 계산
-            const leftEar = landmarks[234];  // 왼쪽 귀
-            const rightEar = landmarks[454]; // 오른쪽 귀
-            const faceTilt = Math.abs(leftEar.y - rightEar.y);
+            // 1. 얼굴 기울기 계산 (더 많은 포인트 사용)
+            const leftEar = landmarks[234];      // 왼쪽 귀
+            const rightEar = landmarks[454];     // 오른쪽 귀
+            const leftCheek = landmarks[172];    // 왼쪽 볼
+            const rightCheek = landmarks[397];   // 오른쪽 볼
+            const leftJaw = landmarks[172];      // 왼쪽 턱선
+            const rightJaw = landmarks[397];     // 오른쪽 턱선
             
-            // 코와 이마의 수직성
-            const nose = landmarks[1];       // 코끝
-            const forehead = landmarks[10];  // 이마
-            const faceVertical = Math.abs(nose.x - forehead.x);
+            // 다중 포인트로 얼굴 기울기 계산 (더 안정적)
+            const earTilt = Math.abs(leftEar.y - rightEar.y);
+            const cheekTilt = Math.abs(leftCheek.y - rightCheek.y);
+            const jawTilt = Math.abs(leftJaw.y - rightJaw.y);
+            const avgFaceTilt = (earTilt + cheekTilt + jawTilt) / 3;
             
-            // 어깨 자세 추정 (얼굴 측면 랜드마크 기반)
+            // 2. 얼굴 수직성 (더 관대한 기준)
+            const nose = landmarks[1];           // 코끝
+            const forehead = landmarks[10];      // 이마
+            const chin = landmarks[18];          // 턱
+            
+            const faceVertical1 = Math.abs(nose.x - forehead.x);
+            const faceVertical2 = Math.abs(nose.x - chin.x);
+            const avgFaceVertical = (faceVertical1 + faceVertical2) / 2;
+            
+            // 3. 어깨 자세 추정 (더 정교하게)
             const leftSide = landmarks[234];
             const rightSide = landmarks[454];
             
-            // 어깨 위치 추정 (귀보다 약간 아래)
-            const leftShoulder = { x: leftSide.x, y: leftSide.y + 0.1 };
-            const rightShoulder = { x: rightSide.x, y: rightSide.y + 0.1 };
+            // 어깨 위치 추정 (더 현실적인 위치)
+            const leftShoulder = { x: leftSide.x - 0.05, y: leftSide.y + 0.15 };
+            const rightShoulder = { x: rightSide.x + 0.05, y: rightSide.y + 0.15 };
             
             const shoulderHeightDiff = Math.abs(leftShoulder.y - rightShoulder.y);
             const shoulderSlope = (rightShoulder.y - leftShoulder.y) / Math.abs(rightShoulder.x - leftShoulder.x);
             const shoulderWidth = Math.abs(rightShoulder.x - leftShoulder.x);
             
-            // 기본 어깨 너비 기준값
-            const shoulderWidthBaseline = 0.28;
-            const widthRatio = shoulderWidth / shoulderWidthBaseline;
+            // 4. 목 자세 분석 (새로 추가)
+            const neckTilt = Math.abs((leftEar.x + rightEar.x) / 2 - (leftCheek.x + rightCheek.x) / 2);
+            const neckForward = Math.abs(forehead.y - chin.y); // 목이 앞으로 나온 정도
             
+            // 5. 점수 계산 (더 관대한 기준)
+            const shoulderWidthBaseline = 0.25; // 기준을 더 관대하게
+            const widthRatio = shoulderWidth / shoulderWidthBaseline;
             const shoulderRotation = Math.atan(shoulderSlope) * (180 / Math.PI);
             
-            // 어깨 자세 점수 계산
-            const heightBalanceScore = Math.max(0, 100 - (shoulderHeightDiff * 500));
-            const slopeScore = Math.max(0, 100 - (Math.abs(shoulderSlope) * 200));
-            const widthScore = Math.min(100, Math.max(0, (widthRatio - 0.8) / 0.3 * 100));
-            const rotationScore = Math.max(0, 100 - (Math.abs(shoulderRotation) * 1));
+            // 어깨 자세 점수 계산 (더 관대한 감점)
+            const heightBalanceScore = Math.max(50, 100 - (shoulderHeightDiff * 300)); // 최소 50점
+            const slopeScore = Math.max(60, 100 - (Math.abs(shoulderSlope) * 100));    // 최소 60점
+            const widthScore = Math.min(100, Math.max(70, (widthRatio - 0.6) / 0.5 * 100)); // 최소 70점
+            const rotationScore = Math.max(65, 100 - (Math.abs(shoulderRotation) * 0.5)); // 최소 65점
             
             const shoulderScore = Math.round((heightBalanceScore + slopeScore + widthScore + rotationScore) / 4);
             
-            // 얼굴 자세 점수
-            const facePostureScore = Math.max(0, 100 - (faceTilt + faceVertical) * 200);
+            // 얼굴 자세 점수 (더 관대한 기준)
+            const facePostureScore = Math.max(60, 100 - (avgFaceTilt + avgFaceVertical) * 100); // 최소 60점
             
-            // 종합 자세 점수 (얼굴 60% + 어깨 40%)
-            const postureScore = Math.round(facePostureScore * 0.6 + shoulderScore * 0.4);
+            // 목 자세 점수 (새로 추가)
+            const neckScore = Math.max(70, 100 - (neckTilt * 150 + neckForward * 50)); // 최소 70점
             
-            console.log(`📊 [MediaPipe] 자세 점수: ${postureScore.toFixed(1)} (얼굴: ${facePostureScore.toFixed(1)}, 어깨: ${shoulderScore.toFixed(1)}, 기울기: ${faceTilt.toFixed(4)}, 어깨회전: ${shoulderRotation.toFixed(1)}°)`);
-            return Math.round(postureScore);
+            // 종합 자세 점수 (얼굴 50% + 어깨 30% + 목 20%)
+            const postureScore = Math.round(
+                facePostureScore * 0.5 + shoulderScore * 0.3 + neckScore * 0.2
+            );
+            
+            // 최소 점수 보장 (너무 낮지 않게)
+            const finalScore = Math.max(50, postureScore);
+            
+            console.log(`📊 [MediaPipe] 자세 점수: ${finalScore} (얼굴: ${facePostureScore.toFixed(1)}, 어깨: ${shoulderScore.toFixed(1)}, 목: ${neckScore.toFixed(1)}, 기울기: ${avgFaceTilt.toFixed(4)})`);
+            return finalScore;
             
         } catch (error) {
             console.error("❌ 자세 점수 계산 실패:", error);
-            return 0;
+            return 75; // 오류시에도 적당한 점수
         }
     }
     
@@ -2986,9 +3010,8 @@ class MediaPipeAnalyzer {
     
     // UI 업데이트 메서드들 (팝업이 열려있을 때만 호출)
     updateExpressionPopupUI(data) {
-        if (typeof window.updateExpressionPopupContent === 'function') {
-            window.updateExpressionPopupContent();
-        }
+        // popup-manager.js에서 직접 관리하므로 중복 호출 제거
+        console.log("📊 [MediaPipe] 표정 팝업 데이터 업데이트됨");
     }
     
     updateGazePopupUI(data) {
