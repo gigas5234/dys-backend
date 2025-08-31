@@ -74,29 +74,20 @@ function checkAndRepairPopupDOM() {
 
 // ===== 표정 상세 정보 팝업 =====
 function showExpressionDetails() {
+    console.log("🔍 [팝업] 표정 세부 팝업 열기 시도");
     const popup = document.getElementById('expression-details-popup');
     if (popup) {
         popup.classList.add('active');
+        console.log("✅ [팝업] 표정 팝업 DOM 활성화");
         
-        // DOM 상태 확인
-        const domOk = checkAndRepairPopupDOM();
-        if (!domOk) {
-            console.warn("⚠️ [POPUP] DOM 상태 문제로 팝업 업데이트 제한");
-        }
+        // 현재 데이터 상태 확인
+        console.log("🔍 [팝업] 현재 window.currentExpressionData:", window.currentExpressionData);
         
-        // 데이터 동기화 확인
-        const syncOk = checkPopupDataSync();
-        if (!syncOk.expressionData) {
-            console.warn("⚠️ [POPUP] 표정 데이터가 없어서 강제 동기화 시도");
-            forcePopupDataSync();
-        }
-        
-        // MediaPipe 데이터로 업데이트
-        if (window.mediaPipeAnalyzer) {
-            window.mediaPipeAnalyzer.updateExpressionPopupOnOpen();
-        }
-        
+        // 팝업 내용 업데이트
         updateExpressionPopupContent();
+        console.log("✅ [팝업] 표정 팝업 내용 업데이트 완료");
+    } else {
+        console.error("❌ [팝업] expression-details-popup DOM 요소를 찾을 수 없음");
     }
 }
 
