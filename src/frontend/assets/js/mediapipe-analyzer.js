@@ -1080,7 +1080,10 @@ class MediaPipeAnalyzer {
         
         try {
             console.log("🧠 서버 표정 분석 요청...");
-            console.log("🔍 [디버그] 요청 URL:", `${window.location.origin}/api/expression/analyze`);
+            // 올바른 API 엔드포인트 사용 (ChatManager와 동일한 베이스 URL 사용)
+            const baseUrl = window.serverUrl || 'https://dys-phi.vercel.app/api/gke';
+            const apiBase = (baseUrl && baseUrl.replace(/\/$/, '')) || 'https://dys-phi.vercel.app/api/gke';
+            console.log("🔍 [디버그] 요청 URL:", `${apiBase}/api/expression/analyze`);
             console.log("🔍 [디버그] 요청 데이터 크기:", JSON.stringify({
                 image: imageData.substring(0, 100) + "...",
                 mediapipe_scores: mediapipeScores,
@@ -1088,9 +1091,7 @@ class MediaPipeAnalyzer {
                 user_id: window.userId || 'anonymous'
             }).length, "bytes");
             
-            // 올바른 API 엔드포인트 사용
-            const baseUrl = window.location.origin;
-            const response = await fetch(`${baseUrl}/api/expression/analyze`, {
+            const response = await fetch(`${apiBase}/api/expression/analyze`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
