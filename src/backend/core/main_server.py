@@ -39,6 +39,7 @@ import uvicorn
 import io
 from PIL import Image
 import numpy as np
+import cv2
 
 # 로컬 모듈 import (선택적)
 try:
