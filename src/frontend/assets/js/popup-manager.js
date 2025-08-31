@@ -227,16 +227,28 @@ function updateExpressionProbabilities() {
         console.log("📊 [팝업] 표정 확률 데이터 업데이트:", expressionData);
     }
     
-    // 서버 MLflow 모델의 8가지 감정 분석 결과가 있으면 우선 사용
+    // 서버 MLflow 모델의 8가지 감정 분석 결과 사용
+    console.log("🔍 [팝업] expressionData 구조:", expressionData);
+    
     if (expressionData?.serverAnalysis?.model_scores?.all_scores) {
         expressionData.probabilities = expressionData.serverAnalysis.model_scores.all_scores;
         expressionData.source = 'MLflow 모델';
         expressionData.expression = expressionData.serverAnalysis.model_scores.emotion || expressionData.emotion || 'neutral';
         expressionData.confidence = expressionData.serverAnalysis.model_scores.confidence || expressionData.confidence || 0.8;
+        console.log("✅ [팝업] serverAnalysis.model_scores.all_scores 사용");
     } else if (expressionData?.expressionProbabilities) {
         // 전역 변수에 저장된 8가지 감정 분석 결과 사용
         expressionData.probabilities = expressionData.expressionProbabilities;
         expressionData.source = 'MLflow 모델';
+        console.log("✅ [팝업] expressionProbabilities 사용");
+    } else {
+        console.log("❌ [팝업] 감정 확률 데이터를 찾을 수 없음");
+        console.log("🔍 [팝업] 사용 가능한 데이터:", {
+            hasServerAnalysis: !!expressionData?.serverAnalysis,
+            hasModelScores: !!expressionData?.serverAnalysis?.model_scores,
+            hasAllScores: !!expressionData?.serverAnalysis?.model_scores?.all_scores,
+            hasExpressionProbabilities: !!expressionData?.expressionProbabilities
+        });
     }
     
     if (!expressionData?.probabilities) {
