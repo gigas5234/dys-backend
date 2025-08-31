@@ -886,8 +886,11 @@ class MediaPipeAnalyzer {
      * MediaPipe 실시간 점수 계산
      */
     calculateRealtimeScores(landmarks) {
-        // 8가지 표정 확률 계산
-        const expressionProbabilities = this.analyzeEightExpressions(landmarks);
+        // 8가지 감정 분석은 서버 MLflow 모델에서 처리하므로 MediaPipe에서는 기본값만 설정
+        const expressionProbabilities = {
+            happy: 0.125, sad: 0.125, angry: 0.125, surprised: 0.125,
+            fearful: 0.125, disgusted: 0.125, neutral: 0.125, contempt: 0.125
+        };
         
         // 시선 데이터 계산
         const gazeData = this.calculateGazeData(landmarks);
@@ -913,15 +916,15 @@ class MediaPipeAnalyzer {
      */
     updateRealtimeUI(scores) {
         try {
-            // 서버 분석 결과가 있으면 가중 평균 점수 사용, 없으면 MediaPipe 점수 사용
-            const displayScores = this.serverAnalysisResults ? {
-                expression: window.currentExpressionData?.weightedScore || scores.expression,
-                concentration: window.currentConcentrationData?.weightedScore || scores.concentration,
-                gaze: window.currentGazeData?.weightedScore || scores.gaze,
-                blinking: window.currentBlinkingData?.weightedScore || scores.blinking,
-                posture: window.currentPostureData?.weightedScore || scores.posture,
-                initiative: window.currentInitiativeData?.weightedScore || scores.initiative
-            } : scores;
+                    // 서버 분석 결과가 있으면 100% 서버 결과 사용, 없으면 MediaPipe 점수 사용
+        const displayScores = this.serverAnalysisResults ? {
+            expression: window.currentExpressionData?.weightedScore || scores.expression,
+            concentration: window.currentConcentrationData?.weightedScore || scores.concentration,
+            gaze: window.currentGazeData?.weightedScore || scores.gaze,
+            blinking: window.currentBlinkingData?.weightedScore || scores.blinking,
+            posture: window.currentPostureData?.weightedScore || scores.posture,
+            initiative: window.currentInitiativeData?.weightedScore || scores.initiative
+        } : scores;
             
             // 표정 점수 업데이트
             this.updateExpressionScore(displayScores.expression);
@@ -1080,10 +1083,9 @@ class MediaPipeAnalyzer {
         
         try {
             console.log("🧠 서버 표정 분석 요청...");
-            // 올바른 API 엔드포인트 사용 (ChatManager와 동일한 베이스 URL 사용)
-            const baseUrl = window.serverUrl || 'https://dys-phi.vercel.app/api/gke';
-            const apiBase = (baseUrl && baseUrl.replace(/\/$/, '')) || 'https://dys-phi.vercel.app/api/gke';
-            console.log("🔍 [디버그] 요청 URL:", `${apiBase}/api/expression/analyze`);
+            // GKE 서버에서 실행되므로 window.location.origin 사용
+            const baseUrl = window.location.origin;
+            console.log("🔍 [디버그] 요청 URL:", `${baseUrl}/api/expression/analyze`);
             console.log("🔍 [디버그] 요청 데이터 크기:", JSON.stringify({
                 image: imageData.substring(0, 100) + "...",
                 mediapipe_scores: mediapipeScores,
@@ -1091,7 +1093,7 @@ class MediaPipeAnalyzer {
                 user_id: window.userId || 'anonymous'
             }).length, "bytes");
             
-            const response = await fetch(`${apiBase}/api/expression/analyze`, {
+            const response = await fetch(`${baseUrl}/api/expression/analyze`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -1162,9 +1164,9 @@ class MediaPipeAnalyzer {
         
         this.serverAnalysisResults = result;
         
-        // 서버 모델과 MediaPipe 점수 가중 평균 계산 (서버 80%, MediaPipe 20%)
-        const serverWeight = 0.8;
-        const mediapipeWeight = 0.2;
+        // MLflow 모델을 100% 사용 (MediaPipe는 랜드마크 감지만 가능)
+        const serverWeight = 1.0;
+        const mediapipeWeight = 0.0;
         
         const modelScores = result.model_scores || {};
         const mediapipeScores = result.mediapipe_scores || {};
@@ -1185,7 +1187,7 @@ class MediaPipeAnalyzer {
             weightedScores[type] = weightedScore;
         });
         
-        console.log("⚖️ 가중 평균 점수 (서버 80% + MediaPipe 20%):", {
+        console.log("⚖️ MLflow 모델 점수 (100% 사용):", {
             server: modelScores,
             mediapipe: mediapipeScores,
             weighted: weightedScores
@@ -1214,6 +1216,12 @@ class MediaPipeAnalyzer {
             window.currentExpressionData.serverAnalysis = result;
             window.currentExpressionData.weightedScore = weightedScores.expression;
             window.currentExpressionData.lastUpdate = new Date().toISOString();
+            
+            // 서버 MLflow 모델의 8가지 감정 분석 결과 저장
+            if (result.model_scores && result.model_scores.all_scores) {
+                window.currentExpressionData.expressionProbabilities = result.model_scores.all_scores;
+                console.log("🎭 [서버] MLflow 8-감정 분석 결과:", result.model_scores.all_scores);
+            }
         }
         
         // 다른 분석 데이터도 업데이트
@@ -1418,64 +1426,20 @@ class MediaPipeAnalyzer {
                 return 0;
             }
             
-            // 8가지 표정 분류를 위한 랜드마크 분석
-            const expressions = this.analyzeEightExpressions(landmarks);
+            // MediaPipe는 랜드마크 감지만 하고, 실제 감정 분석은 서버 MLflow 모델에서 처리
+            // 기본 점수는 중간값으로 설정 (서버 분석 결과가 우선)
+            const basicScore = 50;
             
-            // 데이팅에서 상대방이 좋아할 만한 표정에 높은 점수 부여
-            const datingScoreWeights = {
-                happy: 1.0,      // 웃음 - 가장 높은 점수
-                neutral: 0.8,    // 중립 - 좋은 점수
-                surprised: 0.6,  // 놀람 - 중간 점수
-                contempt: 0.4,   // 경멸 - 낮은 점수
-                fearful: 0.3,    // 두려움 - 낮은 점수
-                sad: 0.2,        // 슬픔 - 낮은 점수
-                disgusted: 0.1,  // 혐오 - 매우 낮은 점수
-                angry: 0.0       // 분노 - 최저 점수
-            };
-            
-            // 가중 평균 점수 계산 (데이팅 친화적) - 수정된 로직
-            let weightedScore = 0;
-            
-            Object.entries(expressions).forEach(([expression, probability]) => {
-                const weight = datingScoreWeights[expression] || 0.5;
-                weightedScore += probability * weight;
-            });
-            
-            // 최종 점수 계산 (0-100) - 확률의 합이 1이므로 가중치 합으로 나눌 필요 없음
-            const finalScore = Math.round(weightedScore * 100);
-            
-            // 가장 높은 확률의 표정 찾기 (신뢰도용)
-            let maxExpression = 'neutral';
-            let maxProbability = 0;
-            
-            Object.entries(expressions).forEach(([expression, probability]) => {
-                if (probability > maxProbability) {
-                    maxProbability = probability;
-                    maxExpression = expression;
-                }
-            });
-            
-            // 전역 변수에 8가지 표정 데이터 저장
+            // 전역 변수에 기본 데이터 저장 (실제 감정 분석은 서버에서)
             if (!window.currentExpressionData) {
                 window.currentExpressionData = {};
             }
-            window.currentExpressionData.probabilities = expressions;
-            window.currentExpressionData.expression = maxExpression;
-            window.currentExpressionData.confidence = maxProbability;
-            window.currentExpressionData.datingScore = finalScore;
+            window.currentExpressionData.basicScore = basicScore;
             window.currentExpressionData.isRealTime = true;
             
-            console.log(`📊 [MediaPipe] 데이팅 친화적 표정 분석:`, {
-                expressions: expressions,
-                dominantExpression: maxExpression,
-                confidence: maxProbability.toFixed(3),
-                datingScore: finalScore,
-                scoreBreakdown: Object.entries(expressions).map(([exp, prob]) => 
-                    `${exp}: ${(prob * 100).toFixed(1)}% (가중치: ${datingScoreWeights[exp]})`
-                )
-            });
+            console.log(`📊 [MediaPipe] 랜드마크 감지 완료 (기본 점수: ${basicScore})`);
             
-            return finalScore;
+            return basicScore;
             
         } catch (error) {
             console.error("❌ 표정 점수 계산 실패:", error);
@@ -1514,9 +1478,10 @@ class MediaPipeAnalyzer {
             const cornerHeight = (leftCorner.y + rightCorner.y) / 2;
             const smileIntensity = Math.max(0, (cornerHeight - mouthCenter.y) * 10);
             
-            // 랜드마크 값 디버깅 (3초마다)
+            // 랜드마크 값 디버깅 (3초마다) - 더 자세한 정보
             if (!this.lastLandmarkDebugTime || Date.now() - this.lastLandmarkDebugTime > 3000) {
                 console.log("🔍 [MediaPipe] 랜드마크 값 디버깅:", {
+                    landmarksCount: landmarks.length,
                     mouthLeft: { x: mouthLeft.x.toFixed(4), y: mouthLeft.y.toFixed(4) },
                     mouthRight: { x: mouthRight.x.toFixed(4), y: mouthRight.y.toFixed(4) },
                     mouthTop: { x: mouthTop.x.toFixed(4), y: mouthTop.y.toFixed(4) },
@@ -1527,7 +1492,14 @@ class MediaPipeAnalyzer {
                     smileRatio: smileRatio.toFixed(4),
                     leftCorner: { x: leftCorner.x.toFixed(4), y: leftCorner.y.toFixed(4) },
                     rightCorner: { x: rightCorner.x.toFixed(4), y: rightCorner.y.toFixed(4) },
-                    smileIntensity: smileIntensity.toFixed(4)
+                    smileIntensity: smileIntensity.toFixed(4),
+                    leftEyeTop: { x: leftEyeTop.x.toFixed(4), y: leftEyeTop.y.toFixed(4) },
+                    leftEyeBottom: { x: leftEyeBottom.x.toFixed(4), y: leftEyeBottom.y.toFixed(4) },
+                    rightEyeTop: { x: rightEyeTop.x.toFixed(4), y: rightEyeTop.y.toFixed(4) },
+                    rightEyeBottom: { x: rightEyeBottom.x.toFixed(4), y: rightEyeBottom.y.toFixed(4) },
+                    eyeOpenness: eyeOpenness.toFixed(4),
+                    eyebrowDistance: eyebrowDistance.toFixed(4),
+                    averageChange: averageChange.toFixed(4)
                 });
                 this.lastLandmarkDebugTime = Date.now();
             }
@@ -1543,10 +1515,10 @@ class MediaPipeAnalyzer {
             ) / 2;
             
             // 눈 분석 (깜빡임, 집중도) - 올바른 인덱스
-            const leftEyeTop = landmarks[386];    // 왼쪽 눈 위
-            const leftEyeBottom = landmarks[374]; // 왼쪽 눈 아래
-            const rightEyeTop = landmarks[159];   // 오른쪽 눈 위
-            const rightEyeBottom = landmarks[145]; // 오른쪽 눈 아래
+            const leftEyeTop = landmarks[159];    // 왼쪽 눈 위
+            const leftEyeBottom = landmarks[145]; // 왼쪽 눈 아래
+            const rightEyeTop = landmarks[386];   // 오른쪽 눈 위
+            const rightEyeBottom = landmarks[374]; // 오른쪽 눈 아래
             const leftEyeOpen = Math.abs(leftEyeTop.y - leftEyeBottom.y);
             const rightEyeOpen = Math.abs(rightEyeTop.y - rightEyeBottom.y);
             const eyeOpenness = (leftEyeOpen + rightEyeOpen) / 2;
@@ -1563,13 +1535,17 @@ class MediaPipeAnalyzer {
             
             // 동적 변화 감지 (이전 프레임과 비교)
             if (!this.previousLandmarks) {
-                this.previousLandmarks = landmarks;
+                this.previousLandmarks = landmarks.map(lm => ({ x: lm.x, y: lm.y, z: lm.z }));
                 this.landmarkHistory = [];
+                console.log("🔄 [MediaPipe] 첫 번째 랜드마크 설정 완료");
             }
             
             // 랜드마크 변화량 계산 (더 민감하게)
             let totalChange = 0;
             let changeCount = 0;
+            let maxChange = 0;
+            let maxChangeIndex = 0;
+            
             for (let i = 0; i < Math.min(landmarks.length, this.previousLandmarks.length); i++) {
                 const current = landmarks[i];
                 const previous = this.previousLandmarks[i];
@@ -1580,70 +1556,96 @@ class MediaPipeAnalyzer {
                 if (change > 0.001) { // 더 작은 변화도 감지
                     totalChange += change;
                     changeCount++;
+                    if (change > maxChange) {
+                        maxChange = change;
+                        maxChangeIndex = i;
+                    }
                 }
             }
             const averageChange = changeCount > 0 ? totalChange / changeCount : 0;
             
+            // 변화 감지 디버깅 (3초마다)
+            if (!this.lastChangeDebugTime || Date.now() - this.lastChangeDebugTime > 3000) {
+                console.log("🔄 [MediaPipe] 랜드마크 변화 감지:", {
+                    totalChange: totalChange.toFixed(6),
+                    changeCount: changeCount,
+                    averageChange: averageChange.toFixed(6),
+                    maxChange: maxChange.toFixed(6),
+                    maxChangeIndex: maxChangeIndex,
+                    landmarksCount: landmarks.length,
+                    previousLandmarksCount: this.previousLandmarks.length
+                });
+                this.lastChangeDebugTime = Date.now();
+            }
+            
             // 이전 랜드마크 업데이트 (깊은 복사)
             this.previousLandmarks = landmarks.map(lm => ({ x: lm.x, y: lm.y, z: lm.z }));
             
-            // 8가지 표정 확률 계산 (더 관대한 임계값으로 수정)
+            // 8가지 표정 확률 계산 (실제 랜드마크 값에 기반한 동적 계산)
             const expressions = {
                 // 행복 (미소, 눈꺼풀 올라감, 볼 올라감)
                 happy: Math.max(0.05, Math.min(1, 
-                    (smileRatio - 1.0) * 0.8 + 
-                    smileIntensity * 2.0 + 
-                    (eyebrowDistance - 0.06) * 1.5
+                    Math.max(0, smileRatio - 1.2) * 2.0 + 
+                    Math.max(0, smileIntensity - 0.1) * 5.0 + 
+                    Math.max(0, eyebrowDistance - 0.08) * 8.0 +
+                    (averageChange > 0.002 ? 0.3 : 0) // 변화가 있으면 행복 증가
                 )),
                 
                 // 슬픔 (입술 내려감, 눈썹 내려감, 볼 내려감)
                 sad: Math.max(0.05, Math.min(1, 
-                    (1.3 - smileRatio) * 0.6 + 
-                    (0.08 - eyebrowDistance) * 3 + 
-                    (0.015 - eyeOpenness) * 4
+                    Math.max(0, 1.5 - smileRatio) * 1.5 + 
+                    Math.max(0, 0.06 - eyebrowDistance) * 6.0 + 
+                    Math.max(0, 0.012 - eyeOpenness) * 8.0 +
+                    (averageChange < 0.001 ? 0.2 : 0) // 변화가 없으면 슬픔 증가
                 )),
                 
                 // 분노 (눈썹 내려감, 입술 꾹 다물음, 이마 주름)
                 angry: Math.max(0.05, Math.min(1, 
-                    (0.06 - eyebrowDistance) * 4 + 
-                    (1.0 - smileRatio) * 0.8 + 
-                    foreheadTension * 2
+                    Math.max(0, 0.05 - eyebrowDistance) * 8.0 + 
+                    Math.max(0, 1.3 - smileRatio) * 1.0 + 
+                    Math.max(0, foreheadTension - 0.02) * 10.0 +
+                    (averageChange > 0.005 ? 0.4 : 0) // 급격한 변화시 분노 증가
                 )),
                 
                 // 놀람 (입술 벌어짐, 눈썹 올라감, 눈 크게 뜸)
                 surprised: Math.max(0.05, Math.min(1, 
-                    (smileRatio - 1.5) * 0.6 + 
-                    (eyebrowDistance - 0.10) * 3 + 
-                    (eyeOpenness - 0.020) * 3
+                    Math.max(0, smileRatio - 1.8) * 1.5 + 
+                    Math.max(0, eyebrowDistance - 0.12) * 6.0 + 
+                    Math.max(0, eyeOpenness - 0.025) * 8.0 +
+                    (averageChange > 0.008 ? 0.5 : 0) // 큰 변화시 놀람 증가
                 )),
                 
                 // 두려움 (눈썹 올라감, 입술 약간 벌어짐, 눈 반개)
                 fearful: Math.max(0.05, Math.min(1, 
-                    (eyebrowDistance - 0.08) * 2.5 + 
-                    (smileRatio - 1.1) * 0.2 + 
-                    (0.015 - eyeOpenness) * 2
+                    Math.max(0, eyebrowDistance - 0.10) * 4.0 + 
+                    Math.max(0, smileRatio - 1.4) * 0.5 + 
+                    Math.max(0, 0.010 - eyeOpenness) * 6.0 +
+                    (averageChange > 0.003 ? 0.3 : 0) // 중간 변화시 두려움 증가
                 )),
                 
                 // 혐오 (코 주름, 입술 오므림, 눈썹 내려감)
                 disgusted: Math.max(0.05, Math.min(1, 
-                    noseWrinkleIntensity * 3 + 
-                    (0.9 - smileRatio) * 0.6 + 
-                    (0.07 - eyebrowDistance) * 1.5
+                    Math.max(0, noseWrinkleIntensity - 0.01) * 15.0 + 
+                    Math.max(0, 1.1 - smileRatio) * 1.0 + 
+                    Math.max(0, 0.06 - eyebrowDistance) * 3.0 +
+                    (averageChange > 0.004 ? 0.2 : 0) // 변화시 혐오 증가
                 )),
                 
                 // 중립 (기본 상태, 변화량 적음)
                 neutral: Math.max(0.05, Math.min(1, 
-                    0.4 - Math.abs(smileRatio - 1.2) * 0.15 - 
-                    Math.abs(eyebrowDistance - 0.07) * 1.0 - 
-                    (averageChange > 0.005 ? 0.1 : 0) + // 변화량에 따른 동적 조정
-                    (averageChange < 0.001 ? 0.2 : 0)   // 변화가 없으면 중립 증가
+                    0.6 - Math.abs(smileRatio - 1.3) * 0.2 - 
+                    Math.abs(eyebrowDistance - 0.08) * 2.0 - 
+                    Math.abs(eyeOpenness - 0.018) * 3.0 +
+                    (averageChange < 0.002 ? 0.4 : 0) + // 변화가 적으면 중립 증가
+                    (averageChange > 0.006 ? 0.1 : 0)   // 변화가 크면 중립 감소
                 )),
                 
                 // 경멸 (입술 한쪽 올라감, 코 주름, 눈썹 약간 올라감)
                 contempt: Math.max(0.05, Math.min(1, 
-                    noseWrinkleIntensity * 1.5 + 
-                    Math.abs(smileRatio - 1.1) * 0.3 + 
-                    (eyebrowDistance - 0.08) * 1.0
+                    Math.max(0, noseWrinkleIntensity - 0.005) * 8.0 + 
+                    Math.abs(smileRatio - 1.2) * 0.8 + 
+                    Math.max(0, eyebrowDistance - 0.09) * 2.0 +
+                    (averageChange > 0.003 ? 0.2 : 0) // 변화시 경멸 증가
                 ))
             };
             
