@@ -80,9 +80,19 @@ class ExpressionAnalyzer:
                     try:
                         m.dropout = nn.Dropout(p)
                         self.logger.info(f"🔧 ViTSelfAttention.dropout 추가(p={p})")
-                    except Exception:
+                    except Exception as e:
                         m.dropout = nn.Identity()
-                        self.logger.info("🔧 ViTSelfAttention.dropout=Identity()로 대체")
+                        self.logger.info(f"🔧 ViTSelfAttention.dropout=Identity()로 대체: {e}")
+                        
+            # 모든 Attention 관련 모듈에 dropout 속성 추가
+            elif 'Attention' in class_name:
+                if not hasattr(m, 'dropout'):
+                    try:
+                        m.dropout = nn.Identity()
+                        self.logger.info(f"🔧 {class_name}.dropout=Identity() 추가")
+                    except Exception as e:
+                        self.logger.warning(f"⚠️ {class_name} 패치 실패: {e}")
+                        
             return m
         
         # 하위 모듈 순회하며 패치 적용
@@ -626,7 +636,7 @@ class ExpressionAnalyzer:
                     "surprise": 0.0
                 }
             
-            # 모델 추론
+            # 모델 추론 (안전 모드)
             self.model.eval()
             with torch.no_grad():
                 if processed_image.dim() == 3:
@@ -635,7 +645,27 @@ class ExpressionAnalyzer:
                 # GPU 사용 가능하면 GPU로, 아니면 CPU로
                 processed_image = processed_image.to(self.device)
                 
-                outputs = self.model(processed_image)
+                # 모델 호환성 패치 재적용 (안전장치)
+                try:
+                    self._ensure_vit_runtime_compat()
+                except Exception as patch_error:
+                    self.logger.warning(f"⚠️ 런타임 패치 재적용 실패: {patch_error}")
+                
+                # 안전한 모델 추론
+                try:
+                    outputs = self.model(processed_image)
+                except AttributeError as attr_error:
+                    if 'dropout' in str(attr_error):
+                        self.logger.error(f"❌ dropout 속성 오류 감지, 강제 패치 적용: {attr_error}")
+                        # 강제 패치 적용
+                        for name, module in self.model.named_modules():
+                            if 'Attention' in module.__class__.__name__ and not hasattr(module, 'dropout'):
+                                module.dropout = torch.nn.Identity()
+                                self.logger.info(f"🔧 강제 패치: {name}.dropout = Identity()")
+                        # 재시도
+                        outputs = self.model(processed_image)
+                    else:
+                        raise
                 
                 # 결과 처리 (모델 타입에 따라 다르게)
                 if hasattr(outputs, 'logits'):
