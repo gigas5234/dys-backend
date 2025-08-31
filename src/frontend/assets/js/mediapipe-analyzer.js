@@ -1083,20 +1083,47 @@ class MediaPipeAnalyzer {
         
         try {
             console.log("🧠 서버 표정 분석 요청...");
-            // 서버 URL 설정 - GKE는 LoadBalancer를 통해 80/443 → 8000 매핑
-            let apiUrl = window.location.origin;
+            // 서버 URL 설정 - window.serverUrl 우선 사용 (GKE 백엔드)
+            let apiUrl;
             
-            // 개발 환경에서만 포트 8000 추가 (localhost인 경우)
-            if (apiUrl.includes('localhost') && !apiUrl.includes(':8000')) {
-                const url = new URL(apiUrl);
-                url.port = '8000';
-                apiUrl = url.toString().replace(/\/$/, '');
+            if (window.serverUrl) {
+                // window.serverUrl에서 실제 서버 도메인 추출
+                if (window.serverUrl.includes('/api/gke')) {
+                    // '/api/gke' 부분을 제거하여 실제 서버 도메인 추출
+                    apiUrl = window.serverUrl.replace('/api/gke', '').replace(/\/$/, '');
+                } else {
+                    apiUrl = window.serverUrl.replace(/\/$/, '');
+                }
+                console.log("🔍 [디버그] window.serverUrl 사용:", window.serverUrl, "→", apiUrl);
+            } else {
+                // fallback: window.location.origin 사용
+                apiUrl = window.location.origin;
+                
+                // 개발 환경에서만 포트 8000 추가 (localhost인 경우)
+                if (apiUrl.includes('localhost') && !apiUrl.includes(':8000')) {
+                    const url = new URL(apiUrl);
+                    url.port = '8000';
+                    apiUrl = url.toString().replace(/\/$/, '');
+                }
+                console.log("🔍 [디버그] window.location.origin 사용:", apiUrl);
             }
             
             console.log("🔍 [디버그] window.serverUrl:", window.serverUrl);
             console.log("🔍 [디버그] window.location.origin:", window.location.origin);
             console.log("🔍 [디버그] 최종 apiUrl:", apiUrl);
-            console.log("🔍 [디버그] 실제 API URL:", `${apiUrl}/api/expression/analyze`);
+            // GKE 프록시 경로 사용 여부 결정
+            let finalApiUrl;
+            if (window.serverUrl && window.serverUrl.includes('/api/gke')) {
+                // Vercel → GKE 프록시를 사용하는 경우
+                finalApiUrl = `${window.location.origin}/api/gke/api/expression/analyze`;
+                console.log("🔍 [디버그] GKE 프록시 사용:", finalApiUrl);
+            } else {
+                // 직접 연결하는 경우  
+                finalApiUrl = `${apiUrl}/api/expression/analyze`;
+                console.log("🔍 [디버그] 직접 연결:", finalApiUrl);
+            }
+            
+            console.log("🔍 [디버그] 최종 API URL:", finalApiUrl);
             console.log("🔍 [디버그] 브라우저 캐시 확인용 - 버전:", "v2024-12-26-2");
             console.log("🔍 [디버그] 요청 데이터 크기:", JSON.stringify({
                 image: imageData.substring(0, 100) + "...",
@@ -1105,7 +1132,7 @@ class MediaPipeAnalyzer {
                 user_id: window.userId || 'anonymous'
             }).length, "bytes");
             
-            const response = await fetch(`${apiUrl}/api/expression/analyze`, {
+            const response = await fetch(finalApiUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
