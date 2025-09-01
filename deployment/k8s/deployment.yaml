@@ -5,8 +5,8 @@ metadata:
   annotations:
     autopilot.gke.io/disable-pod-autoscaling: "true"
 spec:
-  # 안정성을 위해 동일한 앱을 1개 실행시킵니다.
-  replicas: 1
+  # 안정성을 위해 동일한 앱을 2개 실행시킵니다.
+  replicas: 2
   strategy:
     type: Recreate
   progressDeadlineSeconds: 600
@@ -41,11 +41,11 @@ spec:
         - containerPort: 8001 # WebSocket 서버 포트
         resources:
           requests:
-            memory: "512Mi"  # 메모리 요청량 증가
-            cpu: "200m"     # CPU 요청량 증가
+            memory: "1Gi"   # 메모리 요청량 2배 증가
+            cpu: "300m"     # CPU 요청량 증가
           limits:
-            memory: "1Gi"   # 메모리 한계 2배 증가 (OOMKilled 해결)
-            cpu: "500m"     # CPU 한계 증가
+            memory: "2Gi"   # 메모리 한계 2배 증가 (모델 로딩 여유)
+            cpu: "800m"     # CPU 한계 증가
         # 헬스체크 설정 - 서버 시작 시간 고려
         livenessProbe:
           httpGet:
