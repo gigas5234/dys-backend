@@ -689,26 +689,39 @@ class ExpressionAnalyzer:
                 
                 self.logger.info(f"✅ [EXPRESSION_SYNC] 분석 완료: {emotion} (신뢰도: {confidence:.3f})")
                 
-                # 데이팅 친화적 가중치 계산
+                # 데이팅 친화적 가중치 계산 (현실적인 점수 분포)
                 dating_weights = {
-                    'happy': 1.0,      # 웃음 - 가장 높은 점수
-                    'neutral': 0.8,    # 중립 - 좋은 점수
-                    'surprised': 0.6,  # 놀람 - 중간 점수
-                    'contempt': 0.4,   # 경멸 - 낮은 점수
-                    'fearful': 0.3,    # 두려움 - 낮은 점수
-                    'sad': 0.2,        # 슬픔 - 낮은 점수
-                    'disgusted': 0.1,  # 혐오 - 매우 낮은 점수
-                    'angry': 0.0       # 분노 - 최저 점수
+                    'happy': 1.0,      # 웃음 - 90-100점 (최고)
+                    'neutral': 0.75,   # 중립 - 60-70점 (좋음) 
+                    'surprised': 0.65, # 놀람 - 50-60점 (보통)
+                    'contempt': 0.45,  # 경멸 - 35-45점 (낮음)
+                    'fearful': 0.4,    # 두려움 - 30-40점 (낮음, 너무 낮지 않게)
+                    'disgusted': 0.35, # 혐오 - 25-35점 (낮음, 너무 낮지 않게)
+                    'sad': 0.25,       # 슬픔 - 15-25점 (매우 낮음)
+                    'angry': 0.1       # 분노 - 5-15점 (최저, 0은 아님)
                 }
                 
+                # 기본 점수 설정 (너무 낮지 않게)
+                base_score = 30
+                
                 # 데이팅 점수 계산 (감정별 확률 × 가중치)
-                dating_score = 0
+                weighted_sum = 0
+                total_probability = 0
+                
                 for emotion_key, probability in emotion_scores.items():
                     weight = dating_weights.get(emotion_key, 0.5)
-                    dating_score += probability * weight
+                    weighted_sum += probability * weight
+                    total_probability += probability
                 
-                # 0-100 범위로 변환
-                dating_expression_score = min(100, max(0, dating_score * 100))
+                # 정규화된 가중 점수 계산
+                if total_probability > 0:
+                    normalized_score = weighted_sum / total_probability
+                else:
+                    normalized_score = 0.5  # 기본값
+                
+                # 최종 데이팅 점수 (30-100 범위)
+                dating_expression_score = base_score + (normalized_score * 70)
+                dating_expression_score = min(100, max(30, dating_expression_score))
                 
                 return {
                     "success": True,
