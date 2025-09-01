@@ -217,15 +217,15 @@ function generateSimpleExplanation(expressionData) {
     explanation += `<p style="margin: 4px 0;"><strong>최종 점수:</strong> ${score}점</p>`;
     explanation += `</div>`;
     
-    // 점수 해석
-    if (score >= 80) {
+    // 점수 해석 (더 관대한 기준)
+    if (score >= 70) {
         explanation += `<p style="color: #059669; margin: 8px 0;">🎯 <strong>매우 좋은 표정!</strong> 데이팅에 매우 긍정적인 인상을 줍니다.</p>`;
-    } else if (score >= 60) {
+    } else if (score >= 50) {
         explanation += `<p style="color: #0891b2; margin: 8px 0;">😊 <strong>좋은 표정!</strong> 데이팅에 좋은 인상을 줍니다.</p>`;
-    } else if (score >= 40) {
-        explanation += `<p style="color: #d97706; margin: 8px 0;">😐 <strong>보통 표정</strong> 조금 더 밝은 표정을 지어보세요.</p>`;
+    } else if (score >= 35) {
+        explanation += `<p style="color: #d97706; margin: 8px 0;">😐 <strong>자연스러운 표정</strong> 현재 표정도 괜찮습니다.</p>`;
     } else {
-        explanation += `<p style="color: #dc2626; margin: 8px 0;">😔 <strong>개선이 필요한 표정</strong> 더 밝고 긍정적인 표정을 지어보세요.</p>`;
+        explanation += `<p style="color: #f59e0b; margin: 8px 0;">🙂 <strong>편안한 표정</strong> 조금 더 밝은 표정을 지어보세요.</p>`;
     }
     
     explanation += `<div style="background: #fef3c7; padding: 8px; border-radius: 6px; margin-top: 12px; font-size: 13px;">`;
@@ -264,9 +264,13 @@ function updateGazePopupNow() {
     const gazeData = window.currentGazeData;
     console.log("🔍 [새팝업] 현재 gazeData:", gazeData);
     
+    // gaze-details-popup.html 구조에 맞는 DOM 요소들
     const mainValue = document.getElementById('gaze-main-value');
-    const statusValue = document.getElementById('gaze-status-value');
-    const positionValue = document.getElementById('gaze-position-value');
+    const stabilityValue = document.getElementById('gaze-stability-value');
+    const confidenceValue = document.getElementById('gaze-confidence-value');
+    const directionInfo = document.getElementById('gaze-direction-info');
+    const landmarksDiv = document.getElementById('gaze-landmarks');
+    const criteriaText = document.getElementById('gaze-criteria-text');
     const explanationText = document.getElementById('gaze-explanation-text');
     
     if (!mainValue) {
@@ -277,18 +281,26 @@ function updateGazePopupNow() {
     if (gazeData && gazeData.weightedScore > 0) {
         console.log("✅ [새팝업] 시선 데이터 사용");
         
-        mainValue.textContent = `${gazeData.weightedScore}%`;
+        // 메인 값들 업데이트 (HTML 구조에 맞춤)
+        mainValue.textContent = gazeData.gazeDirection?.status || '중앙';
+        if (stabilityValue) stabilityValue.textContent = `${gazeData.weightedScore}%`;
+        if (confidenceValue) confidenceValue.textContent = '높음';
         
-        if (statusValue) {
-            const status = gazeData.gazeDirection?.status || '중간';
-            statusValue.textContent = status;
-        }
-        
-        if (positionValue) {
+        if (directionInfo) {
             const x = gazeData.gazeDirection?.x || 0.5;
             const y = gazeData.gazeDirection?.y || 0.5;
             const distance = gazeData.gazeDirection?.distance || 0.1;
-            positionValue.textContent = `(${x.toFixed(3)}, ${y.toFixed(3)}) 거리: ${distance.toFixed(3)}`;
+            directionInfo.textContent = `(${x.toFixed(3)}, ${y.toFixed(3)}) 거리: ${distance.toFixed(3)}`;
+        }
+        
+        // 랜드마크 정보 업데이트
+        if (landmarksDiv) {
+            updateGazeLandmarksInfo(gazeData, landmarksDiv);
+        }
+        
+        // 평가 기준 업데이트
+        if (criteriaText) {
+            updateGazeCriteriaInfo(gazeData, criteriaText);
         }
         
         if (explanationText) {
@@ -298,11 +310,75 @@ function updateGazePopupNow() {
     } else {
         console.log("⏳ [새팝업] 시선 분석 대기 중");
         
-        if (mainValue) mainValue.textContent = '분석 대기 중...';
-        if (statusValue) statusValue.textContent = '-';
-        if (positionValue) positionValue.textContent = '-';
+        if (mainValue) mainValue.textContent = 'UI 모드';
+        if (stabilityValue) stabilityValue.textContent = '0%';
+        if (confidenceValue) confidenceValue.textContent = '-%';
+        if (directionInfo) directionInfo.textContent = '-';
+        if (landmarksDiv) landmarksDiv.innerHTML = '<div class="no-data">분석 대기 중...</div>';
+        if (criteriaText) criteriaText.innerHTML = '시선 분석 기능이 비활성화되어 있습니다.';
         if (explanationText) explanationText.innerHTML = '시선 분석이 비활성화되어 있습니다.';
     }
+}
+
+// 시선 랜드마크 정보 업데이트 (HTML 구조에 맞춤)
+function updateGazeLandmarksInfo(gazeData, container) {
+    const landmarkInfo = [
+        { 
+            name: '시선 분석', 
+            value: '활성화', 
+            description: '36개 눈 랜드마크를 통한 실시간 시선 분석이 진행 중입니다.' 
+        },
+        { 
+            name: '눈 추적', 
+            value: '실시간', 
+            description: '각 눈당 18개 포인트를 통한 정밀한 눈동자 추적' 
+        },
+        { 
+            name: '안정성 측정', 
+            value: `${gazeData.weightedScore}%`, 
+            description: '시선 변화량과 거리 기반 안정성 측정' 
+        },
+        { 
+            name: '분석 방식', 
+            value: 'MediaPipe', 
+            description: '실시간 얼굴 랜드마크 기반 시선 추적' 
+        }
+    ];
+    
+    let html = '';
+    landmarkInfo.forEach(item => {
+        html += `
+            <div class="landmark-item" style="margin: 8px 0; padding: 8px; background: #f8fafc; border-radius: 4px;">
+                <div class="landmark-name" style="font-weight: bold; color: #374151;">${item.name}</div>
+                <div class="landmark-value" style="color: #1e40af; font-size: 14px;">${item.value}</div>
+                <div class="landmark-description" style="font-size: 12px; color: #6b7280; margin-top: 4px;">${item.description}</div>
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html;
+}
+
+// 시선 평가 기준 정보 업데이트
+function updateGazeCriteriaInfo(gazeData, container) {
+    const score = gazeData.weightedScore || 0;
+    
+    const criteria = `
+        <div class="criteria-section" style="line-height: 1.5;">
+            <h4 style="margin: 0 0 8px 0; color: #1f2937;">🎯 시선 안정성 평가 기준</h4>
+            <div style="background: #f0f9ff; padding: 10px; border-radius: 6px; margin: 8px 0;">
+                <p style="margin: 2px 0; font-size: 13px;"><strong>90-100점:</strong> 매우 안정적인 시선 (완벽한 집중)</p>
+                <p style="margin: 2px 0; font-size: 13px;"><strong>75-89점:</strong> 안정적인 시선 (좋은 집중)</p>
+                <p style="margin: 2px 0; font-size: 13px;"><strong>50-74점:</strong> 보통 시선 (일반적인 상태)</p>
+                <p style="margin: 2px 0; font-size: 13px;"><strong>50점 미만:</strong> 불안정한 시선 (집중력 저하)</p>
+            </div>
+            <div style="background: #fef3c7; padding: 8px; border-radius: 6px; font-size: 12px;">
+                <strong>현재 점수:</strong> ${score}점 - ${score >= 75 ? '안정적' : score >= 50 ? '보통' : '개선 필요'}
+            </div>
+        </div>
+    `;
+    
+    container.innerHTML = criteria;
 }
 
 function generateGazeExplanation(gazeData) {
@@ -696,21 +772,30 @@ function updateInitiativePopupNow() {
         }
         
         if (statsDiv) {
-            const stats = initiativeData.stats || {
-                messageCount: 0,
-                questionCount: 0,
-                responseTime: 0
+            // 실제 대화 통계 가져오기
+            const conversationStats = window.ConversationAnalyzer ? window.ConversationAnalyzer.getDetailedAnalysis() : null;
+            const chatHistory = window.chatManager ? window.chatManager.chatHistory : [];
+            
+            const stats = {
+                messageCount: chatHistory.filter(msg => msg.role === 'user').length || 0,
+                questionCount: conversationStats?.userQuestionCount || 0,
+                responseTime: conversationStats?.averageResponseTime || 0,
+                totalMessages: chatHistory.length || 0,
+                conversationLength: conversationStats?.conversationLength || 0
             };
             
             let statsHtml = '';
             statsHtml += `<div style="display: flex; justify-content: space-between; padding: 8px; margin: 4px 0; background: #f9fafb; border-radius: 4px;">`;
-            statsHtml += `<span>메시지 수:</span><span style="font-weight: bold;">${stats.messageCount}개</span>`;
+            statsHtml += `<span>내 메시지:</span><span style="font-weight: bold;">${stats.messageCount}개</span>`;
+            statsHtml += `</div>`;
+            statsHtml += `<div style="display: flex; justify-content: space-between; padding: 8px; margin: 4px 0; background: #f9fafb; border-radius: 4px;">`;
+            statsHtml += `<span>전체 대화:</span><span style="font-weight: bold;">${stats.totalMessages}개</span>`;
             statsHtml += `</div>`;
             statsHtml += `<div style="display: flex; justify-content: space-between; padding: 8px; margin: 4px 0; background: #f9fafb; border-radius: 4px;">`;
             statsHtml += `<span>질문 수:</span><span style="font-weight: bold;">${stats.questionCount}개</span>`;
             statsHtml += `</div>`;
             statsHtml += `<div style="display: flex; justify-content: space-between; padding: 8px; margin: 4px 0; background: #f9fafb; border-radius: 4px;">`;
-            statsHtml += `<span>평균 응답시간:</span><span style="font-weight: bold;">${stats.responseTime}초</span>`;
+            statsHtml += `<span>대화 길이:</span><span style="font-weight: bold;">${stats.conversationLength}분</span>`;
             statsHtml += `</div>`;
             
             statsDiv.innerHTML = statsHtml;
