@@ -282,10 +282,10 @@ class VoiceAnalyzer:
         global FASTER_WHISPER_AVAILABLE
         if FASTER_WHISPER_AVAILABLE:
             try:
-                self._asr_model = WhisperModel("base", device="cpu", compute_type="int8")
-                self._stt_method = "faster-whisper"
-                logger.info("✅ ASR 모델 로드 성공 (faster-whisper base)")
-                logger.info("🎤 faster-whisper base 모델 채택")
+                self._asr_model = WhisperModel("tiny", device="cpu", compute_type="int8", num_workers=2)
+                self._stt_method = "faster-whisper-tiny"
+                logger.info("✅ ASR 모델 로드 성공 (faster-whisper tiny - 성능 최적화)")
+                logger.info("🎤 faster-whisper tiny 모델 채택 (2배 빠름, 2 workers)")
             except Exception as e:
                 logger.warning(f"⚠️ faster-whisper base 로드 실패: {e}")
                 if "libctranslate2" in str(e).lower():
@@ -532,16 +532,21 @@ class VoiceAnalyzer:
             # 오디오 전처리
             processed_audio = self._preprocess_audio(audio_array)
             
-            # 첫 번째 시도: 기본 설정
+            # 첫 번째 시도: 성능 최적화 설정
             try:
                 segments, _ = self._asr_model.transcribe(
                     processed_audio,
                     language="ko",
-                    beam_size=5,
+                    beam_size=1,              # 5 → 1 (5배 빠름)
+                    best_of=1,               # 기본값 5 → 1 (5배 빠름)
+                    temperature=0.0,          # 확률적 샘플링 비활성화
                     vad_filter=True,
-                    vad_parameters=dict(min_silence_duration_ms=500),
+                    vad_parameters=dict(
+                        min_silence_duration_ms=300,  # 500 → 300 (더 빠른 감지)
+                        max_speech_duration_s=30      # 긴 음성 제한
+                    ),
                     condition_on_previous_text=False,
-                    initial_prompt="이것은 한국어 음성입니다."
+                    initial_prompt="한국어"        # 프롬프트 단순화
                 )
             except Exception as e:
                 logger.warning(f"기본 전사 실패: {e}")

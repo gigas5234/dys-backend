@@ -35,7 +35,7 @@ spec:
             drop:
             - ALL
         # 💡 중요: CI/CD 파이프라인에서 빌드한 본인의 이미지 주소를 넣어야 합니다.
-        image: asia-northeast3-docker.pkg.dev/deyeonso10/dys-backend/dys-backend:319be0d61782bd13899e9c7731becd42b83706a1
+        image: asia-northeast3-docker.pkg.dev/deyeonso10/dys-backend/dys-backend@sha256:4537318d365809de8bc27e84b7a338aff67f15d10e63e330f6a5f3ddeb2bb0fb
         ports:
         - containerPort: 8000 # 메인 서버 포트
         - containerPort: 8001 # WebSocket 서버 포트

@@ -939,6 +939,18 @@ class MediaPipeAnalyzer {
             this.updateBlinkingScore(displayScores.blinking);
             this.updatePostureScore(displayScores.posture);
             
+            // 종합 점수 계산기 업데이트
+            if (window.ComprehensiveScoreCalculator) {
+                window.ComprehensiveScoreCalculator.updateVisualScore('expression', displayScores.expression);
+                window.ComprehensiveScoreCalculator.updateVisualScore('gaze_stability', displayScores.gaze);
+                window.ComprehensiveScoreCalculator.updateVisualScore('posture', displayScores.posture);
+                window.ComprehensiveScoreCalculator.updateVisualScore('blinking', displayScores.blinking);
+                window.ComprehensiveScoreCalculator.updateAuditoryScore('concentration', displayScores.concentration);
+                window.ComprehensiveScoreCalculator.updateAuditoryScore('tone', 75); // 음성 톤 기본값
+                window.ComprehensiveScoreCalculator.updateConversationScore('initiative', displayScores.initiative);
+                console.log("✅ [종합점수] 실시간 점수 업데이트 완료");
+            }
+            
             console.log("📊 실시간 점수 업데이트:", {
                 mediapipe: scores,
                 display: displayScores,
