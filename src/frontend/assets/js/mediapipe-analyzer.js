@@ -951,6 +951,13 @@ class MediaPipeAnalyzer {
                 console.log("✅ [종합점수] 실시간 점수 업데이트 완료");
             }
             
+            // 호감도 계산기 업데이트
+            if (window.AffinityCalculator) {
+                window.AffinityCalculator.updateExpressionAffinity(displayScores.expression);
+                window.AffinityCalculator.updatePostureAffinity(displayScores.posture);
+                window.AffinityCalculator.updateGazeAffinity(displayScores.gaze);
+            }
+            
             console.log("📊 실시간 점수 업데이트:", {
                 mediapipe: scores,
                 display: displayScores,

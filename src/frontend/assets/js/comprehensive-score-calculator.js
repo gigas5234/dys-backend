@@ -338,6 +338,16 @@ class ComprehensiveScoreCalculator {
     }
 
     /**
+     * 점수에 따른 색상 반환
+     */
+    getScoreColor(score) {
+        if (score >= 80) return '#4CAF50';      // 녹색 (우수)
+        if (score >= 60) return '#FF9800';      // 주황색 (보통)
+        if (score >= 40) return '#FF5722';      // 빨간색 (미흡)
+        return '#F44336';                       // 진한 빨간색 (매우 미흡)
+    }
+
+    /**
      * 점수 상태 확인
      */
     getScoreStatus() {

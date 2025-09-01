@@ -2008,6 +2008,13 @@ video { width: 100%; height: 100%; object-fit: cover; border-radius: var(--radiu
     text-align: center;
 }
 
+.likability-icon {
+    font-size: 20px;
+    margin-bottom: 4px;
+    transition: transform 0.3s ease;
+    display: block;
+}
+
 .likability-score-enhanced {
     font-size: 28px;
     font-weight: 800;
