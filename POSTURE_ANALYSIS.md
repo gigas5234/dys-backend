@@ -10,44 +10,61 @@ MediaPipe Face Landmarker를 사용하여 얼굴 랜드마크 468개 점을 기�
 
 ## 📍 사용되는 랜드마크
 
-### 핵심 랜드마크 포인트
+### 핵심 랜드마크 포인트 (확장됨)
 
 | 랜드마크 인덱스 | 위치 | 용도 |
 |---|---|---|
-| `landmarks[234]` | 왼쪽 귀 | 얼굴 기울기, 어깨 자세 추정 |
-| `landmarks[454]` | 오른쪽 귀 | 얼굴 기울기, 어깨 자세 추정 |
+| `landmarks[234]` | 왼쪽 귀 | 얼굴 기울기, 어깨 자세 추정, 목 분석 |
+| `landmarks[454]` | 오른쪽 귀 | 얼굴 기울기, 어깨 자세 추정, 목 분석 |
+| `landmarks[172]` | 왼쪽 볼/턱선 | 다중 포인트 얼굴 기울기 |
+| `landmarks[397]` | 오른쪽 볼/턱선 | 다중 포인트 얼굴 기울기 |
 | `landmarks[1]` | 코끝 | 얼굴 수직성 |
 | `landmarks[10]` | 이마 | 얼굴 수직성 |
+| `landmarks[18]` | 턱 중앙 | 얼굴 수직성, 목 자세 |
 
-**총 사용 랜드마크**: 4개 핵심 포인트 (468개 중)
+**총 사용 랜드마크**: 7개 핵심 포인트 (468개 중) - 기존 4개에서 확장
 
 ## 🧮 계산 방식
 
-### 1. 얼굴 기울기 분석
+### 1. 얼굴 기울기 분석 (다중 포인트)
 
 ```javascript
-// 얼굴 기울기 계산
-const leftEar = landmarks[234];   // 왼쪽 귀
-const rightEar = landmarks[454];  // 오른쪽 귀
-const faceTilt = Math.abs(leftEar.y - rightEar.y);
+// 다중 포인트로 얼굴 기울기 계산 (더 안정적)
+const leftEar = landmarks[234];      // 왼쪽 귀
+const rightEar = landmarks[454];     // 오른쪽 귀
+const leftCheek = landmarks[172];    // 왼쪽 볼
+const rightCheek = landmarks[397];   // 오른쪽 볼
+const leftJaw = landmarks[172];      // 왼쪽 턱선
+const rightJaw = landmarks[397];     // 오른쪽 턱선
+
+const earTilt = Math.abs(leftEar.y - rightEar.y);
+const cheekTilt = Math.abs(leftCheek.y - rightCheek.y);
+const jawTilt = Math.abs(leftJaw.y - rightJaw.y);
+const avgFaceTilt = (earTilt + cheekTilt + jawTilt) / 3;
 ```
 
 **평가 기준:**
-- `faceTilt = 0`: 완전히 수평 (최고)
-- `faceTilt > 0.05`: 기울어진 상태 (감점)
+- `avgFaceTilt = 0`: 완전히 수평 (최고)
+- `avgFaceTilt > 0.05`: 기울어진 상태 (감점)
+- **개선**: 3개 포인트 평균으로 더 안정적인 계산
 
-### 2. 얼굴 수직성 분석
+### 2. 얼굴 수직성 분석 (다중 포인트)
 
 ```javascript
-// 코와 이마의 수직성
-const nose = landmarks[1];        // 코끝
-const forehead = landmarks[10];   // 이마
-const faceVertical = Math.abs(nose.x - forehead.x);
+// 얼굴 수직성 (더 관대한 기준)
+const nose = landmarks[1];           // 코끝
+const forehead = landmarks[10];      // 이마
+const chin = landmarks[18];          // 턱
+
+const faceVertical1 = Math.abs(nose.x - forehead.x);
+const faceVertical2 = Math.abs(nose.x - chin.x);
+const avgFaceVertical = (faceVertical1 + faceVertical2) / 2;
 ```
 
 **평가 기준:**
-- `faceVertical = 0`: 완전히 수직 (최고)
-- `faceVertical > 0.05`: 좌우로 기울어진 상태 (감점)
+- `avgFaceVertical = 0`: 완전히 수직 (최고)
+- `avgFaceVertical > 0.05`: 좌우로 기울어진 상태 (감점)
+- **개선**: 코-이마, 코-턱 2개 축 평균으로 더 정확한 계산
 
 ### 3. 어깨 자세 추정
 
@@ -84,7 +101,21 @@ const shoulderRotation = Math.atan(shoulderSlope) * (180 / Math.PI);
 const rotationScore = Math.max(0, 100 - (Math.abs(shoulderRotation) * 1));
 ```
 
-### 4. 어깨 종합 점수
+### 4. 목 자세 분석 (새로 추가)
+
+```javascript
+// 목 자세 분석 (새로 추가)
+const neckTilt = Math.abs((leftEar.x + rightEar.x) / 2 - (leftCheek.x + rightCheek.x) / 2);
+const neckForward = Math.abs(forehead.y - chin.y); // 목이 앞으로 나온 정도
+const neckScore = Math.max(70, 100 - (neckTilt * 150 + neckForward * 50)); // 최소 70점
+```
+
+**평가 기준:**
+- **목 기울기**: 좌우 기울어짐 정도
+- **목 앞으로 나옴**: 거북목 자세 감지
+- **최소 점수**: 70점 보장 (너무 엄격하지 않게)
+
+### 5. 어깨 종합 점수
 
 ```javascript
 const shoulderScore = Math.round((heightBalanceScore + slopeScore + widthScore + rotationScore) / 4);
@@ -96,16 +127,20 @@ const shoulderScore = Math.round((heightBalanceScore + slopeScore + widthScore +
 - **너비** (25%): 어깨 너비의 적절성
 - **회전** (25%): 어깨의 회전 정도
 
-### 5. 최종 자세 점수
+### 6. 최종 자세 점수 (3요소 조합)
 
 ```javascript
-// 종합 자세 점수 (얼굴 60% + 어깨 40%)
-const postureScore = Math.round(facePostureScore * 0.6 + shoulderScore * 0.4);
+// 종합 자세 점수 (얼굴 50% + 어깨 30% + 목 20%)
+const postureScore = Math.round(
+    facePostureScore * 0.5 + shoulderScore * 0.3 + neckScore * 0.2
+);
+const finalScore = Math.max(50, postureScore); // 최소 50점 보장
 ```
 
-**가중치:**
-- **얼굴 자세**: 60% (더 중요)
-- **어깨 자세**: 40%
+**가중치 (변경됨):**
+- **얼굴 자세**: 50% (기존 60%에서 조정)
+- **어깨 자세**: 30% (기존 40%에서 조정)
+- **목 자세**: 20% (새로 추가)
 
 ## 📊 점수 체계
 
@@ -138,34 +173,40 @@ const facePostureScore = Math.max(0, 100 - (faceTilt + faceVertical) * 200);
 
 ### 2. 어깨 자세 분석 (40% 가중치)
 
-#### 2.1 높이 균형 점수 (25%)
+#### 2.1 높이 균형 점수 (25%) - 관대한 기준
 ```javascript
-const heightBalanceScore = Math.max(0, 100 - (shoulderHeightDiff * 500));
+const heightBalanceScore = Math.max(50, 100 - (shoulderHeightDiff * 300)); // 최소 50점
 ```
 - **목표**: 좌우 어깨 높이가 동일
 - **감점**: 한쪽 어깨가 올라가거나 내려감
+- **개선**: 감점 계수 완화 (500 → 300), 최소 점수 보장
 
-#### 2.2 기울기 점수 (25%)
+#### 2.2 기울기 점수 (25%) - 관대한 기준
 ```javascript
-const slopeScore = Math.max(0, 100 - (Math.abs(shoulderSlope) * 200));
+const slopeScore = Math.max(60, 100 - (Math.abs(shoulderSlope) * 100)); // 최소 60점
 ```
 - **목표**: 어깨 라인이 수평
 - **감점**: 어깨가 기울어진 상태
+- **개선**: 감점 계수 완화 (200 → 100), 최소 점수 보장
 
-#### 2.3 너비 점수 (25%)
+#### 2.3 너비 점수 (25%) - 관대한 기준
 ```javascript
-const widthScore = Math.min(100, Math.max(0, (widthRatio - 0.8) / 0.3 * 100));
+const shoulderWidthBaseline = 0.25; // 기준을 더 관대하게
+const widthRatio = shoulderWidth / shoulderWidthBaseline;
+const widthScore = Math.min(100, Math.max(70, (widthRatio - 0.6) / 0.5 * 100)); // 최소 70점
 ```
-- **기준 너비**: 0.28 (정규화된 좌표)
-- **최적 범위**: 기준의 80-110%
+- **기준 너비**: 0.25 (기존 0.28에서 완화)
+- **최적 범위**: 기준의 60-110% (기존 80-110%에서 완화)
 - **감점**: 너무 좁거나 넓은 어깨
+- **개선**: 더 넓은 허용 범위, 최소 점수 보장
 
-#### 2.4 회전 점수 (25%)
+#### 2.4 회전 점수 (25%) - 관대한 기준
 ```javascript
-const rotationScore = Math.max(0, 100 - (Math.abs(shoulderRotation) * 1));
+const rotationScore = Math.max(65, 100 - (Math.abs(shoulderRotation) * 0.5)); // 최소 65점
 ```
 - **목표**: 어깨가 정면을 향함 (0도)
-- **감점**: 어깨가 회전된 상태 (1도당 1점 감점)
+- **감점**: 어깨가 회전된 상태
+- **개선**: 감점 계수 완화 (1도당 1점 → 0.5점), 최소 점수 보장
 
 ## 📈 점수 최적화 가이드
 
