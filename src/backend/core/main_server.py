@@ -2110,10 +2110,17 @@ async def analyze_voice(audio: UploadFile = File(...)):
             temp_webm_path = temp_webm.name
         
         try:
-            # faster-whisper 모델 로드 및 STT 실행
+            # faster-whisper 모델 로드 및 STT 실행 (최적화 설정)
             print("🔄 [VOICE_ANALYZE] faster-whisper로 STT 시작...")
-            model = WhisperModel("base", device="cpu", compute_type="int8")
-            segments, info = model.transcribe(temp_webm_path, language="ko")
+            model = WhisperModel("tiny", device="cpu", compute_type="int8", num_workers=2)
+            segments, info = model.transcribe(
+                temp_webm_path, 
+                language="ko",
+                beam_size=1,
+                best_of=1,
+                vad_filter=True,
+                vad_parameters=dict(min_silence_duration_ms=500)
+            )
             
             # 전사 결과 수집
             transcript = ""
@@ -2123,7 +2130,7 @@ async def analyze_voice(audio: UploadFile = File(...)):
             if not transcript.strip():
                 transcript = "음성을 인식하지 못했습니다."
             
-            print(f"✅ [VOICE_ANALYZE] faster-whisper STT 성공: {transcript}")
+            print(f"✅ [VOICE_ANALYZE] faster-whisper-tiny STT 성공: {transcript}")
             
             # 음성 분석 모듈이 활성화되어 있으면 추가 분석 수행
             if VOICE_ANALYSIS_AVAILABLE:
@@ -2160,7 +2167,7 @@ async def analyze_voice(audio: UploadFile = File(...)):
                         
                         # 분석 결과에 STT 결과 추가
                         analysis_result["transcript"] = transcript
-                        analysis_result["voice_details"]["stt_method"] = "faster-whisper"
+                        analysis_result["voice_details"]["stt_method"] = "faster-whisper-tiny"
                         
                         print(f"✅ [VOICE_ANALYZE] 말투 분석 완료")
                         print(f"📊 [VOICE_ANALYZE] 총점: {analysis_result.get('total_score', 0):.1f}")
@@ -2172,11 +2179,11 @@ async def analyze_voice(audio: UploadFile = File(...)):
                         return {
                             "success": True,
                             "analysis": analysis_result,
-                            "message": "faster-whisper STT 및 말투 분석 완료",
+                            "message": "faster-whisper-tiny STT 및 말투 분석 완료",
                             "details": {
-                                "stt_method": "faster-whisper",
+                                "stt_method": "faster-whisper-tiny",
                                 "status": "full_analysis",
-                                "message": "faster-whisper STT와 새로운 말투 분석이 모두 완료되었습니다."
+                                "message": "faster-whisper-tiny STT와 새로운 말투 분석이 모두 완료되었습니다."
                             }
                         }
                         
@@ -2192,7 +2199,7 @@ async def analyze_voice(audio: UploadFile = File(...)):
                                 "total_score": 60.0,
                                 "voice_tone_score": 60.0,
                                 "word_choice_score": 60.0,
-                                "voice_details": {"stt_method": "faster-whisper", "error": "오디오 변환 실패"},
+                                "voice_details": {"stt_method": "faster-whisper-tiny", "error": "오디오 변환 실패"},
                                 "word_details": {},
                                 "weights": {"voice": 0.4, "word": 0.4, "emotion": 0.2},
                                 "positive_words": [],
