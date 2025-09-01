@@ -5,11 +5,11 @@
 
 class ComprehensiveScoreCalculator {
     constructor() {
-        // 가중치 설정
+        // 가중치 설정 (사용자 요청에 따라 수정: 55/38/7)
         this.weights = {
-            visual: 0.55,      // 시각적 요소 55%
-            auditory: 0.38,    // 청각적 요소 38%
-            conversation: 0.07 // 대화 요소 7%
+            visual: 0.55,      // 시각적 요소 55점 (55%)
+            auditory: 0.38,    // 청각적 요소 38점 (38%)  
+            conversation: 0.07 // 대화 요소 7점 (7%)
         };
         
         // 각 카테고리별 점수
@@ -127,11 +127,13 @@ class ComprehensiveScoreCalculator {
         // 대화 점수 (1개 항목)
         const conversationScore = this.scores.conversation.initiative;
         
-        // 가중 평균 계산
+        // 가중 평균 계산 (55/38/7 비율)
+        const visualContribution = visualAverage * this.weights.visual;      // 55점 만점
+        const auditoryContribution = auditoryAverage * this.weights.auditory; // 38점 만점  
+        const conversationContribution = conversationScore * this.weights.conversation; // 7점 만점
+        
         this.comprehensiveScore = Math.round(
-            (visualAverage * this.weights.visual) +
-            (auditoryAverage * this.weights.auditory) +
-            (conversationScore * this.weights.conversation)
+            visualContribution + auditoryContribution + conversationContribution
         );
         
         this.lastUpdateTime = Date.now();
@@ -160,23 +162,43 @@ class ComprehensiveScoreCalculator {
     }
 
     /**
-     * 종합 점수 숨기기
+     * 종합 점수 수집 상태 표시
      */
     hideComprehensiveScore() {
         const totalScoreElement = document.getElementById('total-score');
-        if (totalScoreElement) {
-            totalScoreElement.textContent = '-';
-            totalScoreElement.style.opacity = '0.5';
+        
+        // 현재 수집된 데이터 확인
+        const visualReady = this.updateStatus.expression && this.updateStatus.gaze_stability && 
+                           this.updateStatus.posture && this.updateStatus.blinking;
+        const auditoryReady = this.updateStatus.tone && this.updateStatus.concentration;
+        const conversationReady = this.updateStatus.initiative;
+        
+        let statusText = '수집중';
+        let statusDetails = [];
+        
+        if (!visualReady) statusDetails.push('시각화');
+        if (!auditoryReady) statusDetails.push('청각');
+        if (!conversationReady) statusDetails.push('대화');
+        
+        if (statusDetails.length > 0) {
+            statusText = `수집중 (${statusDetails.join('/')})`;
         }
         
-        // 종합 점수 행 숨기기
+        if (totalScoreElement) {
+            totalScoreElement.textContent = statusText;
+            totalScoreElement.style.color = '#d97706'; // 주황색
+            totalScoreElement.style.fontSize = '11px';
+            totalScoreElement.style.opacity = '1';
+        }
+        
+        // 종합 점수 행은 계속 표시 (숨기지 않음)
         const totalScoreRow = document.querySelector('.total-score-row');
         if (totalScoreRow) {
-            totalScoreRow.style.opacity = '0.5';
-            totalScoreRow.style.pointerEvents = 'none';
+            totalScoreRow.style.opacity = '1';
+            totalScoreRow.style.pointerEvents = 'auto';
         }
         
-        console.log('[ScoreCalculator] 종합 점수 숨김 (모든 점수 대기 중)');
+        console.log('[ScoreCalculator] 종합 점수 수집 상태 표시:', statusText);
     }
     
     /**
@@ -205,7 +227,11 @@ class ComprehensiveScoreCalculator {
         
         const totalScoreElement = document.getElementById('total-score');
         if (totalScoreElement) {
-            totalScoreElement.textContent = `${this.comprehensiveScore}%`;
+            totalScoreElement.textContent = `${this.comprehensiveScore}/100`;
+            totalScoreElement.style.color = this.getScoreColor(this.comprehensiveScore);
+            totalScoreElement.style.fontWeight = 'bold';
+            totalScoreElement.style.fontSize = '14px';
+            totalScoreElement.style.opacity = '1';
         }
         
         console.log(`[ScoreCalculator] ✅ UI 업데이트 완료: ${this.comprehensiveScore}%`);
