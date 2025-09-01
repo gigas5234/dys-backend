@@ -5,8 +5,8 @@ metadata:
   annotations:
     autopilot.gke.io/disable-pod-autoscaling: "true"
 spec:
-  # 안정성을 위해 동일한 앱을 2개 실행시킵니다.
-  replicas: 2
+  # 테스트용으로 10개 실행 (임시)
+  replicas: 10
   strategy:
     type: Recreate
   progressDeadlineSeconds: 600
