@@ -171,7 +171,7 @@ function mapFrameResultToMetrics(result) {
     }
     if (typeof s.W !== 'undefined') {
         const w = clamp01To100(s.W);
-        labels.expression = w != null ? (w >= 66 ? '긍정적' : w >= 40 ? '중립적' : '개선 필요') : undefined;
+        labels.expression = w != null ? (w >= 66 ? '긍정적' : w >= 40 ? '중립적' : '보통') : undefined;
     }
 
     // 우선순위 2: 개별 필드 명시적 값
@@ -379,7 +379,7 @@ function mapFrameResultToMetrics(result) {
     if (!labels.expression) {
         if (typeof result.smile_score === 'number') {
             const w = clamp01To100(result.smile_score);
-            labels.expression = w != null ? (w >= 66 ? '긍정적' : w >= 40 ? '중립적' : '개선 필요') : undefined;
+            labels.expression = w != null ? (w >= 66 ? '긍정적' : w >= 40 ? '중립적' : '보통') : undefined;
         } else if (typeof result.warmth_label === 'string') {
             labels.expression = result.warmth_label;
         } else if (typeof result.expression === 'string') {
