@@ -282,26 +282,26 @@ class VoiceAnalyzer:
         global FASTER_WHISPER_AVAILABLE
         if FASTER_WHISPER_AVAILABLE:
             try:
-                self._asr_model = WhisperModel("tiny", device="cpu", compute_type="int8", num_workers=2)
-                self._stt_method = "faster-whisper-tiny"
-                logger.info("✅ ASR 모델 로드 성공 (faster-whisper tiny - 성능 최적화)")
-                logger.info("🎤 faster-whisper tiny 모델 채택 (2배 빠름, 2 workers)")
+                self._asr_model = WhisperModel("base", device="cpu", compute_type="int8", num_workers=2)
+                self._stt_method = "faster-whisper-base"
+                logger.info("✅ ASR 모델 로드 성공 (faster-whisper base - 한글 인식 최적화)")
+                logger.info("🎤 faster-whisper base 모델 채택 (한글 인식 향상, 2 workers)")
             except Exception as e:
                 logger.warning(f"⚠️ faster-whisper base 로드 실패: {e}")
                 if "libctranslate2" in str(e).lower():
                     logger.warning("⚠️ libctranslate2 오류로 faster-whisper 비활성화")
                     FASTER_WHISPER_AVAILABLE = False
                 else:
-                    # tiny 모델로 재시도
+                    # base 모델로 재시도 (단일 워커)
                     try:
-                        self._asr_model = WhisperModel("tiny", device="cpu", compute_type="int8")
-                        self._stt_method = "faster-whisper-tiny"
-                        logger.info("✅ ASR 모델 로드 성공 (faster-whisper tiny)")
-                        logger.info("🎤 faster-whisper tiny 모델 채택")
+                        self._asr_model = WhisperModel("base", device="cpu", compute_type="int8")
+                        self._stt_method = "faster-whisper-base"
+                        logger.info("✅ ASR 모델 로드 성공 (faster-whisper base - 단일 워커)")
+                        logger.info("🎤 faster-whisper base 모델 채택 (한글 인식 향상)")
                     except Exception as e2:
-                        logger.warning(f"⚠️ faster-whisper tiny도 실패: {e2}")
+                        logger.warning(f"⚠️ faster-whisper base도 실패: {e2}")
                         if "libctranslate2" in str(e2).lower():
-                            logger.warning("⚠️ libctranslate2 오류로 faster-whisper tiny도 비활성화")
+                            logger.warning("⚠️ libctranslate2 오류로 faster-whisper base도 비활성화")
                             FASTER_WHISPER_AVAILABLE = False
         
         # 방법 2: OpenAI Whisper API 시도 (faster-whisper 실패 시)
@@ -507,7 +507,7 @@ class VoiceAnalyzer:
         
         try:
             # 방법 1: faster-whisper 사용
-            if self._stt_method in ["faster-whisper", "faster-whisper-tiny"] and self._asr_model is not None:
+            if self._stt_method in ["faster-whisper", "faster-whisper-base", "faster-whisper-tiny"] and self._asr_model is not None:
                 return self._transcribe_with_faster_whisper(audio_array)
             
             # 방법 2: OpenAI Whisper API 사용
