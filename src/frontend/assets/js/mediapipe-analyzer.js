@@ -2253,7 +2253,7 @@ class MediaPipeAnalyzer {
                     expressionStatus.textContent = '보통';
                     expressionStatus.style.color = '#f59e0b';
                 } else {
-                    expressionStatus.textContent = '개선 필요';
+                    expressionStatus.textContent = '보통';
                     expressionStatus.style.color = '#ef4444';
                 }
             }
@@ -2307,7 +2307,7 @@ class MediaPipeAnalyzer {
                     postureStatus.textContent = '보통';
                     postureStatus.style.color = '#f59e0b';
                 } else {
-                    postureStatus.textContent = '개선 필요';
+                    postureStatus.textContent = '보통';
                     postureStatus.style.color = '#ef4444';
                 }
             }

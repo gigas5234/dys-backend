@@ -50,10 +50,10 @@ class AffinityCalculator {
         try {
             this.conversationCount++;
             
-            // 대화 지속 보너스 (최대 15점)
-            const conversationBonus = Math.min(this.conversationCount * 0.5, 15);
+            // 대화 지속 보너스 (최대 5점) - 대폭 감소
+            const conversationBonus = Math.min(this.conversationCount * 0.1, 5);
             
-            // 긍정적 단어 감지 (간단한 키워드 기반)
+            // 긍정적 단어 감지 (간단한 키워드 기반) - 점수 감소
             const positiveKeywords = ['좋다', '감사', '고마워', '훌륭', '멋지다', '예쁘다', '좋아요', '최고', '완벽'];
             const message = messageData.message || '';
             
@@ -61,14 +61,14 @@ class AffinityCalculator {
             positiveKeywords.forEach(keyword => {
                 if (message.includes(keyword)) {
                     this.positiveWords++;
-                    positiveBonus += 2;
+                    positiveBonus += 0.5; // 2점 → 0.5점으로 대폭 감소
                 }
             });
             
-            // 대화 길이 보너스
-            const lengthBonus = Math.min(message.length * 0.01, 3);
+            // 대화 길이 보너스 - 거의 없애기
+            const lengthBonus = Math.min(message.length * 0.002, 0.5);
             
-            this.conversationBonus = conversationBonus + Math.min(positiveBonus, 10) + lengthBonus;
+            this.conversationBonus = conversationBonus + Math.min(positiveBonus, 3) + lengthBonus;
             
             console.log(`💬 [호감도] 대화 업데이트: +${this.conversationBonus.toFixed(1)}점 (총 ${this.conversationCount}회)`);
             
@@ -85,21 +85,21 @@ class AffinityCalculator {
      */
     updateExpressionAffinity(expressionScore) {
         try {
-            if (expressionScore >= 70) {
+            if (expressionScore >= 75) { // 70 → 75로 기준 상승
                 this.goodExpressionStreak++;
                 
-                // 연속 좋은 표정 보너스 (최대 10점)
-                const streakBonus = Math.min(this.goodExpressionStreak * 0.3, 10);
+                // 연속 좋은 표정 보너스 (최대 3점) - 대폭 감소
+                const streakBonus = Math.min(this.goodExpressionStreak * 0.05, 3);
                 this.expressionBonus = streakBonus;
                 
-                // 5회 연속 좋은 표정시 특별 보너스
-                if (this.goodExpressionStreak % 5 === 0) {
-                    this.triggerAffinityBoost("expression", 3);
+                // 15회 연속 좋은 표정시 특별 보너스 - 조건 강화
+                if (this.goodExpressionStreak % 15 === 0) {
+                    this.triggerAffinityBoost("expression", 1); // 3점 → 1점
                     console.log(`😊 [호감도] 표정 연속 보너스! ${this.goodExpressionStreak}회 연속`);
                 }
             } else {
                 this.goodExpressionStreak = Math.max(0, this.goodExpressionStreak - 1);
-                this.expressionBonus = Math.max(0, this.expressionBonus - 0.1);
+                this.expressionBonus = Math.max(0, this.expressionBonus - 0.02); // 감소 속도도 줄임
             }
             
             this.calculateTotalAffinity();
@@ -114,21 +114,21 @@ class AffinityCalculator {
      */
     updatePostureAffinity(postureScore) {
         try {
-            if (postureScore >= 75) {
+            if (postureScore >= 80) { // 75 → 80으로 기준 상승
                 this.goodPostureStreak++;
                 
-                // 연속 좋은 자세 보너스 (최대 8점)
-                const streakBonus = Math.min(this.goodPostureStreak * 0.2, 8);
+                // 연속 좋은 자세 보너스 (최대 2점) - 대폭 감소
+                const streakBonus = Math.min(this.goodPostureStreak * 0.03, 2);
                 this.postureBonus = streakBonus;
                 
-                // 10회 연속 좋은 자세시 특별 보너스
-                if (this.goodPostureStreak % 10 === 0) {
-                    this.triggerAffinityBoost("posture", 2);
+                // 25회 연속 좋은 자세시 특별 보너스 - 조건 강화
+                if (this.goodPostureStreak % 25 === 0) {
+                    this.triggerAffinityBoost("posture", 0.5); // 2점 → 0.5점
                     console.log(`🧍 [호감도] 자세 연속 보너스! ${this.goodPostureStreak}회 연속`);
                 }
             } else {
                 this.goodPostureStreak = Math.max(0, this.goodPostureStreak - 1);
-                this.postureBonus = Math.max(0, this.postureBonus - 0.05);
+                this.postureBonus = Math.max(0, this.postureBonus - 0.01); // 감소 속도 줄임
             }
             
             this.calculateTotalAffinity();
@@ -143,21 +143,21 @@ class AffinityCalculator {
      */
     updateGazeAffinity(gazeScore) {
         try {
-            if (gazeScore >= 80) {
+            if (gazeScore >= 85) { // 80 → 85로 기준 상승
                 this.goodGazeStreak++;
                 
-                // 연속 좋은 시선 보너스 (최대 7점)
-                const streakBonus = Math.min(this.goodGazeStreak * 0.15, 7);
+                // 연속 좋은 시선 보너스 (최대 2점) - 대폭 감소
+                const streakBonus = Math.min(this.goodGazeStreak * 0.02, 2);
                 this.gazeBonus = streakBonus;
                 
-                // 15회 연속 좋은 시선시 특별 보너스
-                if (this.goodGazeStreak % 15 === 0) {
-                    this.triggerAffinityBoost("gaze", 2);
+                // 30회 연속 좋은 시선시 특별 보너스 - 조건 강화
+                if (this.goodGazeStreak % 30 === 0) {
+                    this.triggerAffinityBoost("gaze", 0.5); // 2점 → 0.5점
                     console.log(`👁️ [호감도] 시선 연속 보너스! ${this.goodGazeStreak}회 연속`);
                 }
             } else {
                 this.goodGazeStreak = Math.max(0, this.goodGazeStreak - 1);
-                this.gazeBonus = Math.max(0, this.gazeBonus - 0.03);
+                this.gazeBonus = Math.max(0, this.gazeBonus - 0.005); // 감소 속도 줄임
             }
             
             this.calculateTotalAffinity();
