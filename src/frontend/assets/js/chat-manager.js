@@ -505,6 +505,11 @@
                     window.ConversationAnalyzer.addMessage('user', text);
                 }
                 
+                // 호감도 업데이트 (사용자 메시지)
+                if (window.AffinityCalculator) {
+                    window.AffinityCalculator.updateConversationAffinity({ message: text, sender: 'user' });
+                }
+                
                 if (this.chatInput) {
                     this.chatInput.value = '';
                     this.chatInput.focus();
@@ -542,6 +547,11 @@
                     
                     if (window.ConversationAnalyzer) {
                         window.ConversationAnalyzer.addMessage('assistant', result.ai_response);
+                    }
+                    
+                    // 호감도 업데이트 (AI 응답)
+                    if (window.AffinityCalculator) {
+                        window.AffinityCalculator.updateConversationAffinity({ message: result.ai_response, sender: 'assistant' });
                     }
                     
                     if (window.ttsManager && window.ttsManager.isEnabled) {

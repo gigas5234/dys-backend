@@ -32,6 +32,8 @@
     <script src="../assets/js/conversation-analyzer.js?v=20241223"></script>
     <!-- 종합 점수 계산 모듈 -->
     <script src="../assets/js/comprehensive-score-calculator.js?v=20241223"></script>
+    <!-- 호감도 계산 모듈 -->
+    <script src="../assets/js/affinity-calculator.js?v=20241226"></script>
     <!-- 팝업 로더 모듈 -->
     <script src="../assets/js/popup-loader.js?v=20241226-1"></script>
     <!-- UI 유틸리티 모듈 -->
@@ -117,8 +119,9 @@
                   <circle id="likability-progress-enhanced" class="circle-progress-enhanced" cx="60" cy="60" r="50" stroke="url(#likability-gradient-enhanced)" stroke-width="8" fill="none" stroke-linecap="round" filter="url(#glow)" transform="rotate(-90 60 60)"/>
                 </svg>
                 <div class="likability-inner">
-                  <div id="likability-score-enhanced" class="likability-score-enhanced">-<span class="score-unit">%</span></div>
-                  <div class="likability-status" id="likability-status">측정 중</div>
+                  <div class="likability-icon">💖</div>
+                  <div id="likability-score-enhanced" class="likability-score-enhanced">50<span class="score-unit">%</span></div>
+                  <div class="likability-status" id="likability-status">보통</div>
               </div>
               </div>
               <div class="likability-factors">
