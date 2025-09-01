@@ -11,7 +11,7 @@ class TTSManager {
         this.currentAudio = null;
         this.voice = "ko-KR-SunHiNeural"; // 기본 목소리 (밝고 친근한)
         this.volume = 0.8;
-        this.rate = 1.5; // 기본 속도를 1.5로 설정
+        this.rate = 1.1; // 기본 속도를 1.1로 설정 (거의 자연스러움)
         this.isEnabled = true; // TTS 기본 활성화 (UI 없이도 작동)
         
         // TTS 설정 UI (숨김 처리)
