@@ -28,27 +28,61 @@ def download_model_if_not_exists():
     model_path = os.path.join(temp_dir, "model.pth")
     model_url = "https://storage.googleapis.com/dys-model-storage/model.pth"
 
+    # 파일 락을 사용하여 하나의 Pod만 다운로드하도록 제어
+    lock_path = os.path.join(temp_dir, "model_download.lock")
+    
     if not os.path.exists(model_path):
-        logger.info(f"모델을 임시 디렉토리에 다운로드합니다: {model_path}")
-        
         try:
-            import requests
-            response = requests.get(model_url, stream=True)
-            response.raise_for_status()
-            
-            with open(model_path, "wb") as f:
-                for chunk in response.iter_content(chunk_size=8192):
-                    f.write(chunk)
-            logger.info("✅ 모델 다운로드 완료.")
-            
-            # 환경변수로 모델 경로 설정
-            os.environ['MODEL_PATH'] = model_path
-            
+            import fcntl
+            with open(lock_path, 'w') as lock_file:
+                logger.info("🔒 모델 다운로드 락 획득 시도...")
+                
+                try:
+                    # 논블로킹 락 시도
+                    fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    logger.info("✅ 모델 다운로드 락 획득 성공")
+                    
+                    # 다시 한번 확인 (다른 Pod가 이미 다운로드했을 수 있음)
+                    if os.path.exists(model_path):
+                        logger.info("✅ 다른 Pod가 이미 모델을 다운로드함")
+                        os.environ['MODEL_PATH'] = model_path
+                        return
+                    
+                    logger.info(f"모델을 임시 디렉토리에 다운로드합니다: {model_path}")
+                    
+                    import requests
+                    response = requests.get(model_url, stream=True)
+                    response.raise_for_status()
+                    
+                    with open(model_path, "wb") as f:
+                        for chunk in response.iter_content(chunk_size=8192):
+                            f.write(chunk)
+                    logger.info("✅ 모델 다운로드 완료.")
+                    
+                    # 환경변수로 모델 경로 설정
+                    os.environ['MODEL_PATH'] = model_path
+                    
+                except BlockingIOError:
+                    # 다른 Pod가 이미 다운로드 중 - 대기
+                    logger.info("⏳ 다른 Pod가 모델 다운로드 중 - 대기...")
+                    
+                    import time
+                    # 최대 60초 대기
+                    for i in range(60):
+                        time.sleep(1)
+                        if os.path.exists(model_path):
+                            logger.info(f"✅ 다른 Pod의 모델 다운로드 완료 ({i+1}초 대기)")
+                            os.environ['MODEL_PATH'] = model_path
+                            return
+                    
+                    logger.warning("⚠️ 모델 다운로드 대기 시간 초과")
+                    raise Exception("모델 다운로드 대기 시간 초과")
+                    
         except Exception as e:
             logger.error(f"❌ 모델 다운로드 실패: {e}")
             logger.warning("⚠️ 서버는 계속 실행되지만 일부 기능이 제한될 수 있습니다.")
     else:
-        logger.info("✅ 모델이 이미 존재합니다.")
+        logger.info(f"✅ 모델이 이미 존재합니다: {model_path}")
         os.environ['MODEL_PATH'] = model_path
 
 def check_environment():

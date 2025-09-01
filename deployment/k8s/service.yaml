@@ -6,6 +6,11 @@ metadata:
 spec:
   # LoadBalancer 타입을 사용해 외부 IP 주소를 할당받습니다.
   type: LoadBalancer
+  # 같은 클라이언트는 같은 Pod로 라우팅 (Sticky Session)
+  sessionAffinity: ClientIP
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: 3600  # 1시간 동안 같은 Pod 사용
   selector:
     # 'app: my-backend' 라벨이 붙은 Pod를 찾아 연결합니다.
     app: dys-backend
